@@ -1,4 +1,12 @@
 // ═══════════════════════════════════════════
+// AUTH GUARD
+// ═══════════════════════════════════════════
+const session = JSON.parse(localStorage.getItem('sb_session') || 'null');
+if (!session || session.role !== 'admin') {
+  window.location.href = 'login.html';
+}
+
+// ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
 const API_URL = 'https://ss-app-backend-production.up.railway.app/api';
@@ -485,7 +493,18 @@ function showToast(msg, isError) {
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+function logout() {
+  localStorage.removeItem('sb_session');
+  window.location.href = 'login.html';
+}
+
 async function init() {
+  // Show admin user info
+  const userEl = document.getElementById('adminUser');
+  if (session) {
+    userEl.textContent = session.email;
+  }
+
   document.getElementById('categoryForm').addEventListener('submit', saveCategory);
   document.getElementById('productForm').addEventListener('submit', saveProduct);
 

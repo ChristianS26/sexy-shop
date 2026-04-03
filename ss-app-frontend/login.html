@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Sexy Shop Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+      width: 100%;
+      max-width: 400px;
+      padding: 40px 32px;
+    }
+
+    .login-brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-brand-icon {
+      font-size: 2rem;
+      color: #e91e63;
+    }
+
+    .login-brand-name {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin-top: 8px;
+    }
+
+    .login-brand-sub {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #e91e63;
+      box-shadow: 0 0 0 3px rgba(233,30,99,0.1);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: #e91e63;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+
+    .login-btn:hover { background: #c2185b; }
+    .login-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    .login-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .login-error.show { display: block; }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+
+    .login-footer a {
+      color: #e91e63;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-brand-icon">&#9829;</div>
+      <div class="login-brand-name">SexyShop</div>
+      <div class="login-brand-sub">Panel de administración</div>
+    </div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="email">Email</label>
+        <input class="form-input" type="email" id="email" required placeholder="tu@email.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Contraseña</label>
+        <input class="form-input" type="password" id="password" required placeholder="Tu contraseña" autocomplete="current-password">
+      </div>
+
+      <button class="login-btn" type="submit" id="loginBtn">Iniciar sesión</button>
+    </form>
+
+    <div class="login-footer">
+      <a href="index.html">Volver a la tienda</a>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://litzzmjoiujifddkrryp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdHp6bWpvaXVqaWZkZGtycnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNDU4NTQsImV4cCI6MjA5MDgyMTg1NH0.d2jUA16jXjxTOlYswSmw1lqJt-3_o6CwJdpaMixhPYo';
+
+    // Check if already logged in
+    const session = localStorage.getItem('sb_session');
+    if (session) {
+      const parsed = JSON.parse(session);
+      if (parsed.role === 'admin') {
+        window.location.href = 'admin.html';
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const errorEl = document.getElementById('loginError');
+      errorEl.classList.remove('show');
+      btn.disabled = true;
+      btn.textContent = 'Iniciando...';
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        // Authenticate with Supabase
+        const authRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!authRes.ok) {
+          throw new Error('Email o contraseña incorrectos');
+        }
+
+        const authData = await authRes.json();
+
+        // Get profile to check role
+        const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${authData.user.id}&select=*`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${authData.access_token}`,
+          },
+        });
+
+        const profiles = await profileRes.json();
+        const profile = profiles[0];
+
+        if (!profile) {
+          throw new Error('Perfil no encontrado');
+        }
+
+        // Store session
+        localStorage.setItem('sb_session', JSON.stringify({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token,
+          user_id: authData.user.id,
+          email: authData.user.email,
+          role: profile.role,
+          full_name: profile.full_name,
+        }));
+
+        if (profile.role === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          // Future: redirect customers to their dashboard
+          window.location.href = 'index.html';
+        }
+
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.add('show');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Iniciar sesión';
+      }
+    }
+  </script>
+</body>
+</html>
