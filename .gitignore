@@ -1,0 +1,8 @@
+.mcp.json
+.env
+node_modules/
+.claude/
+memory/
+.gradle/
+build/
+*.class

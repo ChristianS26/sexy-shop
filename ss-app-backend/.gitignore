@@ -1,0 +1,7 @@
+.env
+.mcp.json
+build/
+.gradle/
+.idea/
+*.iml
+out/

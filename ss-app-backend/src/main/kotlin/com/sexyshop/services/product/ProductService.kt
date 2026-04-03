@@ -1,0 +1,28 @@
+package com.sexyshop.services.product
+
+import com.sexyshop.models.product.Product
+import com.sexyshop.models.product.ProductRequest
+import com.sexyshop.models.product.ProductWithImages
+import com.sexyshop.repositories.image.ImageRepository
+import com.sexyshop.repositories.product.ProductRepository
+
+class ProductService(
+    private val productRepository: ProductRepository,
+    private val imageRepository: ImageRepository,
+) {
+    suspend fun getAll(categoryId: String? = null, activeOnly: Boolean = true): List<Product> =
+        productRepository.getAll(categoryId, activeOnly)
+
+    suspend fun getById(id: String): ProductWithImages {
+        val product = productRepository.getById(id)
+            ?: throw NoSuchElementException("Product not found: $id")
+        val images = imageRepository.getByProductId(id)
+        return ProductWithImages(product = product, images = images)
+    }
+
+    suspend fun create(request: ProductRequest): Product = productRepository.create(request)
+
+    suspend fun update(id: String, request: ProductRequest): Product = productRepository.update(id, request)
+
+    suspend fun deactivate(id: String) = productRepository.deactivate(id)
+}
