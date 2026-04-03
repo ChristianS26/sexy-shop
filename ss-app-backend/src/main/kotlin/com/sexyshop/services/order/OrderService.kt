@@ -20,20 +20,33 @@ class OrderService(
     }
 
     suspend fun create(request: OrderRequest): Order {
-        // Look up products and calculate totals
-        val orderItems = request.items.map { itemReq ->
+        // Look up products, validate stock, and calculate totals
+        val products = request.items.map { itemReq ->
             val product = productRepository.getById(itemReq.productId)
-                ?: throw NoSuchElementException("Product not found: ${itemReq.productId}")
+                ?: throw NoSuchElementException("Producto no encontrado: ${itemReq.productId}")
+            require(product.isActive) { "Producto no disponible: ${product.name}" }
+            require(product.stock >= itemReq.quantity) {
+                "Stock insuficiente para ${product.name}. Disponible: ${product.stock}, solicitado: ${itemReq.quantity}"
+            }
+            product to itemReq.quantity
+        }
+
+        val orderItems = products.map { (product, qty) ->
             OrderItem(
                 productId = product.id,
                 productName = product.name,
-                quantity = itemReq.quantity,
+                quantity = qty,
                 unitPrice = product.price,
-                subtotal = product.price * itemReq.quantity,
+                subtotal = product.price * qty,
             )
         }
 
         val total = orderItems.sumOf { it.subtotal }
+
+        // Deduct stock
+        products.forEach { (product, qty) ->
+            productRepository.updateStock(product.id, product.stock - qty)
+        }
 
         val order = orderRepository.create(
             Order(
@@ -53,7 +66,22 @@ class OrderService(
 
     suspend fun updateStatus(id: String, status: String): Order {
         val validStatuses = setOf("pending", "confirmed", "shipped", "delivered", "cancelled")
-        require(status in validStatuses) { "Invalid status: $status. Valid: $validStatuses" }
+        require(status in validStatuses) { "Estado inválido: $status" }
+
+        val (currentOrder, items) = getById(id)
+
+        // Restore stock when cancelling
+        if (status == "cancelled" && currentOrder.status != "cancelled") {
+            items.forEach { item ->
+                if (item.productId != null) {
+                    val product = productRepository.getById(item.productId)
+                    if (product != null) {
+                        productRepository.updateStock(product.id, product.stock + item.quantity)
+                    }
+                }
+            }
+        }
+
         return orderRepository.updateStatus(id, status)
     }
 }

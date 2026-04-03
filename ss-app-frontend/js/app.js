@@ -148,7 +148,8 @@ function renderProducts() {
           <span style="font-size:3.5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span>
         </div>
         ${product.badge ? `<span class="product-badge badge-${product.badge}">${product.badge === 'new' ? 'Nuevo' : product.badge === 'hot' ? 'Popular' : 'Oferta'}</span>` : ''}
-        <div class="product-quick-add" onclick="addToCart('${product.id}')">Agregar al carrito</div>
+        ${product.stock <= 0 ? '<span class="product-badge badge-soldout">Agotado</span>' : ''}
+        <div class="product-quick-add" onclick="addToCart('${product.id}')">${product.stock <= 0 ? 'Agotado' : 'Agregar al carrito'}</div>
       </div>
       <div class="product-info">
         <div class="product-category">${cat ? cat.name : ''}</div>
@@ -180,7 +181,19 @@ function addToCart(productId) {
   const product = products.find(p => p.id === productId);
   if (!product) return;
 
+  if (product.stock <= 0) {
+    showToast('Producto agotado');
+    return;
+  }
+
   const existing = cart.find(item => item.id === productId);
+  const currentQty = existing ? existing.qty : 0;
+
+  if (currentQty >= product.stock) {
+    showToast(`Solo hay ${product.stock} disponibles`);
+    return;
+  }
+
   if (existing) {
     existing.qty++;
   } else {
@@ -272,22 +285,75 @@ function toggleCart() {
   document.body.classList.toggle('no-scroll', !isOpen);
 }
 
-function checkout() {
+async function checkout() {
   if (cart.length === 0) return;
 
-  let message = 'Hola, me gustaría hacer el siguiente pedido:\n\n';
-  let total = 0;
+  const name = prompt('Tu nombre:');
+  if (!name) return;
+  const phone = prompt('Tu número de WhatsApp (10 dígitos):');
+  if (!phone) return;
+  const address = prompt('Dirección de entrega (opcional):') || '';
 
-  cart.forEach(item => {
-    const subtotal = item.price * item.qty;
-    total += subtotal;
-    message += `• ${item.name} x${item.qty} — $${subtotal.toFixed(2)}\n`;
-  });
+  try {
+    // Create order in API
+    const orderData = {
+      customer_name: name,
+      customer_phone: phone,
+      customer_address: address || null,
+      notes: null,
+      items: cart.map(item => ({
+        product_id: item.id,
+        quantity: item.qty,
+      })),
+    };
 
-  message += `\n*Total: $${total.toFixed(2)} MXN*\n\n¿Me pueden confirmar disponibilidad y forma de entrega? Gracias.`;
+    const res = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData),
+    });
 
-  const encoded = encodeURIComponent(message);
-  window.open(`https://wa.me/526222279504?text=${encoded}`, '_blank');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al crear pedido');
+    }
+
+    const order = await res.json();
+
+    // Build WhatsApp message
+    let message = `Hola, acabo de hacer el pedido #${order.id.slice(0, 8)}:\n\n`;
+    let total = 0;
+
+    cart.forEach(item => {
+      const subtotal = item.price * item.qty;
+      total += subtotal;
+      message += `• ${item.name} x${item.qty} — $${subtotal.toFixed(2)}\n`;
+    });
+
+    message += `\n*Total: $${total.toFixed(2)} MXN*`;
+    message += `\n\nNombre: ${name}`;
+    message += `\nTeléfono: ${phone}`;
+    if (address) message += `\nDirección: ${address}`;
+    message += `\n\n¿Me pueden confirmar forma de entrega? Gracias.`;
+
+    // Clear cart and refresh products (stock updated)
+    cart = [];
+    saveCart();
+    updateCart();
+    toggleCart();
+    await fetchProducts();
+    renderProducts();
+
+    showToast('Pedido creado exitosamente');
+
+    // Open WhatsApp
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/526222279504?text=${encoded}`, '_blank');
+
+  } catch (err) {
+    showToast(err.message || 'Error al crear pedido');
+    console.error(err);
+  }
 }
 
 // ═══════════════════════════════════════════

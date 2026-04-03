@@ -61,4 +61,11 @@ class ProductRepositoryImpl(
                 filter { eq("id", id) }
             }
     }
+
+    override suspend fun updateStock(id: String, newStock: Int) {
+        supabase.from("products")
+            .update(mapOf("stock" to newStock)) {
+                filter { eq("id", id) }
+            }
+    }
 }
