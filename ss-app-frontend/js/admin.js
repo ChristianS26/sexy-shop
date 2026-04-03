@@ -738,16 +738,16 @@ function showConfirm(title, message, btnText = 'Eliminar') {
     document.getElementById('confirmDialogMessage').textContent = message;
     const btn = document.getElementById('confirmDialogBtn');
     btn.textContent = btnText;
-    btn.onclick = () => { closeConfirmDialog(); resolve(true); };
-    document.getElementById('modalOverlay').classList.add('open');
+    btn.onclick = () => { closeConfirmDialog(true); };
+    document.getElementById('confirmOverlay').classList.add('open');
     document.getElementById('confirmDialog').classList.add('open');
   });
 }
 
-function closeConfirmDialog() {
+function closeConfirmDialog(result = false) {
   document.getElementById('confirmDialog').classList.remove('open');
-  document.getElementById('modalOverlay').classList.remove('open');
-  if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
+  document.getElementById('confirmOverlay').classList.remove('open');
+  if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(result); }
 }
 
 // ═══════════════════════════════════════════

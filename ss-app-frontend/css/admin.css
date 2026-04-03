@@ -458,6 +458,14 @@ body {
   display: block;
 }
 
+.admin-overlay--confirm {
+  z-index: 350;
+}
+
+.admin-overlay--confirm + .admin-modal {
+  z-index: 360;
+}
+
 /* ═══════════════════════════════════════════
    MODALS
    ═══════════════════════════════════════════ */
