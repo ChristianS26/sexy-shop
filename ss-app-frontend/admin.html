@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Sexy Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar__brand">
+      <span class="admin-sidebar__logo">&#9829;</span>
+      <span class="admin-sidebar__title">SexyShop Admin</span>
+    </div>
+
+    <nav class="admin-sidebar__nav">
+      <a href="#" class="admin-sidebar__link admin-sidebar__link--active" onclick="showSection('dashboard')" data-section="dashboard">
+        <span class="admin-sidebar__icon">&#9632;</span>
+        Dashboard
+      </a>
+      <a href="#" class="admin-sidebar__link" onclick="showSection('categories')" data-section="categories">
+        <span class="admin-sidebar__icon">&#9776;</span>
+        Categor&iacute;as
+      </a>
+      <a href="#" class="admin-sidebar__link" onclick="showSection('products')" data-section="products">
+        <span class="admin-sidebar__icon">&#9733;</span>
+        Productos
+      </a>
+      <a href="#" class="admin-sidebar__link" onclick="showSection('orders')" data-section="orders">
+        <span class="admin-sidebar__icon">&#128230;</span>
+        Pedidos
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="admin-content">
+
+    <!-- Top header -->
+    <header class="admin-header">
+      <button class="admin-header__menu-toggle" id="menuToggle" onclick="toggleSidebar()">&#9776;</button>
+      <h1 class="admin-header__title" id="sectionTitle">Dashboard</h1>
+    </header>
+
+    <!-- ===== DASHBOARD SECTION ===== -->
+    <section class="admin-section" id="dashboardSection">
+
+      <!-- Stat cards -->
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <span class="admin-stat-card__icon">&#9733;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statProducts">0</span>
+            <span class="admin-stat-card__label">Total Productos</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-card">
+          <span class="admin-stat-card__icon">&#9776;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statCategories">0</span>
+            <span class="admin-stat-card__label">Categor&iacute;as</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-card">
+          <span class="admin-stat-card__icon">&#9201;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statPendingOrders">0</span>
+            <span class="admin-stat-card__label">Pedidos Pendientes</span>
+          </div>
+        </div>
+
+        <div class="admin-stat-card">
+          <span class="admin-stat-card__icon">&#128230;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statTotalOrders">0</span>
+            <span class="admin-stat-card__label">Pedidos Totales</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent orders -->
+      <div class="admin-table-wrapper">
+        <h2 class="admin-table-wrapper__title">Pedidos Recientes</h2>
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="recentOrdersTable">
+              <!-- Filled by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CATEGORIES SECTION ===== -->
+    <section class="admin-section admin-section--hidden" id="categoriesSection">
+      <div class="admin-section__header">
+        <h2 class="admin-section__title">Categor&iacute;as</h2>
+        <button class="admin-btn admin-btn--primary" onclick="openCategoryModal()">+ Nueva Categor&iacute;a</button>
+      </div>
+
+      <div class="admin-table-wrapper">
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Icono</th>
+                <th>Nombre</th>
+                <th>Slug</th>
+                <th>Orden</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="categoriesTable">
+              <!-- Filled by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTS SECTION ===== -->
+    <section class="admin-section admin-section--hidden" id="productsSection">
+      <div class="admin-section__header">
+        <h2 class="admin-section__title">Productos</h2>
+        <button class="admin-btn admin-btn--primary" onclick="openProductModal()">+ Nuevo Producto</button>
+      </div>
+
+      <div class="admin-table-wrapper">
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Categor&iacute;a</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Badge</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="productsTable">
+              <!-- Filled by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ORDERS SECTION ===== -->
+    <section class="admin-section admin-section--hidden" id="ordersSection">
+      <div class="admin-section__header">
+        <h2 class="admin-section__title">Pedidos</h2>
+        <div class="admin-section__filters">
+          <select class="admin-select" id="orderStatusFilter" onchange="filterOrders()">
+            <option value="all">Todos</option>
+            <option value="pending">Pendiente</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="shipped">Enviado</option>
+            <option value="delivered">Entregado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="admin-table-wrapper">
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Tel&eacute;fono</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable">
+              <!-- Filled by admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== MODAL OVERLAY ===== -->
+  <div class="admin-overlay" id="modalOverlay" onclick="closeModals()"></div>
+
+  <!-- ===== CATEGORY MODAL ===== -->
+  <div class="admin-modal" id="categoryModal">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title" id="categoryModalTitle">Nueva Categor&iacute;a</h3>
+      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+    </div>
+
+    <form class="admin-modal__body" id="categoryForm" onsubmit="saveCategory(event)">
+      <input type="hidden" id="categoryId">
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="categoryName">Nombre</label>
+        <input class="admin-form-group__input" type="text" id="categoryName" required placeholder="Ej: Lencer&iacute;a">
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="categorySlug">Slug</label>
+        <input class="admin-form-group__input" type="text" id="categorySlug" required placeholder="ej: lenceria">
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="categoryIcon">Icono</label>
+        <input class="admin-form-group__input" type="text" id="categoryIcon" placeholder="Emoji o texto, ej: &#128141;">
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="categoryOrder">Orden de display</label>
+        <input class="admin-form-group__input" type="number" id="categoryOrder" value="0" min="0">
+      </div>
+
+      <div class="admin-modal__actions">
+        <button type="button" class="admin-btn admin-btn--secondary" onclick="closeModals()">Cancelar</button>
+        <button type="submit" class="admin-btn admin-btn--primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== PRODUCT MODAL ===== -->
+  <div class="admin-modal" id="productModal">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title" id="productModalTitle">Nuevo Producto</h3>
+      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+    </div>
+
+    <form class="admin-modal__body" id="productForm" onsubmit="saveProduct(event)">
+      <input type="hidden" id="productId">
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="productName">Nombre</label>
+        <input class="admin-form-group__input" type="text" id="productName" required placeholder="Nombre del producto">
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="productSlug">Slug</label>
+        <input class="admin-form-group__input" type="text" id="productSlug" required placeholder="nombre-del-producto">
+      </div>
+
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="productDescription">Descripci&oacute;n</label>
+        <textarea class="admin-form-group__textarea" id="productDescription" rows="4" placeholder="Descripci&oacute;n del producto"></textarea>
+      </div>
+
+      <div class="admin-form-row">
+        <div class="admin-form-group">
+          <label class="admin-form-group__label" for="productPrice">Precio</label>
+          <input class="admin-form-group__input" type="number" id="productPrice" required min="0" step="0.01" placeholder="0.00">
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-form-group__label" for="productOldPrice">Precio anterior</label>
+          <input class="admin-form-group__input" type="number" id="productOldPrice" min="0" step="0.01" placeholder="Opcional">
+        </div>
+      </div>
+
+      <div class="admin-form-row">
+        <div class="admin-form-group">
+          <label class="admin-form-group__label" for="productCategorySelect">Categor&iacute;a</label>
+          <select class="admin-form-group__select" id="productCategorySelect" required>
+            <option value="">Seleccionar...</option>
+            <!-- Filled by admin.js -->
+          </select>
+        </div>
+
+        <div class="admin-form-group">
+          <label class="admin-form-group__label" for="productStock">Stock</label>
+          <input class="admin-form-group__input" type="number" id="productStock" required min="0" value="0">
+        </div>
+      </div>
+
+      <div class="admin-form-row">
+        <div class="admin-form-group">
+          <label class="admin-form-group__label" for="productBadge">Badge</label>
+          <select class="admin-form-group__select" id="productBadge">
+            <option value="">Ninguno</option>
+            <option value="new">New</option>
+            <option value="hot">Hot</option>
+            <option value="sale">Sale</option>
+          </select>
+        </div>
+
+        <div class="admin-form-group admin-form-group--checkbox">
+          <label class="admin-form-group__label">
+            <input type="checkbox" id="productActive" checked>
+            Activo
+          </label>
+        </div>
+      </div>
+
+      <div class="admin-modal__actions">
+        <button type="button" class="admin-btn admin-btn--secondary" onclick="closeModals()">Cancelar</button>
+        <button type="submit" class="admin-btn admin-btn--primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== ORDER DETAIL MODAL ===== -->
+  <div class="admin-modal admin-modal--wide" id="orderDetailModal">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title">Detalle del Pedido</h3>
+      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+    </div>
+
+    <div class="admin-modal__body">
+      <!-- Customer info -->
+      <div class="admin-order-info">
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Pedido:</span>
+          <span class="admin-order-info__value"><code id="orderDetailId">—</code></span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Cliente:</span>
+          <span class="admin-order-info__value" id="orderDetailName">—</span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Tel&eacute;fono:</span>
+          <span class="admin-order-info__value" id="orderDetailPhone">—</span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Direcci&oacute;n:</span>
+          <span class="admin-order-info__value" id="orderDetailAddress">—</span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Notas:</span>
+          <span class="admin-order-info__value" id="orderDetailNotes">—</span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Total:</span>
+          <span class="admin-order-info__value" id="orderDetailTotal">—</span>
+        </div>
+        <div class="admin-order-info__field">
+          <span class="admin-order-info__label">Fecha:</span>
+          <span class="admin-order-info__value" id="orderDetailDate">—</span>
+        </div>
+      </div>
+
+      <!-- Order items table -->
+      <div class="admin-table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio</th>
+              <th>Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="orderDetailItems">
+            <!-- Filled by admin.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Status update -->
+      <div class="admin-order-status-update">
+        <label class="admin-form-group__label" for="orderStatusSelect">Actualizar estado:</label>
+        <div class="admin-order-status-update__controls">
+          <select class="admin-form-group__select" id="orderStatusSelect">
+            <option value="pending">Pendiente</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="shipped">Enviado</option>
+            <option value="delivered">Entregado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+          <button class="admin-btn admin-btn--primary" onclick="updateOrderStatus()">Actualizar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div class="admin-toast" id="adminToast"></div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
