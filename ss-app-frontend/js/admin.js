@@ -526,15 +526,25 @@ async function uploadProductImages() {
     return;
   }
 
+  // Check if product already has images to determine primary and order
+  let existingImages = [];
+  try {
+    existingImages = await api(`/products/${editingProductId}/images`);
+  } catch (e) { /* no images yet */ }
+
+  const hasPrimary = existingImages.some(img => img.is_primary);
+  let nextOrder = existingImages.length;
+
   showToast(`Subiendo ${files.length} imagen(es)...`);
   let uploaded = 0;
   let errors = 0;
 
-  for (const file of files) {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     const formData = new FormData();
     formData.append('productId', editingProductId);
     formData.append('file', file);
-    formData.append('isPrimary', 'false');
+    formData.append('isPrimary', (!hasPrimary && i === 0) ? 'true' : 'false');
 
     try {
       const res = await fetch(`${API_URL}/images/upload`, {
@@ -542,6 +552,17 @@ async function uploadProductImages() {
         body: formData,
       });
       if (!res.ok) throw new Error();
+
+      // Set display_order for this image
+      const imgData = await res.json();
+      if (imgData.id) {
+        await api(`/images/${imgData.id}/order`, {
+          method: 'PUT',
+          body: JSON.stringify({ display_order: nextOrder }),
+        });
+      }
+
+      nextOrder++;
       uploaded++;
     } catch (e) {
       errors++;
