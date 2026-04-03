@@ -7,11 +7,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.utils.io.*
-import org.koin.ktor.ext.inject
 
-fun Route.imageRoutes() {
-    val service by inject<ImageService>()
-
+fun Route.imageRoutes(service: ImageService) {
     route("/images") {
         post("/upload") {
             val multipart = call.receiveMultipart()

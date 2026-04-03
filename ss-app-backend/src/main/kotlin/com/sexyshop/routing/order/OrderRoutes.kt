@@ -7,11 +7,8 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
 
-fun Route.orderRoutes() {
-    val service by inject<OrderService>()
-
+fun Route.orderRoutes(service: OrderService) {
     route("/orders") {
         get {
             val status = call.parameters["status"]

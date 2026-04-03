@@ -6,11 +6,8 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
 
-fun Route.productRoutes() {
-    val service by inject<ProductService>()
-
+fun Route.productRoutes(service: ProductService) {
     route("/products") {
         get {
             val categoryId = call.parameters["category"]

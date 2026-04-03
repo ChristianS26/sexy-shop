@@ -6,11 +6,8 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
 
-fun Route.categoryRoutes() {
-    val service by inject<CategoryService>()
-
+fun Route.categoryRoutes(service: CategoryService) {
     route("/categories") {
         get {
             call.respond(service.getAll())
