@@ -143,9 +143,56 @@
     <section class="admin-section admin-section--hidden" id="productsSection">
       <div class="admin-section__header">
         <h2 class="admin-section__title">Productos</h2>
-        <button class="admin-btn admin-btn--primary" onclick="openProductModal()">+ Nuevo Producto</button>
       </div>
 
+      <!-- Toolbar -->
+      <div class="admin-toolbar">
+        <div class="admin-toolbar__search">
+          <span class="admin-toolbar__search-icon">&#128269;</span>
+          <input type="text" id="productSearch" placeholder="Buscar productos..." oninput="handleProductSearch(this.value)">
+        </div>
+
+        <div class="admin-toolbar__filters">
+          <select id="productCategoryFilter" onchange="handleProductFilter('category', this.value)">
+            <option value="">Todas las categor&iacute;as</option>
+          </select>
+
+          <select id="productStatusFilter" onchange="handleProductFilter('status', this.value)">
+            <option value="">Todos</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+            <option value="soldout">Agotados</option>
+          </select>
+
+          <select id="productBadgeFilter" onchange="handleProductFilter('badge', this.value)">
+            <option value="">Todos</option>
+            <option value="new">Nuevo</option>
+            <option value="hot">Popular</option>
+            <option value="sale">Oferta</option>
+          </select>
+
+          <select id="productSort" onchange="handleProductFilter('sort', this.value)">
+            <option value="newest">M&aacute;s reciente</option>
+            <option value="name-asc">Nombre A-Z</option>
+            <option value="name-desc">Nombre Z-A</option>
+            <option value="price-asc">Precio menor</option>
+            <option value="price-desc">Precio mayor</option>
+            <option value="stock-asc">Stock menor</option>
+            <option value="stock-desc">Stock mayor</option>
+          </select>
+        </div>
+
+        <div class="admin-toolbar__actions">
+          <button class="admin-btn admin-btn--primary" onclick="openProductModal()">+ Nuevo Producto</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="admin-stats-bar">
+        <span id="productCount">0 productos encontrados</span>
+      </div>
+
+      <!-- Products table -->
       <div class="admin-table-wrapper">
         <div class="admin-table-scroll">
           <table class="admin-table">
@@ -166,6 +213,9 @@
           </table>
         </div>
       </div>
+
+      <!-- Pagination -->
+      <div class="admin-pagination" id="productPagination"></div>
     </section>
 
     <!-- ===== ORDERS SECTION ===== -->

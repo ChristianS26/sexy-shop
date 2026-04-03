@@ -20,6 +20,15 @@ let orders = [];
 let currentSection = 'dashboard';
 let editingCategoryId = null;
 let editingProductId = null;
+let productFilters = {
+  search: '',
+  category: '',
+  status: '',
+  badge: '',
+  sort: 'newest',
+};
+let productPage = 1;
+const PRODUCTS_PER_PAGE = 10;
 
 // ═══════════════════════════════════════════
 // API HELPERS
@@ -240,29 +249,130 @@ async function deleteCategory(id) {
 // ═══════════════════════════════════════════
 // PRODUCTS
 // ═══════════════════════════════════════════
-function renderProducts() {
-  const tbody = document.getElementById('productsTable');
-  if (products.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No hay productos</td></tr>';
-    return;
+function getFilteredProducts() {
+  let filtered = [...products];
+
+  // Search
+  if (productFilters.search) {
+    const q = productFilters.search.toLowerCase();
+    filtered = filtered.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.slug.toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q)
+    );
   }
-  tbody.innerHTML = products.map(p => {
-    const cat = categories.find(c => c.id === p.category_id);
-    return `
-    <tr>
-      <td><strong>${p.name}</strong></td>
-      <td>${cat ? cat.name : '—'}</td>
-      <td>$${p.price.toFixed(2)}${p.old_price ? ` <s style="color:#999">$${p.old_price.toFixed(2)}</s>` : ''}</td>
-      <td><span class="stock-badge ${p.stock <= 3 ? 'stock-low' : ''}">${p.stock}</span></td>
-      <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
-      <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
-      <td class="table-actions">
-        <button class="btn-icon btn-edit" onclick="openProductModal('${p.id}')" title="Editar">&#9998;</button>
-        <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Desactivar">&#128465;</button>
-      </td>
-    </tr>
-  `;
-  }).join('');
+
+  // Category
+  if (productFilters.category) {
+    filtered = filtered.filter(p => p.category_id === productFilters.category);
+  }
+
+  // Status
+  if (productFilters.status === 'active') filtered = filtered.filter(p => p.is_active !== false);
+  else if (productFilters.status === 'inactive') filtered = filtered.filter(p => p.is_active === false);
+  else if (productFilters.status === 'soldout') filtered = filtered.filter(p => p.stock <= 0);
+
+  // Badge
+  if (productFilters.badge) {
+    filtered = filtered.filter(p => p.badge === productFilters.badge);
+  }
+
+  // Sort
+  switch (productFilters.sort) {
+    case 'name-asc': filtered.sort((a, b) => a.name.localeCompare(b.name)); break;
+    case 'name-desc': filtered.sort((a, b) => b.name.localeCompare(a.name)); break;
+    case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
+    case 'price-desc': filtered.sort((a, b) => b.price - a.price); break;
+    case 'stock-asc': filtered.sort((a, b) => a.stock - b.stock); break;
+    case 'stock-desc': filtered.sort((a, b) => b.stock - a.stock); break;
+    case 'newest': filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
+  }
+
+  return filtered;
+}
+
+function renderProducts() {
+  const filtered = getFilteredProducts();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PRODUCTS_PER_PAGE));
+  if (productPage > totalPages) productPage = totalPages;
+
+  const start = (productPage - 1) * PRODUCTS_PER_PAGE;
+  const pageProducts = filtered.slice(start, start + PRODUCTS_PER_PAGE);
+
+  // Update count
+  document.getElementById('productCount').textContent = `${filtered.length} producto${filtered.length !== 1 ? 's' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
+
+  // Populate category filter if not done
+  const catFilter = document.getElementById('productCategoryFilter');
+  if (catFilter && catFilter.options.length <= 1) {
+    catFilter.innerHTML = '<option value="">Todas las categorías</option>' +
+      categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
+
+  // Render table
+  const tbody = document.getElementById('productsTable');
+  if (pageProducts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No se encontraron productos</td></tr>';
+  } else {
+    tbody.innerHTML = pageProducts.map(p => {
+      const cat = categories.find(c => c.id === p.category_id);
+      const stockClass = p.stock <= 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-ok';
+      return `
+      <tr class="${p.is_active === false ? 'row-inactive' : ''}">
+        <td>
+          <div class="product-cell">
+            <strong>${p.name}</strong>
+            <small class="product-cell__slug">${p.slug}</small>
+          </div>
+        </td>
+        <td>${cat ? cat.name : '—'}</td>
+        <td>
+          <span class="price-current">$${p.price.toFixed(2)}</span>
+          ${p.old_price ? `<span class="price-old">$${p.old_price.toFixed(2)}</span>` : ''}
+        </td>
+        <td><span class="stock-badge ${stockClass}">${p.stock}</span></td>
+        <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
+        <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
+        <td class="table-actions">
+          <button class="btn-icon btn-edit" onclick="openProductModal('${p.id}')" title="Editar">&#9998;</button>
+          <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Desactivar">&#128465;</button>
+        </td>
+      </tr>
+    `;
+    }).join('');
+  }
+
+  // Render pagination
+  const pagEl = document.getElementById('productPagination');
+  if (pagEl) {
+    pagEl.innerHTML = `
+      <button class="admin-btn admin-btn--secondary admin-btn--sm" onclick="changeProductPage(-1)" ${productPage <= 1 ? 'disabled' : ''}>&#8592; Anterior</button>
+      <span class="admin-pagination__info">Página ${productPage} de ${totalPages}</span>
+      <button class="admin-btn admin-btn--secondary admin-btn--sm" onclick="changeProductPage(1)" ${productPage >= totalPages ? 'disabled' : ''}>Siguiente &#8594;</button>
+    `;
+  }
+}
+
+function changeProductPage(delta) {
+  productPage += delta;
+  renderProducts();
+}
+
+function handleProductFilter(field, value) {
+  productFilters[field] = value;
+  productPage = 1;
+  renderProducts();
+}
+
+// Debounced search
+let productSearchTimer;
+function handleProductSearch(value) {
+  clearTimeout(productSearchTimer);
+  productSearchTimer = setTimeout(() => {
+    productFilters.search = value;
+    productPage = 1;
+    renderProducts();
+  }, 300);
 }
 
 function openProductModal(id) {
