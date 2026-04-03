@@ -4,9 +4,12 @@ import com.sexyshop.di.*
 import com.sexyshop.plugins.configureCors
 import com.sexyshop.plugins.configureSerialization
 import com.sexyshop.routing.configureRouting
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.*
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 
@@ -27,6 +30,22 @@ fun Application.module() {
             orderModule,
             imageModule,
         )
+    }
+
+    install(StatusPages) {
+        exception<NoSuchElementException> { call, cause ->
+            call.respond(HttpStatusCode.NotFound, mapOf("error" to (cause.message ?: "Not found")))
+        }
+        exception<IllegalArgumentException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (cause.message ?: "Bad request")))
+        }
+        exception<Exception> { call, cause ->
+            call.application.log.error("Unhandled error", cause)
+            call.respond(
+                HttpStatusCode.InternalServerError,
+                mapOf("error" to (cause.message ?: "Internal server error"))
+            )
+        }
     }
 
     configureSerialization()
