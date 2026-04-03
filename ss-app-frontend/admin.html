@@ -465,6 +465,21 @@
     </div>
   </div>
 
+  <!-- ===== CONFIRM DIALOG ===== -->
+  <div class="admin-modal admin-modal--sm" id="confirmDialog">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title" id="confirmDialogTitle">Confirmar</h3>
+      <button class="admin-modal__close" onclick="closeConfirmDialog()">&times;</button>
+    </div>
+    <div class="admin-modal__body">
+      <p id="confirmDialogMessage"></p>
+      <div class="admin-modal__actions">
+        <button class="admin-btn admin-btn--secondary" onclick="closeConfirmDialog()">Cancelar</button>
+        <button class="admin-btn admin-btn--primary" id="confirmDialogBtn" style="background:#b91c1c">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== TOAST ===== -->
   <div class="admin-toast" id="adminToast"></div>
 

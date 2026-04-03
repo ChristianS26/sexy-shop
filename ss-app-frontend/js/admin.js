@@ -242,7 +242,8 @@ async function saveCategory(e) {
 
 async function deleteCategory(id) {
   const cat = categories.find(c => c.id === id);
-  if (!confirm(`¿Eliminar la categoría "${cat.name}"? Los productos asociados podrían verse afectados.`)) return;
+  const ok = await showConfirm('Eliminar categoría', `¿Eliminar "${cat.name}"? Los productos asociados podrían verse afectados.`);
+  if (!ok) return;
 
   try {
     await api(`/categories/${id}`, { method: 'DELETE' });
@@ -468,7 +469,8 @@ async function saveProduct(e) {
 
 async function deleteProduct(id) {
   const p = products.find(pr => pr.id === id);
-  if (!confirm(`¿Desactivar el producto "${p.name}"?`)) return;
+  const ok = await showConfirm('Desactivar producto', `¿Desactivar "${p.name}"? No se mostrará en la tienda.`, 'Desactivar');
+  if (!ok) return;
 
   try {
     await api(`/products/${id}`, { method: 'DELETE' });
@@ -558,7 +560,8 @@ async function uploadProductImages() {
 }
 
 async function deleteProductImage(imageId, productId) {
-  if (!confirm('¿Eliminar esta imagen?')) return;
+  const ok = await showConfirm('Eliminar imagen', '¿Eliminar esta imagen del producto?');
+  if (!ok) return;
 
   try {
     await api(`/images/${imageId}`, { method: 'DELETE' });
@@ -700,6 +703,30 @@ async function updateOrderStatus() {
     showToast('Error al actualizar estado', true);
     console.error(e);
   }
+}
+
+// ═══════════════════════════════════════════
+// CONFIRM DIALOG
+// ═══════════════════════════════════════════
+let confirmResolve = null;
+
+function showConfirm(title, message, btnText = 'Eliminar') {
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+    document.getElementById('confirmDialogTitle').textContent = title;
+    document.getElementById('confirmDialogMessage').textContent = message;
+    const btn = document.getElementById('confirmDialogBtn');
+    btn.textContent = btnText;
+    btn.onclick = () => { closeConfirmDialog(); resolve(true); };
+    document.getElementById('modalOverlay').classList.add('open');
+    document.getElementById('confirmDialog').classList.add('open');
+  });
+}
+
+function closeConfirmDialog() {
+  document.getElementById('confirmDialog').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
+  if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
 }
 
 // ═══════════════════════════════════════════
