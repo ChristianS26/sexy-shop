@@ -201,11 +201,17 @@ async function saveCategory(e) {
       showToast('Categoría creada');
     }
     closeModals();
+  } catch (e) {
+    const msg = e.message || '';
+    if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
+      showToast('Error: ese slug ya existe', true);
+    } else {
+      showToast('Error al guardar categoría', true);
+    }
+    console.error(e);
+  } finally {
     await loadCategories();
     renderCategories();
-  } catch (e) {
-    showToast('Error al guardar categoría', true);
-    console.error(e);
   }
 }
 
@@ -311,11 +317,17 @@ async function saveProduct(e) {
       showToast('Producto creado');
     }
     closeModals();
+  } catch (e) {
+    const msg = e.message || '';
+    if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
+      showToast('Error: ese slug ya existe', true);
+    } else {
+      showToast('Error al guardar producto', true);
+    }
+    console.error(e);
+  } finally {
     await loadProducts();
     renderProducts();
-  } catch (e) {
-    showToast('Error al guardar producto', true);
-    console.error(e);
   }
 }
 
