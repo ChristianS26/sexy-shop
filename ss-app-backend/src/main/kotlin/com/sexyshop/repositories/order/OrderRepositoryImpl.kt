@@ -30,17 +30,22 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun create(order: Order): Order {
+        supabase.from("orders").insert(order)
         return supabase.from("orders")
-            .insert(order) {
-                select()
+            .select {
+                order("created_at", QueryOrder.DESCENDING)
+                limit(1)
             }
             .decodeSingle<Order>()
     }
 
     override suspend fun updateStatus(id: String, status: String): Order {
-        return supabase.from("orders")
+        supabase.from("orders")
             .update(mapOf("status" to status)) {
-                select()
+                filter { eq("id", id) }
+            }
+        return supabase.from("orders")
+            .select {
                 filter { eq("id", id) }
             }
             .decodeSingle<Order>()

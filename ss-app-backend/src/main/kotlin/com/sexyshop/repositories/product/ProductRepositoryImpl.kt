@@ -35,17 +35,21 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun create(request: ProductRequest): Product {
+        supabase.from("products").insert(request)
         return supabase.from("products")
-            .insert(request) {
-                select()
+            .select {
+                filter { eq("slug", request.slug) }
             }
             .decodeSingle<Product>()
     }
 
     override suspend fun update(id: String, request: ProductRequest): Product {
-        return supabase.from("products")
+        supabase.from("products")
             .update(request) {
-                select()
+                filter { eq("id", id) }
+            }
+        return supabase.from("products")
+            .select {
                 filter { eq("id", id) }
             }
             .decodeSingle<Product>()

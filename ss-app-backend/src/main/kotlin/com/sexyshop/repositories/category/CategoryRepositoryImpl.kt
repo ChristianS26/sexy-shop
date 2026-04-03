@@ -26,17 +26,21 @@ class CategoryRepositoryImpl(
     }
 
     override suspend fun create(request: CategoryRequest): Category {
+        supabase.from("categories").insert(request)
         return supabase.from("categories")
-            .insert(request) {
-                select()
+            .select {
+                filter { eq("slug", request.slug) }
             }
             .decodeSingle<Category>()
     }
 
     override suspend fun update(id: String, request: CategoryRequest): Category {
-        return supabase.from("categories")
+        supabase.from("categories")
             .update(request) {
-                select()
+                filter { eq("id", id) }
+            }
+        return supabase.from("categories")
+            .select {
                 filter { eq("id", id) }
             }
             .decodeSingle<Category>()
