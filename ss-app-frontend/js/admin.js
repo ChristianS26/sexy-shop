@@ -165,6 +165,8 @@ function openCategoryModal(id) {
 
   form.reset();
 
+  renderEmojiPicker();
+
   if (id) {
     const cat = categories.find(c => c.id === id);
     title.textContent = 'Editar Categoría';
@@ -172,6 +174,7 @@ function openCategoryModal(id) {
     document.getElementById('categorySlug').value = cat.slug;
     document.getElementById('categoryIcon').value = cat.icon;
     document.getElementById('categoryOrder').value = cat.display_order;
+    syncEmojiPicker(cat.icon);
   } else {
     title.textContent = 'Nueva Categoría';
     document.getElementById('categoryOrder').value = categories.length + 1;
@@ -431,6 +434,43 @@ function closeModals() {
   document.querySelectorAll('.admin-modal').forEach(m => m.classList.remove('open'));
   editingCategoryId = null;
   editingProductId = null;
+}
+
+// ═══════════════════════════════════════════
+// EMOJI PICKER
+// ═══════════════════════════════════════════
+const EMOJI_OPTIONS = [
+  '💃','💧','✨','🎗','🔥','🎁','❤️','💋','🌹','💜',
+  '💖','💕','🖤','💎','👙','👗','🩱','🧴','💦','🫧',
+  '🍓','🍒','🍑','🌶️','⚡','🎀','🎯','🏷️','🛒','📦',
+  '🔒','💪','⭐','🌟','✅','🆕','🎉','👑','🧸','🕯️',
+  '🫦','👠','🥂','💝','🎭','🪄','🌙','☁️','🍫','🧲',
+];
+
+function renderEmojiPicker() {
+  const picker = document.getElementById('emojiPicker');
+  const input = document.getElementById('categoryIcon');
+
+  picker.innerHTML = EMOJI_OPTIONS.map(emoji =>
+    `<button type="button" class="emoji-picker__btn" data-emoji="${emoji}">${emoji}</button>`
+  ).join('');
+
+  picker.addEventListener('click', (e) => {
+    const btn = e.target.closest('.emoji-picker__btn');
+    if (!btn) return;
+
+    input.value = btn.dataset.emoji;
+
+    picker.querySelectorAll('.emoji-picker__btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+}
+
+function syncEmojiPicker(value) {
+  const picker = document.getElementById('emojiPicker');
+  picker.querySelectorAll('.emoji-picker__btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.emoji === value);
+  });
 }
 
 // ═══════════════════════════════════════════

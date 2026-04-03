@@ -572,6 +572,45 @@ body {
   cursor: pointer;
 }
 
+/* Emoji Picker */
+.emoji-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 10px;
+  background: #f9fafb;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.emoji-picker__btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-picker__btn:hover {
+  background: #fff;
+  border-color: var(--border-color);
+  transform: scale(1.15);
+}
+
+.emoji-picker__btn.selected {
+  background: rgba(233,30,99,0.1);
+  border-color: var(--admin-primary);
+}
+
 .admin-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
