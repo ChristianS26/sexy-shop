@@ -76,6 +76,7 @@ async function loadAll() {
 // ═══════════════════════════════════════════
 function showSection(section) {
   currentSection = section;
+  window.location.hash = section;
 
   document.querySelectorAll('.admin-section').forEach(el => el.classList.add('admin-section--hidden'));
   document.getElementById(section + 'Section').classList.remove('admin-section--hidden');
@@ -90,6 +91,12 @@ function showSection(section) {
   document.getElementById('adminSidebar').classList.remove('open');
 
   renderSection(section);
+}
+
+function getSectionFromHash() {
+  const hash = window.location.hash.replace('#', '');
+  const valid = ['dashboard', 'categories', 'products', 'orders'];
+  return valid.includes(hash) ? hash : 'dashboard';
 }
 
 function renderSection(section) {
@@ -566,7 +573,7 @@ async function init() {
   document.getElementById('modalOverlay').addEventListener('click', closeModals);
 
   await loadAll();
-  showSection('dashboard');
+  showSection(getSectionFromHash());
 }
 
 init();
