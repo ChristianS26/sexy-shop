@@ -396,9 +396,14 @@ function openProductModal(id) {
     document.getElementById('productStock').value = p.stock;
     document.getElementById('productBadge').value = p.badge || '';
     document.getElementById('productActive').checked = p.is_active !== false;
+
+    document.getElementById('productImagesSection').style.display = 'block';
+    loadProductImages(id);
   } else {
     title.textContent = 'Nuevo Producto';
     document.getElementById('productActive').checked = true;
+    document.getElementById('productImagesSection').style.display = 'none';
+    document.getElementById('productImagesGrid').innerHTML = '';
   }
 
   openModal(modal);
@@ -459,6 +464,95 @@ async function deleteProduct(id) {
     renderProducts();
   } catch (e) {
     showToast('Error al desactivar producto', true);
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════
+// PRODUCT IMAGES
+// ═══════════════════════════════════════════
+async function loadProductImages(productId) {
+  const grid = document.getElementById('productImagesGrid');
+  grid.innerHTML = '<span style="color:#999;font-size:0.85rem">Cargando imágenes...</span>';
+
+  try {
+    const images = await api(`/products/${productId}/images`);
+    if (images.length === 0) {
+      grid.innerHTML = '<span style="color:#999;font-size:0.85rem">Sin imágenes. Sube la primera.</span>';
+      return;
+    }
+    grid.innerHTML = images.map(img => `
+      <div class="product-image-card ${img.is_primary ? 'primary' : ''}">
+        <img src="${img.image_url}" alt="Producto">
+        <div class="product-image-card__actions">
+          ${!img.is_primary ? `<button type="button" class="product-image-card__btn" onclick="setPrimaryImage('${img.id}', '${productId}')" title="Hacer principal">&#11088;</button>` : ''}
+          <button type="button" class="product-image-card__btn product-image-card__btn--delete" onclick="deleteProductImage('${img.id}', '${productId}')" title="Eliminar">&#10005;</button>
+        </div>
+        ${img.is_primary ? '<div class="product-image-card__primary-label">Principal</div>' : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cargar imágenes</span>';
+    console.error(e);
+  }
+}
+
+async function uploadProductImage() {
+  const fileInput = document.getElementById('productImageFile');
+  const file = fileInput.files[0];
+  if (!file || !editingProductId) return;
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('La imagen no debe superar 5MB', true);
+    fileInput.value = '';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('productId', editingProductId);
+  formData.append('file', file);
+  formData.append('isPrimary', 'false');
+
+  try {
+    showToast('Subiendo imagen...');
+    const res = await fetch(`${API_URL}/images/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+
+    showToast('Imagen subida exitosamente');
+    loadProductImages(editingProductId);
+  } catch (e) {
+    showToast('Error al subir imagen', true);
+    console.error(e);
+  } finally {
+    fileInput.value = '';
+  }
+}
+
+async function deleteProductImage(imageId, productId) {
+  if (!confirm('¿Eliminar esta imagen?')) return;
+
+  try {
+    await api(`/images/${imageId}`, { method: 'DELETE' });
+    showToast('Imagen eliminada');
+    loadProductImages(productId);
+  } catch (e) {
+    showToast('Error al eliminar imagen', true);
+    console.error(e);
+  }
+}
+
+async function setPrimaryImage(imageId, productId) {
+  try {
+    // We need a backend endpoint for this, for now just reload
+    showToast('Función en desarrollo');
+  } catch (e) {
     console.error(e);
   }
 }

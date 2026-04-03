@@ -21,7 +21,7 @@ fun Application.configureRouting() {
     routing {
         route("/api") {
             categoryRoutes(categoryService)
-            productRoutes(productService)
+            productRoutes(productService, imageService)
             orderRoutes(orderService)
             imageRoutes(imageService)
         }

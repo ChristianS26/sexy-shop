@@ -41,6 +41,19 @@ async function fetchProducts() {
   try {
     const res = await fetch(`${API_URL}/products`);
     products = await res.json();
+
+    // Load images for each product
+    await Promise.all(products.map(async (p) => {
+      try {
+        const imgRes = await fetch(`${API_URL}/products/${p.id}/images`);
+        const images = await imgRes.json();
+        p.images = images;
+        p.primaryImage = images.find(i => i.is_primary) || images[0] || null;
+      } catch (e) {
+        p.images = [];
+        p.primaryImage = null;
+      }
+    }));
   } catch (e) {
     console.error('Error fetching products:', e);
   }
@@ -144,9 +157,10 @@ function renderProducts() {
     return `
     <div class="product-card" data-id="${product.id}">
       <div class="product-image">
-        <div class="product-image-bg" style="background:${visuals.bg}">
-          <span style="font-size:3.5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span>
-        </div>
+        ${product.primaryImage
+          ? `<div class="product-image-bg" style="background:#fff"><img src="${product.primaryImage.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;"></div>`
+          : `<div class="product-image-bg" style="background:${visuals.bg}"><span style="font-size:3.5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span></div>`
+        }
         ${product.badge ? `<span class="product-badge badge-${product.badge}">${product.badge === 'new' ? 'Nuevo' : product.badge === 'hot' ? 'Popular' : 'Oferta'}</span>` : ''}
         ${product.stock <= 0 ? '<span class="product-badge badge-soldout">Agotado</span>' : ''}
         <div class="product-quick-add" onclick="addToCart('${product.id}')">${product.stock <= 0 ? 'Agotado' : 'Agregar al carrito'}</div>

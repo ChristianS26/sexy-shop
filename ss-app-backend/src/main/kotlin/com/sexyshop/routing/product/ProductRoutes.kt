@@ -1,13 +1,14 @@
 package com.sexyshop.routing.product
 
 import com.sexyshop.models.product.ProductRequest
+import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.product.ProductService
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.productRoutes(service: ProductService) {
+fun Route.productRoutes(service: ProductService, imageService: ImageService) {
     route("/products") {
         get {
             val categoryId = call.parameters["category"]
@@ -35,6 +36,11 @@ fun Route.productRoutes(service: ProductService) {
             val id = call.parameters["id"]!!
             service.deactivate(id)
             call.respond(HttpStatusCode.NoContent)
+        }
+
+        get("/{id}/images") {
+            val id = call.parameters["id"]!!
+            call.respond(imageService.getByProductId(id))
         }
     }
 }
