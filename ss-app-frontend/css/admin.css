@@ -875,6 +875,26 @@ body {
 }
 
 /* ═══════════════════════════════════════════
+   PRODUCT THUMBNAILS (table)
+   ═══════════════════════════════════════════ */
+.product-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  display: block;
+}
+
+.product-thumb--empty {
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+/* ═══════════════════════════════════════════
    PRODUCT IMAGES
    ═══════════════════════════════════════════ */
 .product-images-grid {

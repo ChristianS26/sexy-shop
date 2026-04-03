@@ -50,6 +50,20 @@ fun Route.imageRoutes(service: ImageService) {
             call.respond(HttpStatusCode.Created, response)
         }
 
+        put("/{id}/primary") {
+            val id = call.parameters["id"]!!
+            service.setPrimary(id)
+            call.respond(HttpStatusCode.OK, mapOf("success" to true))
+        }
+
+        put("/{id}/order") {
+            val id = call.parameters["id"]!!
+            val body = call.receive<Map<String, Int>>()
+            val order = body["display_order"] ?: throw IllegalArgumentException("display_order required")
+            service.updateOrder(id, order)
+            call.respond(HttpStatusCode.OK, mapOf("success" to true))
+        }
+
         delete("/{id}") {
             val id = call.parameters["id"]!!
             service.delete(id)

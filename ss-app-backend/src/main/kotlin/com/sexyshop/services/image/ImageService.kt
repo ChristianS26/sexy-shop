@@ -46,6 +46,26 @@ class ImageService(
         return ImageUploadResponse(id = image.id, imageUrl = image.imageUrl)
     }
 
+    suspend fun setPrimary(imageId: String) {
+        val image = imageRepository.getById(imageId)
+            ?: throw NoSuchElementException("Image not found: $imageId")
+
+        // Unset all as non-primary for this product
+        val allImages = imageRepository.getByProductId(image.productId)
+        allImages.forEach { img ->
+            if (img.isPrimary) {
+                imageRepository.update(img.id, mapOf("is_primary" to false))
+            }
+        }
+
+        // Set this one as primary
+        imageRepository.update(imageId, mapOf("is_primary" to true))
+    }
+
+    suspend fun updateOrder(imageId: String, displayOrder: Int) {
+        imageRepository.update(imageId, mapOf("display_order" to displayOrder))
+    }
+
     suspend fun delete(id: String) {
         val image = imageRepository.getById(id)
             ?: throw NoSuchElementException("Image not found: $id")

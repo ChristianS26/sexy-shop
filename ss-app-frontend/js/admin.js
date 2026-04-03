@@ -61,6 +61,15 @@ async function loadCategories() {
 async function loadProducts() {
   try {
     products = await api('/products?active=false');
+    // Load primary image for each product
+    await Promise.all(products.map(async (p) => {
+      try {
+        const images = await api(`/products/${p.id}/images`);
+        p.primaryImage = images.find(i => i.is_primary) || images[0] || null;
+      } catch (e) {
+        p.primaryImage = null;
+      }
+    }));
   } catch (e) {
     console.error('Error loading products:', e);
     showToast('Error al cargar productos', true);
@@ -312,13 +321,17 @@ function renderProducts() {
   // Render table
   const tbody = document.getElementById('productsTable');
   if (pageProducts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No se encontraron productos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No se encontraron productos</td></tr>';
   } else {
     tbody.innerHTML = pageProducts.map(p => {
       const cat = categories.find(c => c.id === p.category_id);
       const stockClass = p.stock <= 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-ok';
+      const thumb = p.primaryImage
+        ? `<img src="${p.primaryImage.image_url}" alt="" class="product-thumb">`
+        : `<div class="product-thumb product-thumb--empty">&#128247;</div>`;
       return `
       <tr class="${p.is_active === false ? 'row-inactive' : ''}">
+        <td>${thumb}</td>
         <td>
           <div class="product-cell">
             <strong>${p.name}</strong>
@@ -481,10 +494,12 @@ async function loadProductImages(productId) {
       grid.innerHTML = '<span style="color:#999;font-size:0.85rem">Sin imágenes. Sube la primera.</span>';
       return;
     }
-    grid.innerHTML = images.map(img => `
-      <div class="product-image-card ${img.is_primary ? 'primary' : ''}">
+    grid.innerHTML = images.map((img, i) => `
+      <div class="product-image-card ${img.is_primary ? 'primary' : ''}" data-image-id="${img.id}">
         <img src="${img.image_url}" alt="Producto">
         <div class="product-image-card__actions">
+          ${i > 0 ? `<button type="button" class="product-image-card__btn" onclick="moveImage('${img.id}', '${productId}', -1)" title="Mover izquierda">&#9664;</button>` : ''}
+          ${i < images.length - 1 ? `<button type="button" class="product-image-card__btn" onclick="moveImage('${img.id}', '${productId}', 1)" title="Mover derecha">&#9654;</button>` : ''}
           ${!img.is_primary ? `<button type="button" class="product-image-card__btn" onclick="setPrimaryImage('${img.id}', '${productId}')" title="Hacer principal">&#11088;</button>` : ''}
           <button type="button" class="product-image-card__btn product-image-card__btn--delete" onclick="deleteProductImage('${img.id}', '${productId}')" title="Eliminar">&#10005;</button>
         </div>
@@ -557,9 +572,45 @@ async function deleteProductImage(imageId, productId) {
 
 async function setPrimaryImage(imageId, productId) {
   try {
-    // We need a backend endpoint for this, for now just reload
-    showToast('Función en desarrollo');
+    await api(`/images/${imageId}/primary`, { method: 'PUT' });
+    showToast('Imagen principal actualizada');
+    loadProductImages(productId);
   } catch (e) {
+    showToast('Error al actualizar imagen', true);
+    console.error(e);
+  }
+}
+
+async function moveImage(imageId, productId, direction) {
+  try {
+    const grid = document.getElementById('productImagesGrid');
+    const cards = grid.querySelectorAll('.product-image-card');
+    let currentOrder = -1;
+
+    cards.forEach((card, i) => {
+      if (card.dataset.imageId === imageId) currentOrder = i;
+    });
+
+    const newOrder = currentOrder + direction;
+    if (newOrder < 0 || newOrder >= cards.length) return;
+
+    await api(`/images/${imageId}/order`, {
+      method: 'PUT',
+      body: JSON.stringify({ display_order: newOrder }),
+    });
+
+    // Swap the other image's order
+    const otherCard = cards[newOrder];
+    if (otherCard) {
+      await api(`/images/${otherCard.dataset.imageId}/order`, {
+        method: 'PUT',
+        body: JSON.stringify({ display_order: currentOrder }),
+      });
+    }
+
+    loadProductImages(productId);
+  } catch (e) {
+    showToast('Error al reordenar', true);
     console.error(e);
   }
 }

@@ -27,11 +27,21 @@ class ImageRepositoryImpl(
     }
 
     override suspend fun create(image: ProductImage): ProductImage {
+        supabase.from("product_images").insert(image)
         return supabase.from("product_images")
-            .insert(image) {
-                select()
+            .select {
+                filter { eq("product_id", image.productId) }
+                order("created_at", Order.DESCENDING)
+                limit(1)
             }
             .decodeSingle<ProductImage>()
+    }
+
+    override suspend fun update(id: String, fields: Map<String, Any>) {
+        supabase.from("product_images")
+            .update(fields) {
+                filter { eq("id", id) }
+            }
     }
 
     override suspend fun delete(id: String) {
