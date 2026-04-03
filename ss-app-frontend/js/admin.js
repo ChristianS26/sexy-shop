@@ -497,42 +497,49 @@ async function loadProductImages(productId) {
   }
 }
 
-async function uploadProductImage() {
+async function uploadProductImages() {
   const fileInput = document.getElementById('productImageFile');
-  const file = fileInput.files[0];
-  if (!file || !editingProductId) return;
+  const files = Array.from(fileInput.files);
+  if (files.length === 0 || !editingProductId) return;
 
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('La imagen no debe superar 5MB', true);
+  const oversized = files.filter(f => f.size > 5 * 1024 * 1024);
+  if (oversized.length > 0) {
+    showToast(`${oversized.length} imagen(es) superan 5MB`, true);
     fileInput.value = '';
     return;
   }
 
-  const formData = new FormData();
-  formData.append('productId', editingProductId);
-  formData.append('file', file);
-  formData.append('isPrimary', 'false');
+  showToast(`Subiendo ${files.length} imagen(es)...`);
+  let uploaded = 0;
+  let errors = 0;
 
-  try {
-    showToast('Subiendo imagen...');
-    const res = await fetch(`${API_URL}/images/upload`, {
-      method: 'POST',
-      body: formData,
-    });
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('productId', editingProductId);
+    formData.append('file', file);
+    formData.append('isPrimary', 'false');
 
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err);
+    try {
+      const res = await fetch(`${API_URL}/images/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error();
+      uploaded++;
+    } catch (e) {
+      errors++;
+      console.error('Error uploading', file.name, e);
     }
-
-    showToast('Imagen subida exitosamente');
-    loadProductImages(editingProductId);
-  } catch (e) {
-    showToast('Error al subir imagen', true);
-    console.error(e);
-  } finally {
-    fileInput.value = '';
   }
+
+  if (errors > 0) {
+    showToast(`${uploaded} subidas, ${errors} fallidas`, true);
+  } else {
+    showToast(`${uploaded} imagen(es) subidas`);
+  }
+
+  fileInput.value = '';
+  loadProductImages(editingProductId);
 }
 
 async function deleteProductImage(imageId, productId) {
