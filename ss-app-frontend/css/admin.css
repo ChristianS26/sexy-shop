@@ -1259,10 +1259,28 @@ body {
   color: var(--text-secondary);
 }
 
-.category-order-card__actions {
-  display: flex;
-  gap: 4px;
+.category-order-card__handle {
+  cursor: grab;
+  font-size: 1.1rem;
+  color: #9ca3af;
+  padding: 4px;
   flex-shrink: 0;
+  user-select: none;
+}
+
+.category-order-card__handle:active {
+  cursor: grabbing;
+}
+
+.category-order-card--dragging {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.category-order-card--over {
+  border-color: var(--admin-primary);
+  background: rgba(233, 30, 99, 0.04);
+  box-shadow: 0 0 0 2px rgba(233, 30, 99, 0.15);
 }
 
 /* ═══════════════════════════════════════════

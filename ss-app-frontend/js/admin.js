@@ -416,32 +416,72 @@ function renderCategoryOrderGrid(orderedProducts) {
   grid.innerHTML = orderedProducts.map((p, i) => {
     const thumb = p.primaryImage
       ? `<img src="${p.primaryImage.image_url}" alt="" class="category-order-card__img">`
-      : `<div class="category-order-card__placeholder">${escapeHtml(categories.find(c => c.id === p.category_id)?.icon || '🛍')}</div>`;
+      : `<div class="category-order-card__placeholder">&#128247;</div>`;
 
     return `
-    <div class="category-order-card" data-product-id="${p.id}">
+    <div class="category-order-card" draggable="true" data-product-id="${p.id}" data-index="${i}">
+      <div class="category-order-card__handle" title="Arrastra para mover">&#9776;</div>
       <div class="category-order-card__position">${i + 1}</div>
       ${thumb}
       <div class="category-order-card__info">
         <strong>${escapeHtml(p.name)}</strong>
         <span>${formatCurrency(p.price)}</span>
       </div>
-      <div class="category-order-card__actions">
-        ${i > 0 ? `<button class="btn-icon" onclick="moveCategoryProduct(${i}, -1)" title="Subir">&#9650;</button>` : '<div style="width:36px"></div>'}
-        ${i < orderedProducts.length - 1 ? `<button class="btn-icon" onclick="moveCategoryProduct(${i}, 1)" title="Bajar">&#9660;</button>` : '<div style="width:36px"></div>'}
-      </div>
     </div>`;
   }).join('');
+
+  // Setup drag & drop
+  setupDragAndDrop(grid);
 }
 
-function moveCategoryProduct(index, direction) {
-  const newIndex = index + direction;
-  if (newIndex < 0 || newIndex >= categoryOrderIds.length) return;
+function setupDragAndDrop(grid) {
+  let dragIndex = null;
 
-  [categoryOrderIds[index], categoryOrderIds[newIndex]] = [categoryOrderIds[newIndex], categoryOrderIds[index]];
+  grid.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.category-order-card');
+    if (!card) return;
+    dragIndex = parseInt(card.dataset.index);
+    card.classList.add('category-order-card--dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
 
-  const orderedProducts = categoryOrderIds.map(id => products.find(p => p.id === id)).filter(Boolean);
-  renderCategoryOrderGrid(orderedProducts);
+  grid.addEventListener('dragend', (e) => {
+    const card = e.target.closest('.category-order-card');
+    if (card) card.classList.remove('category-order-card--dragging');
+    grid.querySelectorAll('.category-order-card--over').forEach(el => el.classList.remove('category-order-card--over'));
+    dragIndex = null;
+  });
+
+  grid.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.target.closest('.category-order-card');
+    if (card && parseInt(card.dataset.index) !== dragIndex) {
+      grid.querySelectorAll('.category-order-card--over').forEach(el => el.classList.remove('category-order-card--over'));
+      card.classList.add('category-order-card--over');
+    }
+  });
+
+  grid.addEventListener('dragleave', (e) => {
+    const card = e.target.closest('.category-order-card');
+    if (card) card.classList.remove('category-order-card--over');
+  });
+
+  grid.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const card = e.target.closest('.category-order-card');
+    if (!card || dragIndex === null) return;
+
+    const dropIndex = parseInt(card.dataset.index);
+    if (dropIndex === dragIndex) return;
+
+    // Reorder the array
+    const [moved] = categoryOrderIds.splice(dragIndex, 1);
+    categoryOrderIds.splice(dropIndex, 0, moved);
+
+    const orderedProducts = categoryOrderIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+    renderCategoryOrderGrid(orderedProducts);
+  });
 }
 
 async function saveCategoryOrder() {
