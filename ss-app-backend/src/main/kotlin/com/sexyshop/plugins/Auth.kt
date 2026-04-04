@@ -58,7 +58,9 @@ suspend fun RoutingCall.requireAdmin(supabase: SupabaseClient): Boolean {
 
         // Verify user exists and is admin (using service_role key via Supabase client)
         val profiles = supabase.from("profiles")
-            .select { filter { eq("id", userId) } }
+            .select(columns = io.github.jan.supabase.postgrest.query.Columns.list("role")) {
+                filter { eq("id", userId) }
+            }
             .decodeList<ProfileCheck>()
 
         val profile = profiles.firstOrNull()
