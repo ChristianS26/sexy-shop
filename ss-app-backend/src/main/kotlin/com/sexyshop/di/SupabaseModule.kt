@@ -17,6 +17,7 @@ val supabaseModule = module {
             resendApiKey = System.getenv("RESEND_API_KEY") ?: "",
             notificationEmail = System.getenv("NOTIFICATION_EMAIL") ?: "sexyshopguaymas@gmail.com",
             frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
+            backendUrl = System.getenv("BACKEND_URL") ?: "https://ss-app-backend-production.up.railway.app",
         )
     }
 

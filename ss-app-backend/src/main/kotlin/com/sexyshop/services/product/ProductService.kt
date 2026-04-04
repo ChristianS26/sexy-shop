@@ -20,9 +20,21 @@ class ProductService(
         return ProductWithImages(product = product, images = images)
     }
 
-    suspend fun create(request: ProductRequest): Product = productRepository.create(request)
+    suspend fun create(request: ProductRequest): Product {
+        require(request.name.isNotBlank()) { "Product name required" }
+        require(request.slug.isNotBlank()) { "Product slug required" }
+        require(request.price > 0) { "Price must be positive" }
+        require(request.stock >= 0) { "Stock must be non-negative" }
+        return productRepository.create(request)
+    }
 
-    suspend fun update(id: String, request: ProductRequest): Product = productRepository.update(id, request)
+    suspend fun update(id: String, request: ProductRequest): Product {
+        require(request.name.isNotBlank()) { "Product name required" }
+        require(request.slug.isNotBlank()) { "Product slug required" }
+        require(request.price > 0) { "Price must be positive" }
+        require(request.stock >= 0) { "Stock must be non-negative" }
+        return productRepository.update(id, request)
+    }
 
     suspend fun toggleActive(id: String): Product {
         val product = productRepository.getById(id)

@@ -10,4 +10,5 @@ data class AppConfig(
     val resendApiKey: String,
     val notificationEmail: String,
     val frontendUrl: String,
+    val backendUrl: String,
 )

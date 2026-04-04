@@ -5,6 +5,7 @@ import com.sexyshop.models.order.OrderItemRequest
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.services.email.EmailService
 import com.sexyshop.services.order.OrderService
+import com.sexyshop.services.product.ProductService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
@@ -19,6 +20,7 @@ import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("PaymentRoutes")
+private val processedPayments = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
 @Serializable
 data class CreatePreferenceRequest(
@@ -49,7 +51,7 @@ data class PreferenceResponse(
     @SerialName("init_point") val initPoint: String,
 )
 
-fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailService: EmailService) {
+fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailService: EmailService, productService: ProductService) {
     route("/payments") {
         post("/create-preference") {
             if (config.mpAccessToken.isEmpty()) {
@@ -59,8 +61,17 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
 
             val request = call.receive<CreatePreferenceRequest>()
 
+            // Verify prices against database to prevent price manipulation
+            val verifiedItems = request.items.map { item ->
+                val productWithImages = productService.getById(item.productId)
+                val product = productWithImages.product
+                require(product.isActive) { "Product ${product.name} is not available" }
+                require(product.stock >= item.quantity) { "Insufficient stock for ${product.name}" }
+                item.copy(unitPrice = product.price, title = product.name)
+            }
+
             val mpItems = buildJsonArray {
-                request.items.forEach { item ->
+                verifiedItems.forEach { item ->
                     addJsonObject {
                         put("title", item.title)
                         put("quantity", item.quantity)
@@ -82,7 +93,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 request.customerReferences?.let { put("customer_references", it) }
                 request.notes?.let { put("notes", it) }
                 put("items", buildJsonArray {
-                    request.items.forEach { item ->
+                    verifiedItems.forEach { item ->
                         addJsonObject {
                             put("product_id", item.productId)
                             put("quantity", item.quantity)
@@ -101,7 +112,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 })
                 put("auto_return", "approved")
                 put("statement_descriptor", "SEXY SHOP")
-                put("notification_url", "https://ss-app-backend-production.up.railway.app/api/payments/webhook")
+                put("notification_url", "${config.backendUrl}/api/payments/webhook")
             }
 
             val client = HttpClient(CIO)
@@ -154,6 +165,13 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 if (type == "payment" && (action == "payment.created" || action == "payment.updated")) {
                     val paymentId = json["data"]?.jsonObject?.get("id")?.jsonPrimitive?.content
                         ?: return@post
+
+                    // Prevent duplicate processing
+                    if (paymentId in processedPayments) {
+                        logger.info("Payment $paymentId already processed, skipping")
+                        return@post
+                    }
+                    processedPayments.add(paymentId)
 
                     val client = HttpClient(CIO)
                     try {

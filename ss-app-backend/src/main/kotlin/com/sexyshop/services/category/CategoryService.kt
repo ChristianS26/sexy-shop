@@ -12,9 +12,17 @@ class CategoryService(
     suspend fun getBySlug(slug: String): Category =
         repository.getBySlug(slug) ?: throw NoSuchElementException("Category not found: $slug")
 
-    suspend fun create(request: CategoryRequest): Category = repository.create(request)
+    suspend fun create(request: CategoryRequest): Category {
+        require(request.name.isNotBlank()) { "Category name required" }
+        require(request.slug.isNotBlank()) { "Category slug required" }
+        return repository.create(request)
+    }
 
-    suspend fun update(id: String, request: CategoryRequest): Category = repository.update(id, request)
+    suspend fun update(id: String, request: CategoryRequest): Category {
+        require(request.name.isNotBlank()) { "Category name required" }
+        require(request.slug.isNotBlank()) { "Category slug required" }
+        return repository.update(id, request)
+    }
 
     suspend fun delete(id: String) = repository.delete(id)
 }

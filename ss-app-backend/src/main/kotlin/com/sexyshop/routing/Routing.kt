@@ -44,7 +44,7 @@ fun Application.configureRouting() {
             expenseRoutes(expenseRepository, supabaseClient)
             withdrawalRoutes(withdrawalRepository, supabaseClient)
             dashboardRoutes(dashboardService, supabaseClient)
-            paymentRoutes(appConfig, orderService, emailService)
+            paymentRoutes(appConfig, orderService, emailService, productService)
             settingsRoutes(supabaseClient)
         }
     }

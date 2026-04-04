@@ -436,9 +436,9 @@ async function processOrder() {
       <div class="checkout-success">
         <div class="checkout-success__icon">&#10004;</div>
         <h3 class="checkout-success__title">¡Pedido creado!</h3>
-        <p class="checkout-success__id">Pedido #${order.id.slice(0, 8)}</p>
+        <p class="checkout-success__id">Pedido #${escapeHtml(order.id.slice(0, 8))}</p>
         <p class="checkout-success__msg">Te contactaremos por WhatsApp para coordinar el pago y la entrega.</p>
-        <a href="https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, acabo de hacer el pedido #${order.id.slice(0, 8)}. ¿Me pueden confirmar?`)}" target="_blank" class="checkout-success__wa-btn">
+        <a href="https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, acabo de hacer el pedido #${escapeHtml(order.id.slice(0, 8))}. ¿Me pueden confirmar?`)}" target="_blank" class="checkout-success__wa-btn">
           Confirmar por WhatsApp
         </a>
         <button class="checkout-success__close" onclick="closeAfterOrder()">Seguir comprando</button>
@@ -583,7 +583,7 @@ function openPdp(productId) {
   if (product.stock <= 0) {
     stockEl.innerHTML = '<span class="pdp-stock pdp-stock--out">Agotado</span>';
   } else if (product.stock <= 5) {
-    stockEl.innerHTML = `<span class="pdp-stock pdp-stock--low">¡Solo quedan ${product.stock}!</span>`;
+    stockEl.innerHTML = `<span class="pdp-stock pdp-stock--low">¡Solo quedan ${parseInt(product.stock)}!</span>`;
   } else {
     stockEl.innerHTML = '<span class="pdp-stock pdp-stock--ok">Disponible</span>';
   }
