@@ -1137,13 +1137,15 @@ async function viewOrder(id) {
       `).join('');
     }
 
-    // Quick actions based on current status
-    renderQuickActions(order);
+    // Open modal first, then render dynamic content
+    openModal(document.getElementById('orderDetailModal'));
 
-    // Load timeline (non-blocking, won't break if endpoint doesn't exist)
+    // Quick actions based on current status
+    try { renderQuickActions(order); } catch (_) {}
+
+    // Load timeline (non-blocking)
     loadOrderTimeline(order.id);
 
-    openModal(document.getElementById('orderDetailModal'));
   } catch (e) {
     showToast('Error al cargar pedido', true);
     console.error(e);
