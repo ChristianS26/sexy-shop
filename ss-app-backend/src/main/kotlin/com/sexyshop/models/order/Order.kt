@@ -46,3 +46,9 @@ data class OrderItemRequest(
 data class OrderStatusUpdate(
     val status: String,
 )
+
+@Serializable
+data class OrderDetailResponse(
+    val order: Order,
+    val items: List<OrderItem>,
+)

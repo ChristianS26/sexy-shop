@@ -1,5 +1,6 @@
 package com.sexyshop.routing.order
 
+import com.sexyshop.models.order.OrderDetailResponse
 import com.sexyshop.models.order.OrderNotesUpdate
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.models.order.OrderStatusUpdate
@@ -19,7 +20,7 @@ fun Route.orderRoutes(service: OrderService) {
         get("/{id}") {
             val id = call.parameters["id"]!!
             val (order, items) = service.getById(id)
-            call.respond(mapOf("order" to order, "items" to items))
+            call.respond(OrderDetailResponse(order = order, items = items))
         }
 
         post {
