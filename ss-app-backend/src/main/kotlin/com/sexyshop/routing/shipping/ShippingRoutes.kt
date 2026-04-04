@@ -50,28 +50,31 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
             if (!call.requireAdmin(supabase)) return@post
 
             if (config.epackApiKey.isEmpty()) {
-                // Return mock data when API key not configured
-                val mockQuotes = buildJsonArray {
-                    addJsonObject {
-                        put("Service", "Día Siguiente")
-                        put("Currier", "estafeta")
-                        put("Total", "120.50")
-                        put("Weight", 1)
-                    }
-                    addJsonObject {
-                        put("Service", "Express")
-                        put("Currier", "fedex")
-                        put("Total", "185.00")
-                        put("Weight", 1)
-                    }
-                    addJsonObject {
-                        put("Service", "Terrestre")
-                        put("Currier", "dhl")
-                        put("Total", "95.00")
-                        put("Weight", 1)
-                    }
+                val mockResponse = buildJsonObject {
+                    put("result", buildJsonArray {
+                        addJsonObject {
+                            put("Service", "Día Siguiente")
+                            put("Currier", "estafeta")
+                            put("Total", "120.50")
+                            put("Weight", 1)
+                        }
+                        addJsonObject {
+                            put("Service", "Express")
+                            put("Currier", "fedex")
+                            put("Total", "185.00")
+                            put("Weight", 1)
+                        }
+                        addJsonObject {
+                            put("Service", "Terrestre")
+                            put("Currier", "dhl")
+                            put("Total", "95.00")
+                            put("Weight", 1)
+                        }
+                    })
+                    put("error", false)
+                    put("mock", true)
                 }
-                call.respond(mapOf("result" to mockQuotes, "error" to false, "mock" to true))
+                call.respondText(mockResponse.toString(), ContentType.Application.Json)
                 return@post
             }
 
@@ -123,15 +126,15 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
             if (!call.requireAdmin(supabase)) return@post
 
             if (config.epackApiKey.isEmpty()) {
-                // Return mock data
-                call.respond(mapOf(
-                    "result" to mapOf(
-                        "NumeroGuia" to "MOCK-${System.currentTimeMillis().toString().takeLast(8)}",
-                        "pdf" to "https://example.com/mock-label.pdf"
-                    ),
-                    "error" to false,
-                    "mock" to true
-                ))
+                val mockLabel = buildJsonObject {
+                    put("result", buildJsonObject {
+                        put("NumeroGuia", "MOCK-${System.currentTimeMillis().toString().takeLast(8)}")
+                        put("pdf", "https://example.com/mock-label.pdf")
+                    })
+                    put("error", false)
+                    put("mock", true)
+                }
+                call.respondText(mockLabel.toString(), ContentType.Application.Json)
                 return@post
             }
 
