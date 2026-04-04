@@ -6,7 +6,9 @@ import io.ktor.server.plugins.cors.routing.*
 
 fun Application.configureCors() {
     install(CORS) {
-        anyHost()
+        allowHost("christians26.github.io", schemes = listOf("https"))
+        allowHost("ss-app-backend-production.up.railway.app", schemes = listOf("https"))
+        allowHost("localhost:8080", schemes = listOf("http"))
         allowHeader(HttpHeaders.ContentType)
         allowHeader(HttpHeaders.Authorization)
         allowMethod(HttpMethod.Get)

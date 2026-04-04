@@ -55,8 +55,13 @@ let financeMonth = '';
 // API HELPERS
 // ═══════════════════════════════════════════
 async function api(endpoint, options = {}) {
+  const session = getSession();
+  const authHeaders = { 'Content-Type': 'application/json' };
+  if (session && session.access_token) {
+    authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+  }
   const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { ...authHeaders, ...options.headers },
     ...options,
   });
   if (!res.ok) {
@@ -878,8 +883,14 @@ async function uploadProductImages() {
       formData.append('isPrimary', 'false');
 
       try {
+        const uploadHeaders = {};
+        const sess = getSession();
+        if (sess && sess.access_token) {
+          uploadHeaders['Authorization'] = `Bearer ${sess.access_token}`;
+        }
         const res = await fetch(`${API_URL}/images/upload`, {
           method: 'POST',
+          headers: uploadHeaders,
           body: formData,
         });
         if (!res.ok) throw new Error();

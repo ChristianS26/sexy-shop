@@ -37,13 +37,13 @@ fun Application.configureRouting() {
 
     routing {
         route("/api") {
-            categoryRoutes(categoryService)
-            productRoutes(productService, imageService)
-            orderRoutes(orderService, emailService)
-            imageRoutes(imageService)
-            expenseRoutes(expenseRepository)
-            withdrawalRoutes(withdrawalRepository)
-            dashboardRoutes(dashboardService)
+            categoryRoutes(categoryService, supabaseClient)
+            productRoutes(productService, imageService, supabaseClient)
+            orderRoutes(orderService, emailService, supabaseClient)
+            imageRoutes(imageService, supabaseClient)
+            expenseRoutes(expenseRepository, supabaseClient)
+            withdrawalRoutes(withdrawalRepository, supabaseClient)
+            dashboardRoutes(dashboardService, supabaseClient)
             paymentRoutes(appConfig, orderService, emailService)
             settingsRoutes(supabaseClient)
         }

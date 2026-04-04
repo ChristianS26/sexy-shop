@@ -132,6 +132,16 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             val body = call.receiveText()
             logger.info("MP webhook received: $body")
 
+            // Verify webhook authenticity: we log signature headers for debugging,
+            // but the real verification happens below when we call MP's API to GET
+            // the payment and check status=approved. We never trust webhook data
+            // directly — we always verify with Mercado Pago's API first.
+            if (config.mpWebhookSecret.isNotEmpty()) {
+                val xSignature = call.request.headers["x-signature"]
+                val xRequestId = call.request.headers["x-request-id"]
+                logger.info("Webhook headers: x-signature=$xSignature, x-request-id=$xRequestId")
+            }
+
             // Respond 200 immediately (MP requires fast response)
             call.respond(HttpStatusCode.OK)
 

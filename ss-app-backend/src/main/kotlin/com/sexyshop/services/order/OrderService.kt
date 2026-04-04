@@ -21,6 +21,14 @@ class OrderService(
     }
 
     suspend fun create(request: OrderRequest): Order {
+        // Validate required input fields
+        require(request.customerName.isNotBlank()) { "Customer name required" }
+        require(request.customerPhone.isNotBlank()) { "Customer phone required" }
+        require(request.items.isNotEmpty()) { "At least one item required" }
+        request.items.forEach { item ->
+            require(item.quantity > 0) { "Quantity must be positive" }
+        }
+
         // Look up products, validate stock, and calculate totals
         val products = request.items.map { itemReq ->
             val product = productRepository.getById(itemReq.productId)

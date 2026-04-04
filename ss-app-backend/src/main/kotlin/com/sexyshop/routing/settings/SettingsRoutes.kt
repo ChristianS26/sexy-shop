@@ -1,5 +1,6 @@
 package com.sexyshop.routing.settings
 
+import com.sexyshop.plugins.requireAdmin
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.ktor.http.*
@@ -17,6 +18,7 @@ data class SettingUpdate(val value: String)
 fun Route.settingsRoutes(supabase: SupabaseClient) {
     route("/settings") {
         get("/{key}") {
+            if (!call.requireAdmin(supabase)) return@get
             val key = call.parameters["key"]!!
             val result = supabase.from("settings")
                 .select { filter { eq("key", key) } }
@@ -30,6 +32,7 @@ fun Route.settingsRoutes(supabase: SupabaseClient) {
         }
 
         put("/{key}") {
+            if (!call.requireAdmin(supabase)) return@put
             val key = call.parameters["key"]!!
             val update = call.receive<SettingUpdate>()
 
