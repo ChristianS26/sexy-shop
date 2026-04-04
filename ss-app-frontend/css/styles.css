@@ -836,6 +836,28 @@ ul { list-style: none; }
   transform: scale(1.05);
 }
 
+/* No-image placeholder */
+.product-no-image {
+  background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%) !important;
+}
+
+.product-no-image__icon {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: rgba(233, 30, 140, 0.25);
+  letter-spacing: -2px;
+  user-select: none;
+}
+
+.product-no-image__icon span {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.product-no-image__icon--lg {
+  font-size: 4rem;
+}
+
 .product-badge {
   position: absolute;
   top: 12px;
