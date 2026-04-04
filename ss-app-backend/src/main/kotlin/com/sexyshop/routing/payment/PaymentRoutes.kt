@@ -15,6 +15,9 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
+import org.slf4j.LoggerFactory
+
+private val logger = LoggerFactory.getLogger("PaymentRoutes")
 
 @Serializable
 data class CreatePreferenceRequest(
@@ -115,7 +118,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
                     call.respond(PreferenceResponse(id = prefId, initPoint = initPoint))
                 } else {
                     val errorBody = response.bodyAsText()
-                    call.application.log.error("MP preference error: $errorBody")
+                    logger.error("MP preference error: $errorBody")
                     call.respond(HttpStatusCode.BadGateway, mapOf("error" to "Error creating payment preference"))
                 }
             } finally {
@@ -126,22 +129,21 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
         // Mercado Pago webhook
         post("/webhook") {
             val body = call.receiveText()
-            call.application.log.info("MP webhook received: $body")
+            logger.info("MP webhook received: $body")
 
             // Respond 200 immediately (MP requires fast response)
             call.respond(HttpStatusCode.OK)
 
-            // Parse webhook
+            // Parse and process
             try {
                 val json = Json.parseToJsonElement(body).jsonObject
                 val type = json["type"]?.jsonPrimitive?.content
                 val action = json["action"]?.jsonPrimitive?.content
 
-                if (type == "payment" && action == "payment.created") {
+                if (type == "payment" && (action == "payment.created" || action == "payment.updated")) {
                     val paymentId = json["data"]?.jsonObject?.get("id")?.jsonPrimitive?.content
                         ?: return@post
 
-                    // Get payment details from MP API
                     val client = HttpClient(CIO)
                     try {
                         val paymentResponse = client.get("https://api.mercadopago.com/v1/payments/$paymentId") {
@@ -152,21 +154,21 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
                             val payment = Json.parseToJsonElement(paymentResponse.bodyAsText()).jsonObject
                             val status = payment["status"]?.jsonPrimitive?.content
 
+                            logger.info("MP payment $paymentId status: $status")
+
                             if (status == "approved") {
                                 val externalRef = payment["external_reference"]?.jsonPrimitive?.content
                                 if (externalRef != null) {
-                                    createOrderFromPayment(externalRef, orderService, call)
+                                    createOrderFromPayment(externalRef, orderService)
                                 }
                             }
-
-                            call.application.log.info("MP payment $paymentId status: $status")
                         }
                     } finally {
                         client.close()
                     }
                 }
             } catch (e: Exception) {
-                call.application.log.error("Webhook processing error", e)
+                logger.error("Webhook processing error", e)
             }
         }
 
@@ -176,11 +178,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
     }
 }
 
-private suspend fun createOrderFromPayment(
-    externalReference: String,
-    orderService: OrderService,
-    call: io.ktor.server.routing.RoutingCall,
-) {
+private suspend fun createOrderFromPayment(externalReference: String, orderService: OrderService) {
     try {
         val meta = Json.parseToJsonElement(externalReference).jsonObject
         val items = meta["items"]?.jsonArray?.map { item ->
@@ -201,15 +199,14 @@ private suspend fun createOrderFromPayment(
             customerState = meta["customer_state"]?.jsonPrimitive?.content,
             customerZip = meta["customer_zip"]?.jsonPrimitive?.content,
             customerReferences = meta["customer_references"]?.jsonPrimitive?.content,
-            notes = (meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]",
+            notes = ((meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]").trim(),
             items = items,
         )
 
         val order = orderService.create(orderRequest)
-        // Auto-confirm since payment is approved
         orderService.updateStatus(order.id, "confirmed")
-        call.application.log.info("Order created from MP payment: ${order.id}")
+        logger.info("Order created from MP payment: ${order.id}")
     } catch (e: Exception) {
-        call.application.log.error("Failed to create order from MP payment", e)
+        logger.error("Failed to create order from MP payment", e)
     }
 }
