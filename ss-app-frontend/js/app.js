@@ -178,18 +178,18 @@ function renderProducts() {
 
     return `
     <div class="product-card" data-id="${product.id}">
-      <div class="product-image">
+      <div class="product-image" onclick="openPdp('${product.id}')" style="cursor:pointer">
         ${product.primaryImage
-          ? `<div class="product-image-bg" style="background:#fff"><img src="${product.primaryImage.image_url}" alt="${product.name}" style="width:100%;height:100%;object-fit:cover;"></div>`
+          ? `<div class="product-image-bg" style="background:#fff"><img src="${product.primaryImage.image_url}" alt="${escapeHtml(product.name)}" style="width:100%;height:100%;object-fit:cover;"></div>`
           : `<div class="product-image-bg" style="background:${visuals.bg}"><span style="font-size:3.5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span></div>`
         }
         ${product.badge ? `<span class="product-badge badge-${product.badge}">${product.badge === 'new' ? 'Nuevo' : product.badge === 'hot' ? 'Popular' : 'Oferta'}</span>` : ''}
         ${product.stock <= 0 ? '<span class="product-badge badge-soldout">Agotado</span>' : ''}
-        <div class="product-quick-add" onclick="addToCart('${product.id}')">${product.stock <= 0 ? 'Agotado' : 'Agregar al carrito'}</div>
+        <div class="product-quick-add" onclick="event.stopPropagation(); addToCart('${product.id}')">${product.stock <= 0 ? 'Agotado' : 'Agregar al carrito'}</div>
       </div>
       <div class="product-info">
         <div class="product-category">${cat ? escapeHtml(cat.name) : ''}</div>
-        <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <h3 class="product-name" onclick="openPdp('${product.id}')" style="cursor:pointer">${escapeHtml(product.name)}</h3>
         <p class="product-desc">${escapeHtml(product.description || '')}</p>
         <div class="product-footer">
           <div>
@@ -453,6 +453,135 @@ function closeAfterOrder() {
     location.reload();
   }
 }
+
+// ═══════════════════════════════════════════
+// PRODUCT DETAIL MODAL (PDP)
+// ═══════════════════════════════════════════
+let pdpProductId = null;
+let pdpCurrentImage = 0;
+
+function openPdp(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+
+  pdpProductId = productId;
+  pdpCurrentImage = 0;
+  const cat = getCategoryByProduct(product);
+  const images = product.images || [];
+
+  // Category
+  document.getElementById('pdpCategory').textContent = cat ? cat.name : '';
+
+  // Name
+  document.getElementById('pdpName').textContent = product.name;
+
+  // Price
+  const priceEl = document.getElementById('pdpPrice');
+  priceEl.innerHTML = `<span class="pdp-info__current-price">$${product.price.toFixed(2)}</span>` +
+    (product.old_price ? `<span class="pdp-info__old-price">$${product.old_price.toFixed(2)}</span>` : '');
+
+  // Description
+  document.getElementById('pdpDesc').textContent = product.description || '';
+
+  // Stock
+  const stockEl = document.getElementById('pdpStock');
+  if (product.stock <= 0) {
+    stockEl.innerHTML = '<span class="pdp-stock pdp-stock--out">Agotado</span>';
+  } else if (product.stock <= 5) {
+    stockEl.innerHTML = `<span class="pdp-stock pdp-stock--low">¡Solo quedan ${product.stock}!</span>`;
+  } else {
+    stockEl.innerHTML = '<span class="pdp-stock pdp-stock--ok">Disponible</span>';
+  }
+
+  // Add to cart button
+  const addBtn = document.getElementById('pdpAddBtn');
+  if (product.stock <= 0) {
+    addBtn.disabled = true;
+    addBtn.textContent = 'Agotado';
+  } else {
+    addBtn.disabled = false;
+    addBtn.textContent = 'Agregar al carrito';
+  }
+
+  // WhatsApp link
+  document.getElementById('pdpWaBtn').href =
+    `https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, me interesa el producto: ${product.name}`)}`;
+
+  // Gallery
+  renderPdpGallery(product, images);
+
+  // Show modal
+  document.getElementById('pdpOverlay').classList.add('open');
+  document.getElementById('pdpModal').classList.add('open');
+  document.body.classList.add('no-scroll');
+}
+
+function renderPdpGallery(product, images) {
+  const mainEl = document.getElementById('pdpMainImage');
+  const thumbsEl = document.getElementById('pdpThumbs');
+
+  if (images.length === 0) {
+    const visuals = getProductVisuals(product);
+    const isDark = visuals.bg.includes('#1a1a2e');
+    mainEl.innerHTML = `<div class="pdp-gallery__placeholder" style="background:${visuals.bg}"><span style="font-size:5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span></div>`;
+    thumbsEl.innerHTML = '';
+    return;
+  }
+
+  mainEl.innerHTML = `<img src="${images[pdpCurrentImage].image_url}" alt="" class="pdp-gallery__img">`;
+
+  if (images.length > 1) {
+    mainEl.innerHTML += `
+      <button class="pdp-gallery__nav pdp-gallery__nav--prev" onclick="pdpNav(-1)">&#10094;</button>
+      <button class="pdp-gallery__nav pdp-gallery__nav--next" onclick="pdpNav(1)">&#10095;</button>
+    `;
+
+    thumbsEl.innerHTML = images.map((img, i) =>
+      `<button class="pdp-thumb ${i === pdpCurrentImage ? 'pdp-thumb--active' : ''}" onclick="pdpGoTo(${i})">
+        <img src="${img.image_url}" alt="">
+      </button>`
+    ).join('');
+  } else {
+    thumbsEl.innerHTML = '';
+  }
+}
+
+function pdpNav(direction) {
+  const product = products.find(p => p.id === pdpProductId);
+  if (!product) return;
+  const images = product.images || [];
+  if (images.length <= 1) return;
+
+  pdpCurrentImage = (pdpCurrentImage + direction + images.length) % images.length;
+  renderPdpGallery(product, images);
+}
+
+function pdpGoTo(index) {
+  const product = products.find(p => p.id === pdpProductId);
+  if (!product) return;
+  pdpCurrentImage = index;
+  renderPdpGallery(product, product.images || []);
+}
+
+function pdpAddToCart() {
+  if (pdpProductId) {
+    addToCart(pdpProductId);
+  }
+}
+
+function closePdp() {
+  document.getElementById('pdpOverlay').classList.remove('open');
+  document.getElementById('pdpModal').classList.remove('open');
+  document.body.classList.remove('no-scroll');
+  pdpProductId = null;
+}
+
+// Close PDP with Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('pdpModal').classList.contains('open')) {
+    closePdp();
+  }
+});
 
 // ═══════════════════════════════════════════
 // TOAST
