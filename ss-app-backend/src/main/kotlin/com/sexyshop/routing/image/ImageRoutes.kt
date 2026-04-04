@@ -53,15 +53,16 @@ fun Route.imageRoutes(service: ImageService) {
         put("/{id}/primary") {
             val id = call.parameters["id"]!!
             service.setPrimary(id)
-            call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            call.respond(HttpStatusCode.NoContent)
         }
 
         put("/{id}/order") {
             val id = call.parameters["id"]!!
-            val body = call.receive<Map<String, Int>>()
-            val order = body["display_order"] ?: throw IllegalArgumentException("display_order required")
-            service.updateOrder(id, order)
-            call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            @kotlinx.serialization.Serializable
+            data class OrderBody(val display_order: Int)
+            val body = call.receive<OrderBody>()
+            service.updateOrder(id, body.display_order)
+            call.respond(HttpStatusCode.NoContent)
         }
 
         delete("/{id}") {

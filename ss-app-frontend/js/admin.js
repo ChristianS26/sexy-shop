@@ -596,7 +596,7 @@ async function deleteProductImage(imageId, productId) {
 
 async function setPrimaryImage(imageId, productId) {
   try {
-    await api(`/images/${imageId}/primary`, { method: 'PUT' });
+    await fetch(`${API_URL}/images/${imageId}/primary`, { method: 'PUT' });
     showToast('Imagen principal actualizada');
     loadProductImages(productId);
   } catch (e) {
@@ -618,16 +618,18 @@ async function moveImage(imageId, productId, direction) {
     const newOrder = currentOrder + direction;
     if (newOrder < 0 || newOrder >= cards.length) return;
 
-    await api(`/images/${imageId}/order`, {
+    await fetch(`${API_URL}/images/${imageId}/order`, {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ display_order: newOrder }),
     });
 
     // Swap the other image's order
     const otherCard = cards[newOrder];
     if (otherCard) {
-      await api(`/images/${otherCard.dataset.imageId}/order`, {
+      await fetch(`${API_URL}/images/${otherCard.dataset.imageId}/order`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ display_order: currentOrder }),
       });
     }
