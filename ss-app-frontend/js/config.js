@@ -5,7 +5,7 @@ const APP_CONFIG = Object.freeze({
   API_URL: 'https://ss-app-backend-production.up.railway.app/api',
   SUPABASE_URL: 'https://litzzmjoiujifddkrryp.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdHp6bWpvaXVqaWZkZGtycnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNDU4NTQsImV4cCI6MjA5MDgyMTg1NH0.d2jUA16jXjxTOlYswSmw1lqJt-3_o6CwJdpaMixhPYo',
-  WHATSAPP_NUMBER: '526222279504',
+  WHATSAPP_NUMBER: '526221254659',
   PRODUCTS_PER_PAGE: 10,
 });
 
