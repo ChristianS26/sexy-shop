@@ -967,7 +967,7 @@ function renderOrders() {
 
   const tbody = document.getElementById('ordersTable');
   if (sorted.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#128230;</div><div class="admin-empty-state__title">No hay pedidos</div><div class="admin-empty-state__subtitle">Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes compren.</div></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#128230;</div><div class="admin-empty-state__title">No hay pedidos</div><div class="admin-empty-state__subtitle">Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes compren.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = sorted.map(order => `
@@ -976,6 +976,7 @@ function renderOrders() {
       <td><code>${order.id.slice(0, 8)}</code></td>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone)}</td>
+      <td>${escapeHtml(order.customer_address || '—')}</td>
       <td>${formatCurrency(order.total)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
@@ -1002,8 +1003,10 @@ function handleOrderSearch(value) {
 async function viewOrder(id) {
   try {
     const data = await api(`/orders/${id}`);
-    const order = data.order;
-    const items = data.items;
+
+    // Handle both formats: {order, items} or direct order object
+    const order = data.order || data;
+    const items = data.items || [];
 
     document.getElementById('orderDetailId').textContent = order.id.slice(0, 8);
     document.getElementById('orderDetailName').textContent = order.customer_name;
@@ -1023,19 +1026,23 @@ async function viewOrder(id) {
 
     // Items table
     const tbody = document.getElementById('orderDetailItems');
-    tbody.innerHTML = items.map(item => `
-      <tr>
-        <td>${escapeHtml(item.product_name)}</td>
-        <td>${item.quantity}</td>
-        <td>${formatCurrency(item.unit_price)}</td>
-        <td>${formatCurrency(item.subtotal)}</td>
-      </tr>
-    `).join('');
+    if (items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#999;padding:20px">Sin detalle de productos</td></tr>';
+    } else {
+      tbody.innerHTML = items.map(item => `
+        <tr>
+          <td>${escapeHtml(item.product_name)}</td>
+          <td>${item.quantity}</td>
+          <td>${formatCurrency(item.unit_price)}</td>
+          <td>${formatCurrency(item.subtotal)}</td>
+        </tr>
+      `).join('');
+    }
 
     // Quick actions based on current status
     renderQuickActions(order);
 
-    // Load timeline
+    // Load timeline (non-blocking, won't break if endpoint doesn't exist)
     loadOrderTimeline(order.id);
 
     openModal(document.getElementById('orderDetailModal'));
