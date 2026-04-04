@@ -1301,7 +1301,7 @@ async function loadFinanceData() {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.className = 'finance-loader';
-    overlay.innerHTML = '<div class="finance-loader__spinner"></div><span>Calculando...</span>';
+    overlay.innerHTML = '<div class="finance-loader__spinner"></div><span>Calculando reportes</span>';
     section.style.position = 'relative';
     section.appendChild(overlay);
   }
