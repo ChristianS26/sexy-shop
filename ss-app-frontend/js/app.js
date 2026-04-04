@@ -129,17 +129,16 @@ function renderCategories() {
 }
 
 function filterCategory(catId) {
-  // Save scroll position relative to the toolbar
-  const toolbar = document.getElementById('catalogToolbar');
-  const toolbarTop = toolbar.getBoundingClientRect().top + window.scrollY;
-
   activeCategory = catId;
   renderCategories();
   renderProducts();
 
-  // Restore scroll: keep toolbar at top if user was past it
-  if (window.scrollY > toolbarTop - 80) {
-    window.scrollTo({ top: toolbarTop - 80, behavior: 'instant' });
+  // Scroll to products grid if it's not visible
+  const grid = document.getElementById('productsGrid');
+  const rect = grid.getBoundingClientRect();
+  if (rect.top < 0 || rect.top > window.innerHeight) {
+    const toolbar = document.getElementById('catalogToolbar');
+    toolbar.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
