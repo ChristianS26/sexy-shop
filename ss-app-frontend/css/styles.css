@@ -1674,6 +1674,32 @@ ul { list-style: none; }
   color: var(--gray-500);
 }
 
+/* Field error state */
+.checkout-field--error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.checkout-field--error::placeholder {
+  color: #ef4444;
+}
+
+/* Button spinner */
+.checkout-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Checkout success */
 .checkout-success {
   display: flex;

@@ -335,18 +335,56 @@ function hideCheckoutForm() {
   document.getElementById('cartFooter').style.display = 'block';
 }
 
+function validateCheckoutField(inputId, message) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim();
+  if (!value) {
+    input.classList.add('checkout-field--error');
+    input.placeholder = message;
+    input.focus();
+    return false;
+  }
+  input.classList.remove('checkout-field--error');
+  return true;
+}
+
+function validatePhone(inputId) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim().replace(/\s|-/g, '');
+  if (!value) {
+    input.classList.add('checkout-field--error');
+    input.placeholder = 'Número requerido';
+    input.focus();
+    return false;
+  }
+  if (!/^\d{10,13}$/.test(value)) {
+    input.classList.add('checkout-field--error');
+    showToast('Ingresa un número válido (10 dígitos)');
+    input.focus();
+    return false;
+  }
+  input.classList.remove('checkout-field--error');
+  return true;
+}
+
+function clearCheckoutErrors() {
+  document.querySelectorAll('.checkout-field--error').forEach(el => el.classList.remove('checkout-field--error'));
+}
+
 async function processOrder() {
+  clearCheckoutErrors();
+
+  if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
+  if (!validatePhone('checkoutPhone')) return;
+
   const name = document.getElementById('checkoutName').value.trim();
   const phone = document.getElementById('checkoutPhone').value.trim();
   const address = document.getElementById('checkoutAddress').value.trim();
   const notes = document.getElementById('checkoutNotes').value.trim();
 
-  if (!name) { showToast('Ingresa tu nombre'); return; }
-  if (!phone) { showToast('Ingresa tu número de WhatsApp'); return; }
-
   const payBtn = document.getElementById('payBtn');
   payBtn.disabled = true;
-  payBtn.textContent = 'Procesando...';
+  payBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando pedido...';
 
   try {
     const orderData = {
@@ -373,7 +411,7 @@ async function processOrder() {
 
     const order = await res.json();
 
-    // Show success in the checkout form
+    // Show success screen
     document.getElementById('checkoutForm').innerHTML = `
       <div class="checkout-success">
         <div class="checkout-success__icon">&#10004;</div>
@@ -387,7 +425,6 @@ async function processOrder() {
       </div>
     `;
 
-    // Clear cart
     cart = [];
     saveCart();
     updateCart();
@@ -395,9 +432,15 @@ async function processOrder() {
     renderProducts();
 
   } catch (err) {
-    showToast(err.message || 'Error al crear pedido');
-    payBtn.disabled = false;
-    payBtn.textContent = 'Pagar pedido';
+    // Show error screen
+    document.getElementById('checkoutForm').innerHTML = `
+      <div class="checkout-success">
+        <div class="checkout-success__icon" style="background:#fef2f2;color:#b91c1c">&#10008;</div>
+        <h3 class="checkout-success__title">Error al procesar</h3>
+        <p class="checkout-success__msg">${escapeHtml(err.message || 'No se pudo crear el pedido. Intenta de nuevo.')}</p>
+        <button class="checkout-success__close" onclick="location.reload()">Intentar de nuevo</button>
+      </div>
+    `;
   }
 }
 
