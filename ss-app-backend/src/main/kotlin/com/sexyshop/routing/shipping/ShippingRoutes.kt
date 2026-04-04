@@ -38,6 +38,8 @@ data class CreateLabelRequest(
     @SerialName("recipient_zip") val recipientZip: String,
     @SerialName("recipient_city") val recipientCity: String,
     @SerialName("recipient_state") val recipientState: String,
+    @SerialName("recipient_ext_num") val recipientExtNum: String = "",
+    @SerialName("recipient_int_num") val recipientIntNum: String = "",
     val weight: String = "1",
 )
 
@@ -161,8 +163,8 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
                 put("recipientState", request.recipientState)
                 put("recipientZip", request.recipientZip)
                 put("recipientCountry", "MX")
-                put("recipientExternalNum", "")
-                put("recipientInternalNum", "")
+                put("recipientExternalNum", request.recipientExtNum)
+                put("recipientInternalNum", request.recipientIntNum)
                 put("recipientTaxId", "XAXX010101000")
                 put("recipientCompanyName", request.recipientName)
                 put("shipperName", "Sexy Shop Guaymas")

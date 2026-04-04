@@ -1609,6 +1609,8 @@ async function selectShippingQuote(currier, service, price) {
         recipient_zip: order.customer_zip || '',
         recipient_city: order.customer_city || '',
         recipient_state: order.customer_state || '',
+        recipient_ext_num: order.customer_ext_num || '',
+        recipient_int_num: order.customer_int_num || '',
         weight: '1',
       }),
     });

@@ -379,6 +379,7 @@ async function processOrder() {
   if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
   if (!validatePhone('checkoutPhone')) return;
   if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
+  if (!validateCheckoutField('checkoutExtNum', 'No. exterior requerido')) return;
   if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
   if (!validateCheckoutField('checkoutCity', 'Ciudad requerida')) return;
   if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
@@ -387,13 +388,15 @@ async function processOrder() {
   const name = document.getElementById('checkoutName').value.trim();
   const phone = document.getElementById('checkoutPhone').value.trim();
   const street = document.getElementById('checkoutStreet').value.trim();
+  const extNum = document.getElementById('checkoutExtNum').value.trim();
+  const intNum = document.getElementById('checkoutIntNum').value.trim();
   const neighborhood = document.getElementById('checkoutNeighborhood').value.trim();
   const city = document.getElementById('checkoutCity').value.trim();
   const zip = document.getElementById('checkoutZip').value.trim();
   const state = document.getElementById('checkoutState').value.trim();
   const references = document.getElementById('checkoutReferences').value.trim();
   const notes = document.getElementById('checkoutNotes').value.trim();
-  const fullAddress = `${street}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
+  const fullAddress = `${street} #${extNum}${intNum ? ' Int. ' + intNum : ''}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
 
   const payBtn = document.getElementById('payWaBtn');
   payBtn.disabled = true;
@@ -408,6 +411,8 @@ async function processOrder() {
       customer_email: email || null,
       customer_address: fullAddress,
       customer_street: street,
+      customer_ext_num: extNum,
+      customer_int_num: intNum || null,
       customer_neighborhood: neighborhood,
       customer_city: city,
       customer_state: state,
@@ -472,6 +477,7 @@ async function payWithMercadoPago() {
   if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
   if (!validatePhone('checkoutPhone')) return;
   if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
+  if (!validateCheckoutField('checkoutExtNum', 'No. exterior requerido')) return;
   if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
   if (!validateCheckoutField('checkoutCity', 'Ciudad requerida')) return;
   if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
@@ -499,6 +505,8 @@ async function payWithMercadoPago() {
         customer_email: document.getElementById('checkoutEmail').value.trim() || null,
         customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
         customer_street: document.getElementById('checkoutStreet').value.trim(),
+        customer_ext_num: document.getElementById('checkoutExtNum').value.trim(),
+        customer_int_num: document.getElementById('checkoutIntNum').value.trim() || null,
         customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),
         customer_city: document.getElementById('checkoutCity').value.trim(),
         customer_state: document.getElementById('checkoutState').value.trim(),
@@ -523,6 +531,8 @@ async function payWithMercadoPago() {
       customer_email: document.getElementById('checkoutEmail').value.trim() || null,
       customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
       customer_street: document.getElementById('checkoutStreet').value.trim(),
+      customer_ext_num: document.getElementById('checkoutExtNum').value.trim(),
+      customer_int_num: document.getElementById('checkoutIntNum').value.trim() || null,
       customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),
       customer_city: document.getElementById('checkoutCity').value.trim(),
       customer_state: document.getElementById('checkoutState').value.trim(),
