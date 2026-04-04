@@ -2,6 +2,7 @@ package com.sexyshop.routing.product
 
 import com.sexyshop.models.product.ProductReorderRequest
 import com.sexyshop.models.product.ProductRequest
+import com.sexyshop.models.product.toPublic
 import com.sexyshop.plugins.requireAdmin
 import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.product.ProductService
@@ -16,7 +17,13 @@ fun Route.productRoutes(service: ProductService, imageService: ImageService, sup
         get {
             val categoryId = call.parameters["category"]
             val activeOnly = call.parameters["active"]?.toBooleanStrictOrNull() ?: true
-            call.respond(service.getAll(categoryId, activeOnly))
+            val products = service.getAll(categoryId, activeOnly)
+            val hasAuth = call.request.headers["Authorization"]?.startsWith("Bearer ") == true
+            if (hasAuth) {
+                call.respond(products)
+            } else {
+                call.respond(products.map { it.toPublic() })
+            }
         }
 
         get("/{id}") {

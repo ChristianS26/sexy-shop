@@ -25,6 +25,9 @@ class OrderService(
         require(request.customerName.isNotBlank()) { "Customer name required" }
         require(request.customerPhone.isNotBlank()) { "Customer phone required" }
         require(request.items.isNotEmpty()) { "At least one item required" }
+        if (!request.customerEmail.isNullOrBlank()) {
+            require(request.customerEmail.matches(Regex("^[^@\\s]{1,64}@[^@\\s]{1,255}$"))) { "Invalid email format" }
+        }
         request.items.forEach { item ->
             require(item.quantity > 0) { "Quantity must be positive" }
         }

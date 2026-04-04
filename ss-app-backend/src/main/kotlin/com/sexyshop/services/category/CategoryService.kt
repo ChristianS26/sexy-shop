@@ -13,14 +13,16 @@ class CategoryService(
         repository.getBySlug(slug) ?: throw NoSuchElementException("Category not found: $slug")
 
     suspend fun create(request: CategoryRequest): Category {
-        require(request.name.isNotBlank()) { "Category name required" }
-        require(request.slug.isNotBlank()) { "Category slug required" }
+        require(request.name.isNotBlank() && request.name.length <= 100) { "Category name required (max 100 chars)" }
+        require(request.slug.isNotBlank() && request.slug.length <= 50) { "Category slug required (max 50 chars)" }
+        require(request.icon.length <= 4) { "Icon max 4 chars" }
         return repository.create(request)
     }
 
     suspend fun update(id: String, request: CategoryRequest): Category {
-        require(request.name.isNotBlank()) { "Category name required" }
-        require(request.slug.isNotBlank()) { "Category slug required" }
+        require(request.name.isNotBlank() && request.name.length <= 100) { "Category name required (max 100 chars)" }
+        require(request.slug.isNotBlank() && request.slug.length <= 50) { "Category slug required (max 50 chars)" }
+        require(request.icon.length <= 4) { "Icon max 4 chars" }
         return repository.update(id, request)
     }
 

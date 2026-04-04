@@ -21,18 +21,22 @@ class ProductService(
     }
 
     suspend fun create(request: ProductRequest): Product {
-        require(request.name.isNotBlank()) { "Product name required" }
-        require(request.slug.isNotBlank()) { "Product slug required" }
-        require(request.price > 0) { "Price must be positive" }
-        require(request.stock >= 0) { "Stock must be non-negative" }
+        require(request.name.isNotBlank() && request.name.length <= 255) { "Product name required (max 255 chars)" }
+        require(request.slug.isNotBlank() && request.slug.length <= 100) { "Product slug required (max 100 chars)" }
+        require(request.price > 0 && request.price <= 999999.99) { "Price must be between 0.01 and 999,999.99" }
+        require(request.stock >= 0 && request.stock <= 1000000) { "Stock must be 0-1,000,000" }
+        require(request.costPrice >= 0) { "Cost price must be non-negative" }
+        require(request.description == null || request.description.length <= 2000) { "Description max 2000 chars" }
         return productRepository.create(request)
     }
 
     suspend fun update(id: String, request: ProductRequest): Product {
-        require(request.name.isNotBlank()) { "Product name required" }
-        require(request.slug.isNotBlank()) { "Product slug required" }
-        require(request.price > 0) { "Price must be positive" }
-        require(request.stock >= 0) { "Stock must be non-negative" }
+        require(request.name.isNotBlank() && request.name.length <= 255) { "Product name required (max 255 chars)" }
+        require(request.slug.isNotBlank() && request.slug.length <= 100) { "Product slug required (max 100 chars)" }
+        require(request.price > 0 && request.price <= 999999.99) { "Price must be between 0.01 and 999,999.99" }
+        require(request.stock >= 0 && request.stock <= 1000000) { "Stock must be 0-1,000,000" }
+        require(request.costPrice >= 0) { "Cost price must be non-negative" }
+        require(request.description == null || request.description.length <= 2000) { "Description max 2000 chars" }
         return productRepository.update(id, request)
     }
 

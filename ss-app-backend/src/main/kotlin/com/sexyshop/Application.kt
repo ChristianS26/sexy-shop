@@ -7,6 +7,7 @@ import com.sexyshop.routing.configureRouting
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.defaultheaders.*
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 
@@ -34,5 +35,13 @@ fun Application.module() {
 
     configureSerialization()
     configureCors()
+
+    install(DefaultHeaders) {
+        header("X-Frame-Options", "DENY")
+        header("X-Content-Type-Options", "nosniff")
+        header("X-XSS-Protection", "1; mode=block")
+        header("Referrer-Policy", "strict-origin-when-cross-origin")
+    }
+
     configureRouting()
 }

@@ -39,6 +39,27 @@ data class ProductRequest(
 )
 
 @Serializable
+data class ProductPublic(
+    val id: String,
+    val name: String,
+    val slug: String,
+    val description: String? = null,
+    val price: Double,
+    @SerialName("old_price") val oldPrice: Double? = null,
+    @SerialName("category_id") val categoryId: String,
+    val stock: Int = 0,
+    val badge: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("display_order") val displayOrder: Int = 0,
+)
+
+fun Product.toPublic() = ProductPublic(
+    id = id, name = name, slug = slug, description = description,
+    price = price, oldPrice = oldPrice, categoryId = categoryId,
+    stock = stock, badge = badge, isActive = isActive, displayOrder = displayOrder,
+)
+
+@Serializable
 data class ProductReorderRequest(
     @SerialName("product_ids") val productIds: List<String>,
 )
