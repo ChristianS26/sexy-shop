@@ -398,9 +398,12 @@ async function processOrder() {
   payBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando...';
 
   try {
+    const email = document.getElementById('checkoutEmail').value.trim();
+
     const orderData = {
       customer_name: name,
       customer_phone: phone,
+      customer_email: email || null,
       customer_address: fullAddress,
       customer_street: street,
       customer_neighborhood: neighborhood,
@@ -491,6 +494,7 @@ async function payWithMercadoPago() {
         items,
         customer_name: document.getElementById('checkoutName').value.trim(),
         customer_phone: document.getElementById('checkoutPhone').value.trim(),
+        customer_email: document.getElementById('checkoutEmail').value.trim() || null,
         customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
         customer_street: document.getElementById('checkoutStreet').value.trim(),
         customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),
@@ -514,6 +518,7 @@ async function payWithMercadoPago() {
       items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
       customer_name: document.getElementById('checkoutName').value.trim(),
       customer_phone: document.getElementById('checkoutPhone').value.trim(),
+      customer_email: document.getElementById('checkoutEmail').value.trim() || null,
       customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
       customer_street: document.getElementById('checkoutStreet').value.trim(),
       customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),

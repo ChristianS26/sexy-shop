@@ -1086,6 +1086,14 @@ async function viewOrder(id) {
     const phoneClean = (order.customer_phone || '').replace(/\D/g, '');
     phoneEl.innerHTML = `${escapeHtml(order.customer_phone)} <a href="https://wa.me/52${phoneClean}" target="_blank" class="order-wa-link" title="Contactar por WhatsApp">&#128172;</a>`;
 
+    const emailField = document.getElementById('orderDetailEmailField');
+    if (order.customer_email) {
+      emailField.style.display = 'flex';
+      document.getElementById('orderDetailEmail').textContent = order.customer_email;
+    } else {
+      emailField.style.display = 'none';
+    }
+
     // Build address block
     const addrParts = [];
     if (order.customer_street) addrParts.push(order.customer_street);

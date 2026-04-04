@@ -28,10 +28,13 @@ fun Route.orderRoutes(service: OrderService, emailService: EmailService) {
             val request = call.receive<OrderRequest>()
             val order = service.create(request)
 
-            // Send admin notification (before responding, fast enough)
+            // Send email notifications
             try {
-                val (_, items) = service.getById(order.id)
-                emailService.sendNewOrderNotificationToAdmin(order, items)
+                val (fullOrder, items) = service.getById(order.id)
+                emailService.sendNewOrderNotificationToAdmin(fullOrder, items)
+                if (!request.customerEmail.isNullOrBlank()) {
+                    emailService.sendOrderConfirmationToCustomer(fullOrder, items, request.customerEmail)
+                }
             } catch (_: Exception) {}
 
             call.respond(HttpStatusCode.Created, order)

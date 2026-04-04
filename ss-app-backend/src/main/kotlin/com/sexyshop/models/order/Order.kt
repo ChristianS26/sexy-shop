@@ -15,6 +15,7 @@ data class Order(
     @SerialName("customer_state") val customerState: String? = null,
     @SerialName("customer_zip") val customerZip: String? = null,
     @SerialName("customer_references") val customerReferences: String? = null,
+    @SerialName("customer_email") val customerEmail: String? = null,
     val status: String = "pending",
     val total: Double,
     val notes: String? = null,
@@ -37,6 +38,7 @@ data class OrderItem(
 data class OrderRequest(
     @SerialName("customer_name") val customerName: String,
     @SerialName("customer_phone") val customerPhone: String,
+    @SerialName("customer_email") val customerEmail: String? = null,
     @SerialName("customer_address") val customerAddress: String? = null,
     @SerialName("customer_street") val customerStreet: String? = null,
     @SerialName("customer_neighborhood") val customerNeighborhood: String? = null,
