@@ -1146,6 +1146,9 @@ async function viewOrder(id) {
     // Load timeline (non-blocking)
     loadOrderTimeline(order.id);
 
+    // Check if order has shipment
+    loadOrderShipment(order.id);
+
   } catch (e) {
     showToast('Error al cargar pedido', true);
     console.error(e);
@@ -1618,6 +1621,25 @@ function previewShippingLabel(currier, service, price) {
   `;
 }
 
+async function loadOrderShipment(orderId) {
+  const content = document.getElementById('orderShippingContent');
+  try {
+    const shipment = await api(`/shipping/order/${orderId}`);
+    content.innerHTML = `
+      <div class="shipping-label-result">
+        <div class="shipping-label-result__info">
+          <strong>${escapeHtml(shipment.carrier.toUpperCase())}</strong> — ${escapeHtml(shipment.service)}<br>
+          <span style="font-size:0.82rem;color:var(--text-secondary)">Guía: <code>${escapeHtml(shipment.tracking_number)}</code></span>
+        </div>
+        ${shipment.label_url ? `<a href="${escapeHtml(shipment.label_url)}" target="_blank" class="admin-btn admin-btn--sm admin-btn--primary">Descargar etiqueta</a>` : ''}
+      </div>
+    `;
+  } catch (e) {
+    // No shipment exists, show quote button (default state)
+    content.innerHTML = '<button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">Cotizar envío</button>';
+  }
+}
+
 async function confirmShippingLabel(currier, service, price) {
   const ok = await showConfirm('Confirmar generación', `¿Generar guía ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}? Esta acción generará un cargo.`, 'Generar guía');
   if (!ok) return;
@@ -1634,6 +1656,7 @@ async function confirmShippingLabel(currier, service, price) {
     const res = await api('/shipping/create-label', {
       method: 'POST',
       body: JSON.stringify({
+        order_id: orderId,
         currier: currier,
         service: service,
         recipient_name: order.customer_name,

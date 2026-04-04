@@ -2,6 +2,7 @@ package com.sexyshop.routing
 
 import com.sexyshop.config.AppConfig
 import com.sexyshop.repositories.expense.ExpenseRepository
+import com.sexyshop.repositories.shipment.ShipmentRepository
 import com.sexyshop.repositories.withdrawal.WithdrawalRepository
 import com.sexyshop.routing.category.categoryRoutes
 import com.sexyshop.routing.dashboard.dashboardRoutes
@@ -35,6 +36,7 @@ fun Application.configureRouting() {
     val supabaseClient by inject<SupabaseClient>()
     val expenseRepository by inject<ExpenseRepository>()
     val withdrawalRepository by inject<WithdrawalRepository>()
+    val shipmentRepository by inject<ShipmentRepository>()
 
     routing {
         route("/api") {
@@ -47,7 +49,7 @@ fun Application.configureRouting() {
             dashboardRoutes(dashboardService, supabaseClient)
             paymentRoutes(appConfig, orderService, emailService, productService)
             settingsRoutes(supabaseClient)
-            shippingRoutes(appConfig, supabaseClient)
+            shippingRoutes(appConfig, supabaseClient, shipmentRepository)
         }
     }
 }

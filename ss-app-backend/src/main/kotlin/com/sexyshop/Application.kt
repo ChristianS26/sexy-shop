@@ -30,6 +30,7 @@ fun Application.module() {
             expenseModule,
             dashboardModule,
             withdrawalModule,
+            shipmentModule,
         )
     }
 

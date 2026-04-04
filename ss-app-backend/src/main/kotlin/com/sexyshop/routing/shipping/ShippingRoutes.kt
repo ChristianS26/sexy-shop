@@ -1,7 +1,9 @@
 package com.sexyshop.routing.shipping
 
 import com.sexyshop.config.AppConfig
+import com.sexyshop.models.shipment.Shipment
 import com.sexyshop.plugins.requireAdmin
+import com.sexyshop.repositories.shipment.ShipmentRepository
 import io.github.jan.supabase.SupabaseClient
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -29,6 +31,7 @@ data class QuoteRequest(
 
 @Serializable
 data class CreateLabelRequest(
+    @SerialName("order_id") val orderId: String,
     val currier: String,
     val service: String,
     @SerialName("recipient_name") val recipientName: String,
@@ -43,7 +46,7 @@ data class CreateLabelRequest(
     val weight: String = "1",
 )
 
-fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
+fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRepository: ShipmentRepository) {
     route("/shipping") {
         // Quote shipping rates
         post("/quote") {
@@ -125,11 +128,26 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
         post("/create-label") {
             if (!call.requireAdmin(supabase)) return@post
 
+            val request = call.receive<CreateLabelRequest>()
+
             if (config.epackApiKey.isEmpty()) {
+                val guia = "MOCK-${System.currentTimeMillis().toString().takeLast(8)}"
+                val pdf = "https://example.com/mock-label.pdf"
+
+                // Save to DB
+                shipmentRepository.create(Shipment(
+                    orderId = request.orderId,
+                    carrier = request.currier,
+                    service = request.service,
+                    trackingNumber = guia,
+                    labelUrl = pdf,
+                    cost = 0.0,
+                ))
+
                 val mockLabel = buildJsonObject {
                     put("result", buildJsonObject {
-                        put("NumeroGuia", "MOCK-${System.currentTimeMillis().toString().takeLast(8)}")
-                        put("pdf", "https://example.com/mock-label.pdf")
+                        put("NumeroGuia", guia)
+                        put("pdf", pdf)
                     })
                     put("error", false)
                     put("mock", true)
@@ -137,8 +155,6 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
                 call.respondText(mockLabel.toString(), ContentType.Application.Json)
                 return@post
             }
-
-            val request = call.receive<CreateLabelRequest>()
 
             val epackPayload = buildJsonObject {
                 put("ltl", false)
@@ -198,12 +214,45 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient) {
                     setBody(epackPayload.toString())
                 }
 
-                call.respondText(response.bodyAsText(), ContentType.Application.Json, response.status)
+                if (response.status.isSuccess()) {
+                    val responseBody = response.bodyAsText()
+                    val responseJson = Json.parseToJsonElement(responseBody).jsonObject
+                    val result = responseJson["result"]?.jsonObject
+                    val guia = result?.get("NumeroGuia")?.jsonPrimitive?.content ?: ""
+                    val pdf = result?.get("pdf")?.jsonPrimitive?.content ?: ""
+
+                    if (guia.isNotBlank()) {
+                        shipmentRepository.create(Shipment(
+                            orderId = request.orderId,
+                            carrier = request.currier,
+                            service = request.service,
+                            trackingNumber = guia,
+                            labelUrl = pdf,
+                            cost = 0.0,
+                        ))
+                    }
+
+                    call.respondText(responseBody, ContentType.Application.Json)
+                } else {
+                    call.respondText(response.bodyAsText(), ContentType.Application.Json, response.status)
+                }
             } catch (e: Exception) {
                 logger.error("Epack create error", e)
                 call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Epack"))
             } finally {
                 client.close()
+            }
+        }
+
+        // Get shipment for an order
+        get("/order/{orderId}") {
+            if (!call.requireAdmin(supabase)) return@get
+            val orderId = call.parameters["orderId"]!!
+            val shipment = shipmentRepository.getByOrderId(orderId)
+            if (shipment != null) {
+                call.respond(shipment)
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "No shipment found"))
             }
         }
     }
