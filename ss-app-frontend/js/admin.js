@@ -601,7 +601,8 @@ function renderProducts() {
   } else {
     tbody.innerHTML = pageProducts.map(p => {
       const cat = categories.find(c => c.id === p.category_id);
-      const stockClass = p.stock <= 0 ? 'stock-out' : p.stock <= 5 ? 'stock-low' : 'stock-ok';
+      const threshold = p.low_stock_threshold;
+      const stockClass = p.stock <= 0 ? 'stock-out' : (threshold != null && p.stock <= threshold) ? 'stock-low' : 'stock-ok';
       const thumb = p.primaryImage
         ? `<img src="${p.primaryImage.image_url}" alt="" class="product-thumb">`
         : `<div class="product-thumb product-thumb--empty">&#128247;</div>`;
@@ -698,6 +699,7 @@ function openProductModal(id) {
     document.getElementById('productOldPrice').value = p.old_price || '';
     document.getElementById('productCategorySelect').value = p.category_id;
     document.getElementById('productStock').value = p.stock;
+    document.getElementById('productLowStock').value = p.low_stock_threshold ?? '';
     document.getElementById('productBadge').value = p.badge || '';
     document.getElementById('productActive').checked = p.is_active !== false;
 
@@ -747,6 +749,7 @@ async function saveProduct(e) {
     description: document.getElementById('productDescription').value.trim(),
     price: parseFloat(document.getElementById('productPrice').value),
     cost_price: parseFloat(document.getElementById('productCostPrice').value) || 0,
+    low_stock_threshold: document.getElementById('productLowStock').value ? parseInt(document.getElementById('productLowStock').value) : null,
     old_price: oldPriceVal ? parseFloat(oldPriceVal) : null,
     category_id: document.getElementById('productCategorySelect').value,
     stock: parseInt(document.getElementById('productStock').value) || 0,

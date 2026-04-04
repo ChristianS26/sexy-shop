@@ -36,9 +36,9 @@ class DashboardService(
         // Status distribution
         val statusDist = allOrders.groupBy { it.status }.mapValues { it.value.size }
 
-        // Low stock (stock <= 5, active only)
+        // Low stock (per-product threshold, only products with threshold set)
         val lowStock = allProducts
-            .filter { it.isActive && it.stock <= 5 }
+            .filter { it.isActive && it.lowStockThreshold != null && it.stock <= it.lowStockThreshold }
             .sortedBy { it.stock }
             .take(10)
             .map { LowStockProduct(it.id, it.name, it.stock) }
