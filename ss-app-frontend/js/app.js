@@ -5,12 +5,12 @@ const API_URL = APP_CONFIG.API_URL;
 
 // Visual mappings per category slug (bg gradient + emoji fallback)
 const CATEGORY_VISUALS = {
-  lenceria:       { bg: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)', emoji: '💃' },
+  lenceria:       { bg: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)', emoji: '👙' },
   lubricantes:    { bg: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', emoji: '💧' },
-  vibradores:     { bg: 'linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%)', emoji: '✨' },
-  juguetes:       { bg: 'linear-gradient(135deg, #1a1a2e 0%, #374151 100%)', emoji: '🎗' },
+  vibradores:     { bg: 'linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%)', emoji: '💜' },
+  juguetes:       { bg: 'linear-gradient(135deg, #1a1a2e 0%, #374151 100%)', emoji: '🎲' },
   multiorgasmicos:{ bg: 'linear-gradient(135deg, #fce7f3 0%, #FCE7F3 100%)', emoji: '🔥' },
-  accesorios:     { bg: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', emoji: '🎁' },
+  accesorios:     { bg: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)', emoji: '🎀' },
 };
 
 // ═══════════════════════════════════════════
