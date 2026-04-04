@@ -1380,6 +1380,21 @@ async function loadFinanceData() {
   document.getElementById('finComision75').textContent = formatCurrency(commission75);
   document.getElementById('finTotalSocia').textContent = formatCurrency(totalPartner);
 
+  // Cash balance: initial balance + all-time revenue - all-time expenses
+  try {
+    const settingRes = await api('/settings/initial_balance');
+    const initialBalance = parseFloat(settingRes.value) || 0;
+    const allNonCancelled = orders.filter(o => o.status !== 'cancelled');
+    const allTimeRevenue = allNonCancelled.reduce((sum, o) => sum + o.total, 0);
+    let allExpenses = [];
+    try { allExpenses = await api('/expenses'); } catch(e) {}
+    const allTimeExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const cashBalance = initialBalance + allTimeRevenue - allTimeExpenses;
+    document.getElementById('finSaldoCaja').textContent = formatCurrency(cashBalance);
+    document.getElementById('finSaldoSub').textContent = `${formatCurrency(initialBalance)} inicial + ${formatCurrency(allTimeRevenue)} ventas - ${formatCurrency(allTimeExpenses)} gastos`;
+  } catch (e) {
+    document.getElementById('finSaldoCaja').textContent = '$0';
+  }
 
   // Products sold table
   const prodBody = document.getElementById('finProductsBody');
@@ -1415,6 +1430,27 @@ async function loadFinanceData() {
 
   // Hide loader
   overlay.classList.remove('active');
+}
+
+async function editInitialBalance() {
+  const currentEl = document.getElementById('finSaldoCaja');
+  const input = prompt('Saldo inicial en caja:', '10000');
+  if (input === null) return;
+  const value = parseFloat(input);
+  if (isNaN(value) || value < 0) {
+    showToast('Ingresa un monto válido', true);
+    return;
+  }
+  try {
+    await api('/settings/initial_balance', {
+      method: 'PUT',
+      body: JSON.stringify({ value: String(value) }),
+    });
+    showToast('Saldo inicial actualizado');
+    loadFinanceData();
+  } catch (e) {
+    showToast('Error al actualizar', true);
+  }
 }
 
 function openExpenseModal() {

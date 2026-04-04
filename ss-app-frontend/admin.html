@@ -420,6 +420,16 @@
         </div>
       </div>
 
+      <!-- Cash balance -->
+      <div class="finance-balance">
+        <div class="finance-balance__info">
+          <span class="finance-balance__label">Saldo en caja</span>
+          <span class="finance-balance__amount" id="finSaldoCaja">$0</span>
+          <span class="finance-balance__sub" id="finSaldoSub">Saldo inicial + ventas - gastos</span>
+        </div>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="editInitialBalance()">Editar saldo inicial</button>
+      </div>
+
       <!-- Two column: Products sold + Expenses -->
       <div class="admin-dashboard-grid">
         <!-- Products sold this month -->

@@ -10,6 +10,7 @@ import com.sexyshop.routing.image.imageRoutes
 import com.sexyshop.routing.order.orderRoutes
 import com.sexyshop.routing.payment.paymentRoutes
 import com.sexyshop.routing.product.productRoutes
+import com.sexyshop.routing.settings.settingsRoutes
 import com.sexyshop.routing.withdrawal.withdrawalRoutes
 import com.sexyshop.services.category.CategoryService
 import com.sexyshop.services.dashboard.DashboardService
@@ -17,6 +18,7 @@ import com.sexyshop.services.email.EmailService
 import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.order.OrderService
 import com.sexyshop.services.product.ProductService
+import io.github.jan.supabase.SupabaseClient
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
@@ -29,6 +31,7 @@ fun Application.configureRouting() {
     val imageService by inject<ImageService>()
     val dashboardService by inject<DashboardService>()
     val emailService by inject<EmailService>()
+    val supabaseClient by inject<SupabaseClient>()
     val expenseRepository by inject<ExpenseRepository>()
     val withdrawalRepository by inject<WithdrawalRepository>()
 
@@ -42,6 +45,7 @@ fun Application.configureRouting() {
             withdrawalRoutes(withdrawalRepository)
             dashboardRoutes(dashboardService)
             paymentRoutes(appConfig, orderService, emailService)
+            settingsRoutes(supabaseClient)
         }
     }
 }
