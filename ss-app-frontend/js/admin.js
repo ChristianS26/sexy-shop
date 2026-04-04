@@ -94,7 +94,9 @@ async function loadAll() {
 // ═══════════════════════════════════════════
 function showSection(section) {
   currentSection = section;
-  window.location.hash = section;
+  if (section !== 'products') {
+    window.location.hash = section;
+  }
 
   document.querySelectorAll('.admin-section').forEach(el => el.classList.add('admin-section--hidden'));
   document.getElementById(section + 'Section').classList.remove('admin-section--hidden');
@@ -112,9 +114,44 @@ function showSection(section) {
 }
 
 function getSectionFromHash() {
-  const hash = window.location.hash.replace('#', '');
+  const hash = window.location.hash.replace('#', '').split('?')[0];
   const valid = ['dashboard', 'categories', 'products', 'orders'];
   return valid.includes(hash) ? hash : 'dashboard';
+}
+
+function saveFiltersToHash() {
+  const params = new URLSearchParams();
+  if (productFilters.search) params.set('q', productFilters.search);
+  if (productFilters.category) params.set('cat', productFilters.category);
+  if (productFilters.status) params.set('st', productFilters.status);
+  if (productFilters.badge) params.set('badge', productFilters.badge);
+  if (productFilters.sort !== 'newest') params.set('sort', productFilters.sort);
+  if (productPage > 1) params.set('p', productPage);
+
+  const qs = params.toString();
+  window.location.hash = currentSection + (qs ? '?' + qs : '');
+}
+
+function loadFiltersFromHash() {
+  const hashParts = window.location.hash.replace('#', '').split('?');
+  if (hashParts.length < 2) return;
+
+  const params = new URLSearchParams(hashParts[1]);
+  productFilters.search = params.get('q') || '';
+  productFilters.category = params.get('cat') || '';
+  productFilters.status = params.get('st') || '';
+  productFilters.badge = params.get('badge') || '';
+  productFilters.sort = params.get('sort') || 'newest';
+  productPage = parseInt(params.get('p')) || 1;
+}
+
+function restoreFilterInputs() {
+  const el = (id) => document.getElementById(id);
+  if (el('productSearch')) el('productSearch').value = productFilters.search;
+  if (el('productCategoryFilter')) el('productCategoryFilter').value = productFilters.category;
+  if (el('productStatusFilter')) el('productStatusFilter').value = productFilters.status;
+  if (el('productBadgeFilter')) el('productBadgeFilter').value = productFilters.badge;
+  if (el('productSort')) el('productSort').value = productFilters.sort;
 }
 
 function renderSection(section) {
@@ -308,6 +345,8 @@ function renderProducts() {
 
   const start = (productPage - 1) * PRODUCTS_PER_PAGE;
   const pageProducts = filtered.slice(start, start + PRODUCTS_PER_PAGE);
+
+  saveFiltersToHash();
 
   // Update count
   document.getElementById('productCount').textContent = `${filtered.length} producto${filtered.length !== 1 ? 's' : ''} encontrado${filtered.length !== 1 ? 's' : ''}`;
@@ -847,8 +886,10 @@ async function init() {
 
   document.getElementById('modalOverlay').addEventListener('click', closeModals);
 
+  loadFiltersFromHash();
   await loadAll();
   showSection(getSectionFromHash());
+  restoreFilterInputs();
   document.querySelector('.admin-content').classList.add('ready');
 }
 
