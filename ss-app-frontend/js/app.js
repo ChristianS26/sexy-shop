@@ -181,7 +181,7 @@ function renderProducts() {
       <div class="product-image" onclick="openPdp('${product.id}')" style="cursor:pointer">
         ${product.primaryImage
           ? `<div class="product-image-bg" style="background:#fff"><img src="${product.primaryImage.image_url}" alt="${escapeHtml(product.name)}" style="width:100%;height:100%;object-fit:cover;"></div>`
-          : `<div class="product-image-bg product-no-image"><div class="product-no-image__icon">S<span>S</span></div></div>`
+          : `<div class="product-image-bg" style="background:${visuals.bg}"><span style="font-size:3.5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span></div>`
         }
         ${product.badge ? `<span class="product-badge badge-${product.badge}">${product.badge === 'new' ? 'Nuevo' : product.badge === 'hot' ? 'Popular' : 'Oferta'}</span>` : ''}
         ${product.stock <= 0 ? '<span class="product-badge badge-soldout">Agotado</span>' : ''}
@@ -523,7 +523,7 @@ function renderPdpGallery(product, images) {
   if (images.length === 0) {
     const visuals = getProductVisuals(product);
     const isDark = visuals.bg.includes('#1a1a2e');
-    mainEl.innerHTML = `<div class="pdp-gallery__placeholder product-no-image"><div class="product-no-image__icon product-no-image__icon--lg">S<span>S</span></div></div>`;
+    mainEl.innerHTML = `<div class="pdp-gallery__placeholder" style="background:${visuals.bg}"><span style="font-size:5rem;${isDark ? 'filter:brightness(2);' : ''}">${visuals.emoji}</span></div>`;
     thumbsEl.innerHTML = '';
     return;
   }
