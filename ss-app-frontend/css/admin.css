@@ -1556,7 +1556,95 @@ body {
 }
 
 .finance-stats {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Finance split */
+.finance-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.finance-split__card {
+  border-radius: var(--card-radius);
+  padding: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.finance-split__card--investor {
+  background: linear-gradient(135deg, #1a1a2e, #2d2d44);
+  color: #fff;
+  border: none;
+}
+
+.finance-split__card--partner {
+  background: var(--card-bg);
+}
+
+.finance-split__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+.finance-split__card--investor .finance-split__title {
+  color: rgba(255,255,255,0.6);
+}
+
+.finance-split__card--partner .finance-split__title {
+  color: var(--text-secondary);
+}
+
+.finance-split__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.finance-split__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+}
+
+.finance-split__card--investor .finance-split__row {
+  color: rgba(255,255,255,0.8);
+}
+
+.finance-split__row span:last-child {
+  font-weight: 600;
+}
+
+.finance-split__row--total {
+  padding-top: 10px;
+  margin-top: 4px;
+  font-size: 1.05rem;
+}
+
+.finance-split__card--investor .finance-split__row--total {
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.finance-split__card--partner .finance-split__row--total {
+  border-top: 1px solid var(--border-color);
+}
+
+.finance-split__row--total span:last-child {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.finance-split__card--investor .finance-split__row--total span:last-child {
+  color: #10b981;
+}
+
+.finance-split__card--partner .finance-split__row--total span:last-child {
+  color: var(--admin-primary);
 }
 
 /* Finance balance */
@@ -1660,6 +1748,10 @@ body {
 
   .finance-stats {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .finance-split {
+    grid-template-columns: 1fr;
   }
 
   .order-detail {

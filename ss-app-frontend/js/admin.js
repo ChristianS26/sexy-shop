@@ -1342,24 +1342,31 @@ async function loadFinanceData() {
   }
 
   const totalCost = Object.values(productSales).reduce((sum, p) => sum + p.cost, 0);
-  const grossProfit = revenue - totalCost;
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const netProfit = grossProfit - totalExpenses;
-  const ownerShare = Math.max(0, netProfit * 0.25);
+  const netProfit = revenue - totalCost - totalExpenses;
+  const commission25 = Math.max(0, netProfit * 0.25);
+  const commission75 = Math.max(0, netProfit * 0.75);
+  const totalInvestor = totalCost + commission25;
+  const totalPartner = commission75;
 
-  // Update cards
+  // Summary cards
   document.getElementById('finVentas').textContent = formatCurrency(revenue);
   document.getElementById('finCosto').textContent = formatCurrency(totalCost);
-  document.getElementById('finRendimiento').textContent = formatCurrency(grossProfit);
   document.getElementById('finGastos').textContent = formatCurrency(totalExpenses);
   document.getElementById('finGanancia').textContent = formatCurrency(netProfit);
-  document.getElementById('finMiParte').textContent = formatCurrency(ownerShare);
+
+  // Split cards
+  document.getElementById('finInvRecuperada').textContent = formatCurrency(totalCost);
+  document.getElementById('finComision25').textContent = formatCurrency(commission25);
+  document.getElementById('finTotalInv').textContent = formatCurrency(totalInvestor);
+  document.getElementById('finComision75').textContent = formatCurrency(commission75);
+  document.getElementById('finTotalSocia').textContent = formatCurrency(totalPartner);
 
   // Commission balance
   const totalWithdrawn = withdrawals.reduce((sum, w) => sum + w.amount, 0);
-  const commissionBalance = ownerShare - totalWithdrawn;
+  const commissionBalance = commission25 - totalWithdrawn;
   document.getElementById('finBalance').textContent = formatCurrency(commissionBalance);
-  document.getElementById('finBalanceSub').textContent = `${formatCurrency(ownerShare)} acumulado - ${formatCurrency(totalWithdrawn)} retirado`;
+  document.getElementById('finBalanceSub').textContent = `${formatCurrency(commission25)} comisión - ${formatCurrency(totalWithdrawn)} retirado`;
 
   // Products sold table
   const prodBody = document.getElementById('finProductsBody');
