@@ -55,60 +55,92 @@
 
     <!-- ===== DASHBOARD SECTION ===== -->
     <section class="admin-section admin-section--hidden" id="dashboardSection">
-
-      <!-- Stat cards -->
       <div class="admin-stats">
-        <div class="admin-stat-card">
+        <div class="admin-stat-card admin-stat-card--revenue">
+          <span class="admin-stat-card__icon">&#128176;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statRevenue">$0.00</span>
+            <span class="admin-stat-card__label">Ingresos totales</span>
+          </div>
+        </div>
+        <div class="admin-stat-card admin-stat-card--orders">
+          <span class="admin-stat-card__icon">&#128230;</span>
+          <div class="admin-stat-card__info">
+            <span class="admin-stat-card__value" id="statOrdersMonth">0</span>
+            <span class="admin-stat-card__label">Pedidos este mes</span>
+          </div>
+        </div>
+        <div class="admin-stat-card admin-stat-card--products">
           <span class="admin-stat-card__icon">&#9733;</span>
           <div class="admin-stat-card__info">
             <span class="admin-stat-card__value" id="statProducts">0</span>
-            <span class="admin-stat-card__label">Total Productos</span>
+            <span class="admin-stat-card__label">Productos activos</span>
           </div>
         </div>
-
-        <div class="admin-stat-card">
-          <span class="admin-stat-card__icon">&#9776;</span>
+        <div class="admin-stat-card admin-stat-card--alerts">
+          <span class="admin-stat-card__icon">&#9888;</span>
           <div class="admin-stat-card__info">
-            <span class="admin-stat-card__value" id="statCategories">0</span>
-            <span class="admin-stat-card__label">Categor&iacute;as</span>
-          </div>
-        </div>
-
-        <div class="admin-stat-card">
-          <span class="admin-stat-card__icon">&#9201;</span>
-          <div class="admin-stat-card__info">
-            <span class="admin-stat-card__value" id="statPendingOrders">0</span>
-            <span class="admin-stat-card__label">Pedidos Pendientes</span>
-          </div>
-        </div>
-
-        <div class="admin-stat-card">
-          <span class="admin-stat-card__icon">&#128230;</span>
-          <div class="admin-stat-card__info">
-            <span class="admin-stat-card__value" id="statTotalOrders">0</span>
-            <span class="admin-stat-card__label">Pedidos Totales</span>
+            <span class="admin-stat-card__value" id="statLowStock">0</span>
+            <span class="admin-stat-card__label">Stock bajo</span>
           </div>
         </div>
       </div>
 
-      <!-- Recent orders -->
-      <div class="admin-table-wrapper">
-        <h2 class="admin-table-wrapper__title">Pedidos Recientes</h2>
-        <div class="admin-table-scroll">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Pedido</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody id="recentOrdersTable">
-              <!-- Filled by admin.js -->
-            </tbody>
-          </table>
+      <div class="admin-dashboard-grid">
+        <div class="admin-table-wrapper">
+          <h2 class="admin-table-wrapper__title">&#128293; Productos m&aacute;s vendidos</h2>
+          <div class="admin-table-scroll">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Vendidos</th>
+                  <th>Ingresos</th>
+                </tr>
+              </thead>
+              <tbody id="topProductsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-table-wrapper">
+          <h2 class="admin-table-wrapper__title">&#9888; Alertas de stock bajo</h2>
+          <div class="admin-table-scroll">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Stock</th>
+                  <th>Acci&oacute;n</th>
+                </tr>
+              </thead>
+              <tbody id="lowStockBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-dashboard-grid">
+        <div class="admin-table-wrapper">
+          <h2 class="admin-table-wrapper__title">&#128202; Distribuci&oacute;n de pedidos</h2>
+          <div class="admin-status-distribution" id="statusDistribution"></div>
+        </div>
+
+        <div class="admin-table-wrapper">
+          <h2 class="admin-table-wrapper__title">&#128203; Pedidos recientes</h2>
+          <div class="admin-table-scroll">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="recentOrdersTable"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

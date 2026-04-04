@@ -178,28 +178,85 @@ function toggleSidebar() {
 // ═══════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════
-function renderDashboard() {
-  document.getElementById('statProducts').textContent = products.length;
-  document.getElementById('statCategories').textContent = categories.length;
-  const pending = orders.filter(o => o.status === 'pending').length;
-  document.getElementById('statPendingOrders').textContent = pending;
-  document.getElementById('statTotalOrders').textContent = orders.length;
+async function renderDashboard() {
+  try {
+    const stats = await api('/dashboard/stats');
 
-  const recent = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
-  const tbody = document.getElementById('recentOrdersTable');
-  if (recent.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No hay pedidos aún</td></tr>';
-    return;
+    document.getElementById('statRevenue').textContent = formatCurrency(stats.total_revenue);
+    document.getElementById('statOrdersMonth').textContent = stats.orders_this_month;
+    document.getElementById('statProducts').textContent = stats.total_products;
+    document.getElementById('statLowStock').textContent = stats.low_stock_alerts.length;
+
+    // Top products
+    const topBody = document.getElementById('topProductsBody');
+    if (stats.top_products.length === 0) {
+      topBody.innerHTML = '<tr><td colspan="3" class="table-empty">Sin ventas registradas</td></tr>';
+    } else {
+      topBody.innerHTML = stats.top_products.map(p => `
+        <tr>
+          <td><strong>${escapeHtml(p.name)}</strong></td>
+          <td>${p.total_sold}</td>
+          <td>${formatCurrency(p.revenue)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Low stock alerts
+    const lowBody = document.getElementById('lowStockBody');
+    if (stats.low_stock_alerts.length === 0) {
+      lowBody.innerHTML = '<tr><td colspan="3" class="table-empty">Todo el stock est&aacute; bien</td></tr>';
+    } else {
+      lowBody.innerHTML = stats.low_stock_alerts.map(p => `
+        <tr>
+          <td><strong>${escapeHtml(p.name)}</strong></td>
+          <td><span class="stock-badge ${p.stock <= 0 ? 'stock-out' : 'stock-low'}">${p.stock}</span></td>
+          <td><button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="showSection('products')">Ver</button></td>
+        </tr>
+      `).join('');
+    }
+
+    // Status distribution
+    const distEl = document.getElementById('statusDistribution');
+    const statusLabels = { pending: 'Pendiente', confirmed: 'Confirmado', shipped: 'Enviado', delivered: 'Entregado', cancelled: 'Cancelado' };
+    const statusColors = { pending: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444' };
+    const totalOrders = Object.values(stats.status_distribution).reduce((a, b) => a + b, 0) || 1;
+
+    let distHtml = '<div class="admin-status-bar">';
+    for (const [status, count] of Object.entries(stats.status_distribution)) {
+      const pct = ((count / totalOrders) * 100).toFixed(1);
+      distHtml += `<div class="admin-status-segment" style="width:${pct}%;background:${statusColors[status] || '#999'}" title="${statusLabels[status] || status}: ${count} (${pct}%)"></div>`;
+    }
+    distHtml += '</div><div class="admin-status-legend">';
+    for (const [status, count] of Object.entries(stats.status_distribution)) {
+      distHtml += `<div class="admin-status-legend__item"><span class="admin-status-legend__dot" style="background:${statusColors[status] || '#999'}"></span>${statusLabels[status] || status}: ${count}</div>`;
+    }
+    distHtml += '</div>';
+    distEl.innerHTML = distHtml;
+
+    // Recent orders (last 5)
+    const recent = orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+    const recentBody = document.getElementById('recentOrdersTable');
+    if (recent.length === 0) {
+      recentBody.innerHTML = '<tr><td colspan="4" class="table-empty">No hay pedidos a&uacute;n</td></tr>';
+    } else {
+      recentBody.innerHTML = recent.map(order => `
+        <tr style="cursor:pointer" onclick="showSection('orders')">
+          <td><code>${order.id.slice(0, 8)}</code></td>
+          <td>${escapeHtml(order.customer_name)}</td>
+          <td>${formatCurrency(order.total)}</td>
+          <td>${statusBadge(order.status)}</td>
+        </tr>
+      `).join('');
+    }
+
+  } catch (e) {
+    console.error('Dashboard error:', e);
+    // Fallback to basic stats from loaded data
+    document.getElementById('statRevenue').textContent = formatCurrency(0);
+    document.getElementById('statOrdersMonth').textContent = '0';
+    document.getElementById('statProducts').textContent = products.length;
+    document.getElementById('statLowStock').textContent = products.filter(p => p.stock <= 5 && p.is_active !== false).length;
   }
-  tbody.innerHTML = recent.map(order => `
-    <tr>
-      <td><code>${order.id.slice(0, 8)}</code></td>
-      <td>${escapeHtml(order.customer_name)}</td>
-      <td>$${order.total.toFixed(2)}</td>
-      <td>${statusBadge(order.status)}</td>
-      <td>${formatDate(order.created_at)}</td>
-    </tr>
-  `).join('');
 }
 
 // ═══════════════════════════════════════════

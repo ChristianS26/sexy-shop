@@ -1,10 +1,12 @@
 package com.sexyshop.routing
 
 import com.sexyshop.routing.category.categoryRoutes
+import com.sexyshop.routing.dashboard.dashboardRoutes
 import com.sexyshop.routing.image.imageRoutes
 import com.sexyshop.routing.order.orderRoutes
 import com.sexyshop.routing.product.productRoutes
 import com.sexyshop.services.category.CategoryService
+import com.sexyshop.services.dashboard.DashboardService
 import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.order.OrderService
 import com.sexyshop.services.product.ProductService
@@ -17,6 +19,7 @@ fun Application.configureRouting() {
     val productService by inject<ProductService>()
     val orderService by inject<OrderService>()
     val imageService by inject<ImageService>()
+    val dashboardService by inject<DashboardService>()
 
     routing {
         route("/api") {
@@ -24,6 +27,7 @@ fun Application.configureRouting() {
             productRoutes(productService, imageService)
             orderRoutes(orderService)
             imageRoutes(imageService)
+            dashboardRoutes(dashboardService)
         }
     }
 }
