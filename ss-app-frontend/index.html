@@ -341,16 +341,39 @@
     </div>
     <div class="checkout-form__fields">
       <div class="checkout-field">
-        <label for="checkoutName">Nombre *</label>
-        <input type="text" id="checkoutName" placeholder="Tu nombre completo" required>
+        <label for="checkoutName">Nombre completo *</label>
+        <input type="text" id="checkoutName" placeholder="Nombre de quien recibe" required>
       </div>
       <div class="checkout-field">
         <label for="checkoutPhone">WhatsApp *</label>
         <input type="tel" id="checkoutPhone" placeholder="622 123 4567" required>
       </div>
+      <div class="checkout-form__divider">Direcci&oacute;n de env&iacute;o</div>
       <div class="checkout-field">
-        <label for="checkoutAddress">Direcci&oacute;n de entrega</label>
-        <input type="text" id="checkoutAddress" placeholder="Calle, n&uacute;mero, colonia (opcional)">
+        <label for="checkoutStreet">Calle y n&uacute;mero *</label>
+        <input type="text" id="checkoutStreet" placeholder="Av. Serd&aacute;n #123" required>
+      </div>
+      <div class="checkout-field">
+        <label for="checkoutNeighborhood">Colonia *</label>
+        <input type="text" id="checkoutNeighborhood" placeholder="Centro" required>
+      </div>
+      <div class="checkout-row">
+        <div class="checkout-field">
+          <label for="checkoutCity">Ciudad *</label>
+          <input type="text" id="checkoutCity" placeholder="Guaymas" required>
+        </div>
+        <div class="checkout-field">
+          <label for="checkoutZip">C.P. *</label>
+          <input type="text" id="checkoutZip" placeholder="85400" maxlength="5" required>
+        </div>
+      </div>
+      <div class="checkout-field">
+        <label for="checkoutState">Estado *</label>
+        <input type="text" id="checkoutState" placeholder="Sonora" required>
+      </div>
+      <div class="checkout-field">
+        <label for="checkoutReferences">Referencias</label>
+        <input type="text" id="checkoutReferences" placeholder="Entre calles, color de casa, etc. (opcional)">
       </div>
       <div class="checkout-field">
         <label for="checkoutNotes">Notas</label>

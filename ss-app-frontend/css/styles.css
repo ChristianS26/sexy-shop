@@ -1936,6 +1936,22 @@ ul { list-style: none; }
   padding: 14px;
 }
 
+.checkout-form__divider {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-top: 8px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.checkout-row {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 10px;
+}
+
 .checkout-form__note {
   text-align: center;
   font-size: 0.75rem;

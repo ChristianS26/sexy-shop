@@ -376,11 +376,22 @@ async function processOrder() {
 
   if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
   if (!validatePhone('checkoutPhone')) return;
+  if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
+  if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
+  if (!validateCheckoutField('checkoutCity', 'Ciudad requerida')) return;
+  if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
+  if (!validateCheckoutField('checkoutState', 'Estado requerido')) return;
 
   const name = document.getElementById('checkoutName').value.trim();
   const phone = document.getElementById('checkoutPhone').value.trim();
-  const address = document.getElementById('checkoutAddress').value.trim();
+  const street = document.getElementById('checkoutStreet').value.trim();
+  const neighborhood = document.getElementById('checkoutNeighborhood').value.trim();
+  const city = document.getElementById('checkoutCity').value.trim();
+  const zip = document.getElementById('checkoutZip').value.trim();
+  const state = document.getElementById('checkoutState').value.trim();
+  const references = document.getElementById('checkoutReferences').value.trim();
   const notes = document.getElementById('checkoutNotes').value.trim();
+  const fullAddress = `${street}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
 
   const payBtn = document.getElementById('payBtn');
   payBtn.disabled = true;
@@ -390,7 +401,13 @@ async function processOrder() {
     const orderData = {
       customer_name: name,
       customer_phone: phone,
-      customer_address: address || null,
+      customer_address: fullAddress,
+      customer_street: street,
+      customer_neighborhood: neighborhood,
+      customer_city: city,
+      customer_state: state,
+      customer_zip: zip,
+      customer_references: references || null,
       notes: notes || null,
       items: cart.map(item => ({
         product_id: item.id,

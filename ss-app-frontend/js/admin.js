@@ -1027,7 +1027,7 @@ function renderOrders() {
       <td><code>${order.id.slice(0, 8)}</code></td>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone)}</td>
-      <td>${escapeHtml(order.customer_address || '—')}</td>
+      <td>${escapeHtml(order.customer_city || order.customer_address || '—')}</td>
       <td>${formatCurrency(order.total)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
@@ -1077,7 +1077,13 @@ async function viewOrder(id) {
     const phoneClean = (order.customer_phone || '').replace(/\D/g, '');
     phoneEl.innerHTML = `${escapeHtml(order.customer_phone)} <a href="https://wa.me/52${phoneClean}" target="_blank" class="order-wa-link" title="Contactar por WhatsApp">&#128172;</a>`;
 
-    document.getElementById('orderDetailAddress').textContent = order.customer_address || 'No especificada';
+    document.getElementById('orderDetailStreet').textContent = order.customer_street || order.customer_address || '—';
+    document.getElementById('orderDetailNeighborhood').textContent = order.customer_neighborhood || '—';
+    document.getElementById('orderDetailCityState').textContent =
+      (order.customer_city || order.customer_state || order.customer_zip)
+        ? `${order.customer_city || ''}, ${order.customer_state || ''}, C.P. ${order.customer_zip || ''}`
+        : '—';
+    document.getElementById('orderDetailReferences').textContent = order.customer_references || '—';
     document.getElementById('orderDetailNotes').value = order.notes || '';
     document.getElementById('orderDetailTotal').textContent = formatCurrency(order.total);
     document.getElementById('orderDetailDate').textContent = formatDate(order.created_at);
