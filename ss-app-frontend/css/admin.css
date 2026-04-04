@@ -706,34 +706,90 @@ body {
 }
 
 /* ═══════════════════════════════════════════
-   ORDER DETAIL
+   ORDER DETAIL — Two column layout
    ═══════════════════════════════════════════ */
-.admin-order-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+.admin-modal--order {
+  max-width: 900px;
+  width: 95%;
 }
 
-.admin-order-info__field {
+.admin-modal__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.order-detail {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 0;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.order-detail__sidebar {
+  padding: 20px;
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 16px;
+  background: #fafafa;
 }
 
-.admin-order-info__label {
+.order-detail__main {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-detail__card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 16px;
+}
+
+.order-detail__sidebar .order-detail__card {
+  border: none;
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.order-detail__card-title {
   font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.order-detail__field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 10px;
+}
+
+.order-detail__field:last-child {
+  margin-bottom: 0;
+}
+
+.order-detail__label {
+  font-size: 0.72rem;
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.admin-order-info__value {
-  font-size: 0.95rem;
+.order-detail__value {
+  font-size: 0.9rem;
   font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
 }
 
 .order-wa-link {
@@ -749,22 +805,52 @@ body {
   opacity: 1;
 }
 
-.admin-order-status-update {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-.admin-order-status-update__controls {
+.order-detail__quick-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.admin-order-status-update__controls .admin-form-group__select {
-  width: auto;
-  min-width: 180px;
+.order-detail__quick-actions .admin-btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+}
+
+.order-detail__status-manual {
+  display: flex;
+  gap: 8px;
+}
+
+.order-detail__status-manual .admin-form-group__select {
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.order-detail__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  margin-top: 12px;
+  background: var(--sidebar-bg);
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.order-detail__card .admin-table {
+  margin: 0 -16px;
+  width: calc(100% + 32px);
+}
+
+.order-detail__card .admin-table th,
+.order-detail__card .admin-table td {
+  padding: 10px 16px;
+  font-size: 0.82rem;
 }
 
 /* ═══════════════════════════════════════════
@@ -1084,27 +1170,7 @@ body {
   margin-top: 4px;
 }
 
-/* ═══════════════════════════════════════════
-   ORDER NOTES
-   ═══════════════════════════════════════════ */
-.admin-order-notes {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-/* ═══════════════════════════════════════════
-   QUICK ACTIONS
-   ═══════════════════════════════════════════ */
-.admin-order-quick-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-  padding: 16px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
+/* (order notes and quick actions are now inside order-detail cards) */
 
 /* ═══════════════════════════════════════════
    ORDER TIMELINE
@@ -1160,11 +1226,15 @@ body {
     overflow: visible;
   }
   .admin-modal__close,
-  .admin-order-quick-actions,
-  .admin-order-status-update,
+  .order-detail__quick-actions,
+  .order-detail__status-manual,
   .admin-overlay,
   .admin-overlay--confirm,
-  [onclick="printOrder()"] { display: none !important; }
+  .admin-modal__header-actions { display: none !important; }
+
+  .order-detail {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -1442,8 +1512,20 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .admin-order-info {
+  .order-detail {
     grid-template-columns: 1fr;
+  }
+
+  .order-detail__sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .admin-modal--order {
+    max-width: 100%;
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
   }
 
   .admin-modal {

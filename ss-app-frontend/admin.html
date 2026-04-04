@@ -473,84 +473,86 @@
   </div>
 
   <!-- ===== ORDER DETAIL MODAL ===== -->
-  <div class="admin-modal admin-modal--wide" id="orderDetailModal">
+  <div class="admin-modal admin-modal--order" id="orderDetailModal">
     <div class="admin-modal__header">
-      <h3 class="admin-modal__title">Detalle del Pedido</h3>
-      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="printOrder()" style="margin-left:auto;margin-right:8px">&#128424; Imprimir</button>
-      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+      <h3 class="admin-modal__title">Pedido <code id="orderDetailId">&mdash;</code></h3>
+      <div class="admin-modal__header-actions">
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="printOrder()">&#128424; Imprimir</button>
+        <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+      </div>
     </div>
 
-    <div class="admin-modal__body">
-      <div class="admin-order-info">
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Pedido:</span>
-          <span class="admin-order-info__value"><code id="orderDetailId">&mdash;</code></span>
+    <div class="order-detail">
+      <!-- Left: Customer info + actions -->
+      <div class="order-detail__sidebar">
+        <div class="order-detail__card">
+          <h4 class="order-detail__card-title">Cliente</h4>
+          <div class="order-detail__field">
+            <span class="order-detail__label">Nombre</span>
+            <span class="order-detail__value" id="orderDetailName">&mdash;</span>
+          </div>
+          <div class="order-detail__field">
+            <span class="order-detail__label">Tel&eacute;fono</span>
+            <span class="order-detail__value" id="orderDetailPhone">&mdash;</span>
+          </div>
+          <div class="order-detail__field">
+            <span class="order-detail__label">Direcci&oacute;n</span>
+            <span class="order-detail__value" id="orderDetailAddress">&mdash;</span>
+          </div>
+          <div class="order-detail__field">
+            <span class="order-detail__label">Fecha</span>
+            <span class="order-detail__value" id="orderDetailDate">&mdash;</span>
+          </div>
         </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Cliente:</span>
-          <span class="admin-order-info__value" id="orderDetailName">&mdash;</span>
+
+        <div class="order-detail__card">
+          <h4 class="order-detail__card-title">Notas</h4>
+          <textarea class="admin-form-group__textarea" id="orderDetailNotes" rows="2" placeholder="Agregar notas..."></textarea>
+          <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="saveOrderNotes()" style="margin-top:8px">Guardar</button>
         </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Tel&eacute;fono:</span>
-          <span class="admin-order-info__value" id="orderDetailPhone">&mdash;</span>
-        </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Direcci&oacute;n:</span>
-          <span class="admin-order-info__value" id="orderDetailAddress">&mdash;</span>
-        </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Total:</span>
-          <span class="admin-order-info__value" id="orderDetailTotal">&mdash;</span>
-        </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Fecha:</span>
-          <span class="admin-order-info__value" id="orderDetailDate">&mdash;</span>
+
+        <div class="order-detail__card">
+          <h4 class="order-detail__card-title">Estado</h4>
+          <div class="order-detail__quick-actions" id="orderQuickActions"></div>
+          <div class="order-detail__status-manual">
+            <select class="admin-form-group__select" id="orderStatusSelect">
+              <option value="pending">Pendiente</option>
+              <option value="confirmed">Confirmado</option>
+              <option value="shipped">Enviado</option>
+              <option value="delivered">Entregado</option>
+              <option value="cancelled">Cancelado</option>
+            </select>
+            <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="updateOrderStatus()">Cambiar</button>
+          </div>
         </div>
       </div>
 
-      <!-- Notas editables -->
-      <div class="admin-order-notes">
-        <label class="admin-form-group__label">Notas</label>
-        <textarea class="admin-form-group__textarea" id="orderDetailNotes" rows="2" placeholder="Agregar notas al pedido..."></textarea>
-        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="saveOrderNotes()" style="margin-top:8px">Guardar notas</button>
-      </div>
+      <!-- Right: Items + total + timeline -->
+      <div class="order-detail__main">
+        <div class="order-detail__card">
+          <h4 class="order-detail__card-title">Productos</h4>
+          <div class="admin-table-scroll">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cant.</th>
+                  <th>Precio</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="orderDetailItems"></tbody>
+            </table>
+          </div>
+          <div class="order-detail__total">
+            <span>Total</span>
+            <span id="orderDetailTotal">&mdash;</span>
+          </div>
+        </div>
 
-      <!-- Items -->
-      <div class="admin-table-scroll" style="margin-top:16px">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Cantidad</th>
-              <th>Precio</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody id="orderDetailItems"></tbody>
-        </table>
-      </div>
-
-      <!-- Quick actions -->
-      <div class="admin-order-quick-actions" id="orderQuickActions"></div>
-
-      <!-- Timeline -->
-      <div class="admin-order-timeline-section" style="margin-top:20px">
-        <h4 style="margin-bottom:12px;font-size:0.9rem;color:var(--text-secondary)">Historial</h4>
-        <div class="admin-order-timeline" id="orderTimeline"></div>
-      </div>
-
-      <!-- Status update -->
-      <div class="admin-order-status-update">
-        <label class="admin-form-group__label" for="orderStatusSelect">Cambiar estado:</label>
-        <div class="admin-order-status-update__controls">
-          <select class="admin-form-group__select" id="orderStatusSelect">
-            <option value="pending">Pendiente</option>
-            <option value="confirmed">Confirmado</option>
-            <option value="shipped">Enviado</option>
-            <option value="delivered">Entregado</option>
-            <option value="cancelled">Cancelado</option>
-          </select>
-          <button class="admin-btn admin-btn--primary" onclick="updateOrderStatus()">Actualizar</button>
+        <div class="order-detail__card">
+          <h4 class="order-detail__card-title">Historial</h4>
+          <div class="admin-order-timeline" id="orderTimeline"></div>
         </div>
       </div>
     </div>
