@@ -429,44 +429,47 @@
   <div class="admin-modal admin-modal--wide" id="orderDetailModal">
     <div class="admin-modal__header">
       <h3 class="admin-modal__title">Detalle del Pedido</h3>
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="printOrder()" style="margin-left:auto;margin-right:8px">&#128424; Imprimir</button>
       <button class="admin-modal__close" onclick="closeModals()">&times;</button>
     </div>
 
     <div class="admin-modal__body">
-      <!-- Customer info -->
       <div class="admin-order-info">
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Pedido:</span>
-          <span class="admin-order-info__value"><code id="orderDetailId">—</code></span>
+          <span class="admin-order-info__value"><code id="orderDetailId">&mdash;</code></span>
         </div>
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Cliente:</span>
-          <span class="admin-order-info__value" id="orderDetailName">—</span>
+          <span class="admin-order-info__value" id="orderDetailName">&mdash;</span>
         </div>
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Tel&eacute;fono:</span>
-          <span class="admin-order-info__value" id="orderDetailPhone">—</span>
+          <span class="admin-order-info__value" id="orderDetailPhone">&mdash;</span>
         </div>
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Direcci&oacute;n:</span>
-          <span class="admin-order-info__value" id="orderDetailAddress">—</span>
-        </div>
-        <div class="admin-order-info__field">
-          <span class="admin-order-info__label">Notas:</span>
-          <span class="admin-order-info__value" id="orderDetailNotes">—</span>
+          <span class="admin-order-info__value" id="orderDetailAddress">&mdash;</span>
         </div>
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Total:</span>
-          <span class="admin-order-info__value" id="orderDetailTotal">—</span>
+          <span class="admin-order-info__value" id="orderDetailTotal">&mdash;</span>
         </div>
         <div class="admin-order-info__field">
           <span class="admin-order-info__label">Fecha:</span>
-          <span class="admin-order-info__value" id="orderDetailDate">—</span>
+          <span class="admin-order-info__value" id="orderDetailDate">&mdash;</span>
         </div>
       </div>
 
-      <!-- Order items table -->
-      <div class="admin-table-scroll">
+      <!-- Notas editables -->
+      <div class="admin-order-notes">
+        <label class="admin-form-group__label">Notas</label>
+        <textarea class="admin-form-group__textarea" id="orderDetailNotes" rows="2" placeholder="Agregar notas al pedido..."></textarea>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="saveOrderNotes()" style="margin-top:8px">Guardar notas</button>
+      </div>
+
+      <!-- Items -->
+      <div class="admin-table-scroll" style="margin-top:16px">
         <table class="admin-table">
           <thead>
             <tr>
@@ -476,15 +479,22 @@
               <th>Subtotal</th>
             </tr>
           </thead>
-          <tbody id="orderDetailItems">
-            <!-- Filled by admin.js -->
-          </tbody>
+          <tbody id="orderDetailItems"></tbody>
         </table>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="admin-order-quick-actions" id="orderQuickActions"></div>
+
+      <!-- Timeline -->
+      <div class="admin-order-timeline-section" style="margin-top:20px">
+        <h4 style="margin-bottom:12px;font-size:0.9rem;color:var(--text-secondary)">Historial</h4>
+        <div class="admin-order-timeline" id="orderTimeline"></div>
       </div>
 
       <!-- Status update -->
       <div class="admin-order-status-update">
-        <label class="admin-form-group__label" for="orderStatusSelect">Actualizar estado:</label>
+        <label class="admin-form-group__label" for="orderStatusSelect">Cambiar estado:</label>
         <div class="admin-order-status-update__controls">
           <select class="admin-form-group__select" id="orderStatusSelect">
             <option value="pending">Pendiente</option>

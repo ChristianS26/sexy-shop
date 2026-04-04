@@ -812,29 +812,125 @@ async function viewOrder(id) {
     document.getElementById('orderDetailName').textContent = order.customer_name;
     document.getElementById('orderDetailPhone').textContent = order.customer_phone;
     document.getElementById('orderDetailAddress').textContent = order.customer_address || 'No especificada';
-    document.getElementById('orderDetailNotes').textContent = order.notes || 'Sin notas';
-    document.getElementById('orderDetailTotal').textContent = `$${order.total.toFixed(2)} MXN`;
+    document.getElementById('orderDetailNotes').value = order.notes || '';
+    document.getElementById('orderDetailTotal').textContent = formatCurrency(order.total);
     document.getElementById('orderDetailDate').textContent = formatDate(order.created_at);
 
     const select = document.getElementById('orderStatusSelect');
     select.value = order.status;
     select.dataset.orderId = order.id;
 
+    // Items table
     const tbody = document.getElementById('orderDetailItems');
     tbody.innerHTML = items.map(item => `
       <tr>
-        <td>${item.product_name}</td>
+        <td>${escapeHtml(item.product_name)}</td>
         <td>${item.quantity}</td>
-        <td>$${item.unit_price.toFixed(2)}</td>
-        <td>$${item.subtotal.toFixed(2)}</td>
+        <td>${formatCurrency(item.unit_price)}</td>
+        <td>${formatCurrency(item.subtotal)}</td>
       </tr>
     `).join('');
 
+    // Quick actions based on current status
+    renderQuickActions(order);
+
+    // Load timeline
+    loadOrderTimeline(order.id);
+
     openModal(document.getElementById('orderDetailModal'));
   } catch (e) {
-    showToast('Error al cargar detalle del pedido', true);
+    showToast('Error al cargar pedido', true);
     console.error(e);
   }
+}
+
+function renderQuickActions(order) {
+  const el = document.getElementById('orderQuickActions');
+  const transitions = {
+    pending: { next: 'confirmed', label: 'Confirmar pedido', color: '#3b82f6' },
+    confirmed: { next: 'shipped', label: 'Marcar como enviado', color: '#8b5cf6' },
+    shipped: { next: 'delivered', label: 'Marcar como entregado', color: '#10b981' },
+  };
+
+  const t = transitions[order.status];
+  let html = '';
+
+  if (t) {
+    html += `<button class="admin-btn" style="background:${t.color};color:#fff" onclick="quickStatusChange('${order.id}', '${t.next}')">${t.label}</button>`;
+  }
+
+  if (order.status !== 'cancelled' && order.status !== 'delivered') {
+    html += `<button class="admin-btn admin-btn--secondary" style="color:#ef4444;border-color:#ef4444" onclick="quickStatusChange('${order.id}', 'cancelled')">Cancelar pedido</button>`;
+  }
+
+  el.innerHTML = html || '<span style="color:var(--text-secondary);font-size:0.85rem">Pedido finalizado</span>';
+}
+
+async function quickStatusChange(orderId, newStatus) {
+  const labels = { confirmed: 'confirmar', shipped: 'enviar', delivered: 'entregar', cancelled: 'cancelar' };
+  const ok = await showConfirm('Cambiar estado', `¿Deseas ${labels[newStatus] || 'cambiar'} este pedido?`, labels[newStatus] === 'cancelar' ? 'Cancelar pedido' : 'Confirmar');
+  if (!ok) return;
+
+  try {
+    await api(`/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: newStatus }),
+    });
+    showToast('Estado actualizado');
+    closeModals();
+    await loadOrders();
+    renderOrders();
+  } catch (e) {
+    showToast('Error al actualizar estado', true);
+    console.error(e);
+  }
+}
+
+async function loadOrderTimeline(orderId) {
+  const el = document.getElementById('orderTimeline');
+  el.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Cargando...</span>';
+
+  try {
+    const events = await api(`/orders/${orderId}/timeline`);
+    if (events.length === 0) {
+      el.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Sin historial</span>';
+      return;
+    }
+
+    const eventIcons = { created: '🆕', status_change: '🔄', note_added: '📝' };
+    el.innerHTML = events.map(ev => `
+      <div class="admin-timeline-item">
+        <div class="admin-timeline-dot">${eventIcons[ev.event_type] || '•'}</div>
+        <div class="admin-timeline-content">
+          <div class="admin-timeline-desc">${escapeHtml(ev.description || ev.event_type)}</div>
+          <div class="admin-timeline-time">${formatDate(ev.created_at)}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Error al cargar historial</span>';
+  }
+}
+
+async function saveOrderNotes() {
+  const select = document.getElementById('orderStatusSelect');
+  const orderId = select.dataset.orderId;
+  const notes = document.getElementById('orderDetailNotes').value;
+
+  try {
+    await api(`/orders/${orderId}/notes`, {
+      method: 'PUT',
+      body: JSON.stringify({ notes }),
+    });
+    showToast('Notas guardadas');
+  } catch (e) {
+    showToast('Error al guardar notas', true);
+    console.error(e);
+  }
+}
+
+function printOrder() {
+  window.print();
 }
 
 async function updateOrderStatus() {

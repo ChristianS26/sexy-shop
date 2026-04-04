@@ -1,5 +1,6 @@
 package com.sexyshop.routing.order
 
+import com.sexyshop.models.order.OrderNotesUpdate
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.models.order.OrderStatusUpdate
 import com.sexyshop.services.order.OrderService
@@ -30,6 +31,17 @@ fun Route.orderRoutes(service: OrderService) {
             val id = call.parameters["id"]!!
             val update = call.receive<OrderStatusUpdate>()
             call.respond(service.updateStatus(id, update.status))
+        }
+
+        put("/{id}/notes") {
+            val id = call.parameters["id"]!!
+            val update = call.receive<OrderNotesUpdate>()
+            call.respond(service.updateNotes(id, update.notes))
+        }
+
+        get("/{id}/timeline") {
+            val id = call.parameters["id"]!!
+            call.respond(service.getTimeline(id))
         }
     }
 }

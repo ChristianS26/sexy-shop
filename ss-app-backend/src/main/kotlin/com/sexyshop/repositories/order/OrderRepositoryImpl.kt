@@ -1,10 +1,15 @@
 package com.sexyshop.repositories.order
 
 import com.sexyshop.models.order.Order
+import com.sexyshop.models.order.OrderEvent
 import com.sexyshop.models.order.OrderItem
+import kotlinx.serialization.Serializable
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order as QueryOrder
+
+@Serializable
+private data class NotesUpdate(val notes: String)
 
 class OrderRepositoryImpl(
     private val supabase: SupabaseClient,
@@ -62,5 +67,24 @@ class OrderRepositoryImpl(
                 filter { eq("order_id", orderId) }
             }
             .decodeList<OrderItem>()
+    }
+
+    override suspend fun updateNotes(id: String, notes: String) {
+        supabase.from("orders").update(NotesUpdate(notes)) {
+            filter { eq("id", id) }
+        }
+    }
+
+    override suspend fun createEvent(event: OrderEvent) {
+        supabase.from("order_events").insert(event)
+    }
+
+    override suspend fun getEventsByOrderId(orderId: String): List<OrderEvent> {
+        return supabase.from("order_events")
+            .select {
+                filter { eq("order_id", orderId) }
+                order("created_at", QueryOrder.DESCENDING)
+            }
+            .decodeList<OrderEvent>()
     }
 }

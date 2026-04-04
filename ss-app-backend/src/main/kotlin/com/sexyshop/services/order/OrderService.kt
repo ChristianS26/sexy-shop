@@ -1,6 +1,7 @@
 package com.sexyshop.services.order
 
 import com.sexyshop.models.order.Order
+import com.sexyshop.models.order.OrderEvent
 import com.sexyshop.models.order.OrderItem
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.repositories.order.OrderRepository
@@ -61,6 +62,14 @@ class OrderService(
         val itemsWithOrderId = orderItems.map { it.copy(orderId = order.id) }
         orderRepository.createItems(itemsWithOrderId)
 
+        // Log creation event
+        orderRepository.createEvent(OrderEvent(
+            orderId = order.id,
+            eventType = "created",
+            newValue = "pending",
+            description = "Pedido creado",
+        ))
+
         return order
     }
 
@@ -82,6 +91,31 @@ class OrderService(
             }
         }
 
-        return orderRepository.updateStatus(id, status)
+        val updatedOrder = orderRepository.updateStatus(id, status)
+
+        // Log status change event
+        orderRepository.createEvent(OrderEvent(
+            orderId = id,
+            eventType = "status_change",
+            oldValue = currentOrder.status,
+            newValue = status,
+            description = "Estado cambiado de ${currentOrder.status} a ${status}",
+        ))
+
+        return updatedOrder
+    }
+
+    suspend fun updateNotes(id: String, notes: String): Order {
+        orderRepository.updateNotes(id, notes)
+        orderRepository.createEvent(OrderEvent(
+            orderId = id,
+            eventType = "note_added",
+            description = "Notas actualizadas",
+        ))
+        return orderRepository.getById(id) ?: throw NoSuchElementException("Order not found: $id")
+    }
+
+    suspend fun getTimeline(orderId: String): List<OrderEvent> {
+        return orderRepository.getEventsByOrderId(orderId)
     }
 }
