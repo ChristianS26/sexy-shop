@@ -52,9 +52,17 @@ data class PreferenceResponse(
 )
 
 fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailService: EmailService, productService: ProductService) {
+    // Select credentials based on test mode
+    val activeToken = if (config.mpTestMode && config.mpTestAccessToken.isNotEmpty()) config.mpTestAccessToken else config.mpAccessToken
+    val activePublicKey = if (config.mpTestMode && config.mpTestPublicKey.isNotEmpty()) config.mpTestPublicKey else config.mpPublicKey
+
+    if (config.mpTestMode) {
+        logger.info("Mercado Pago running in TEST MODE")
+    }
+
     route("/payments") {
         post("/create-preference") {
-            if (config.mpAccessToken.isEmpty()) {
+            if (activeToken.isEmpty()) {
                 call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "Mercado Pago not configured"))
                 return@post
             }
@@ -118,7 +126,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             val client = HttpClient(CIO)
             try {
                 val response = client.post("https://api.mercadopago.com/checkout/preferences") {
-                    header("Authorization", "Bearer ${config.mpAccessToken}")
+                    header("Authorization", "Bearer $activeToken")
                     contentType(ContentType.Application.Json)
                     setBody(mpPayload.toString())
                 }
@@ -176,7 +184,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                     val client = HttpClient(CIO)
                     try {
                         val paymentResponse = client.get("https://api.mercadopago.com/v1/payments/$paymentId") {
-                            header("Authorization", "Bearer ${config.mpAccessToken}")
+                            header("Authorization", "Bearer $activeToken")
                         }
 
                         if (paymentResponse.status.isSuccess()) {
@@ -202,7 +210,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
         }
 
         get("/config") {
-            call.respond(mapOf("public_key" to config.mpPublicKey))
+            call.respond(mapOf("public_key" to activePublicKey, "test_mode" to config.mpTestMode))
         }
     }
 }
