@@ -24,7 +24,16 @@ class ProductService(
 
     suspend fun update(id: String, request: ProductRequest): Product = productRepository.update(id, request)
 
-    suspend fun activate(id: String) = productRepository.activate(id)
+    suspend fun toggleActive(id: String): Product {
+        val product = productRepository.getById(id)
+            ?: throw NoSuchElementException("Product not found: $id")
+        if (product.isActive) {
+            productRepository.deactivate(id)
+        } else {
+            productRepository.activate(id)
+        }
+        return productRepository.getById(id)!!
+    }
 
     suspend fun deactivate(id: String) = productRepository.deactivate(id)
 

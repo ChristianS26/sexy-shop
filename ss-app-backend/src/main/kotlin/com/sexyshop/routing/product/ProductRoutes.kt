@@ -39,10 +39,10 @@ fun Route.productRoutes(service: ProductService, imageService: ImageService) {
             call.respond(HttpStatusCode.NoContent)
         }
 
-        put("/{id}/activate") {
+        put("/{id}/toggle-active") {
             val id = call.parameters["id"]!!
-            service.activate(id)
-            call.respond(HttpStatusCode.NoContent)
+            val product = service.toggleActive(id)
+            call.respond(product)
         }
 
         delete("/{id}") {

@@ -602,7 +602,7 @@ function renderProducts() {
         ? `<img src="${p.primaryImage.image_url}" alt="" class="product-thumb">`
         : `<div class="product-thumb product-thumb--empty">&#128247;</div>`;
       return `
-      <tr class="${p.is_active === false ? 'row-inactive' : ''}">
+      <tr class="${p.is_active !== true ? 'row-inactive' : ''}">
         <td><input type="checkbox" class="product-checkbox" data-id="${p.id}" onchange="toggleProductSelect('${p.id}', this.checked)" ${selectedProducts.has(p.id) ? 'checked' : ''}></td>
         <td>${thumb}</td>
         <td><strong>${escapeHtml(p.name)}</strong></td>
@@ -616,9 +616,9 @@ function renderProducts() {
         </td>
         <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
         <td>
-          <button class="status-toggle ${p.is_active !== false ? 'status-toggle--active' : ''}" onclick="toggleProductActive('${p.id}')" title="${p.is_active !== false ? 'Desactivar' : 'Activar'}">
+          <button class="status-toggle ${p.is_active === true ? 'status-toggle--active' : ''}" onclick="toggleProductActive('${p.id}')" title="${p.is_active === true ? 'Desactivar' : 'Activar'}">
             <span class="status-toggle__dot"></span>
-            <span class="status-toggle__label">${p.is_active !== false ? 'Activo' : 'Inactivo'}</span>
+            <span class="status-toggle__label">${p.is_active === true ? 'Activo' : 'Inactivo'}</span>
           </button>
         </td>
         <td class="table-actions">
@@ -776,7 +776,7 @@ async function toggleProductActive(id) {
   const p = products.find(pr => pr.id === id);
   if (!p) return;
 
-  const isActive = p.is_active !== false;
+  const isActive = p.is_active === true;
   const action = isActive ? 'desactivar' : 'activar';
   const msg = isActive
     ? `¿Desactivar "${p.name}"? No se mostrará en la tienda.`
@@ -786,13 +786,8 @@ async function toggleProductActive(id) {
   if (!ok) return;
 
   try {
-    if (isActive) {
-      await api(`/products/${id}`, { method: 'DELETE' });
-      showToast('Producto desactivado');
-    } else {
-      await fetch(`${API_URL}/products/${id}/activate`, { method: 'PUT' });
-      showToast('Producto activado');
-    }
+    const result = await api(`/products/${id}/toggle-active`, { method: 'PUT' });
+    showToast(result.is_active ? 'Producto activado' : 'Producto desactivado');
     await loadProducts();
     renderProducts();
   } catch (e) {
