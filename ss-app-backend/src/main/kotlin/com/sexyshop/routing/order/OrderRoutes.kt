@@ -10,7 +10,6 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.launch
 
 fun Route.orderRoutes(service: OrderService, emailService: EmailService) {
     route("/orders") {
@@ -28,16 +27,14 @@ fun Route.orderRoutes(service: OrderService, emailService: EmailService) {
         post {
             val request = call.receive<OrderRequest>()
             val order = service.create(request)
-            call.respond(HttpStatusCode.Created, order)
 
-            // Send emails in background (non-blocking)
-            launch {
-                try {
-                    val (_, items) = service.getById(order.id)
-                    emailService.sendNewOrderNotificationToAdmin(order, items)
-                    // Send to customer if they provided a phone (we don't have email yet)
-                } catch (_: Exception) {}
-            }
+            // Send admin notification (before responding, fast enough)
+            try {
+                val (_, items) = service.getById(order.id)
+                emailService.sendNewOrderNotificationToAdmin(order, items)
+            } catch (_: Exception) {}
+
+            call.respond(HttpStatusCode.Created, order)
         }
 
         put("/{id}/status") {
