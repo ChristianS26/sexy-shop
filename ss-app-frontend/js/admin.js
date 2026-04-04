@@ -1138,7 +1138,14 @@ async function viewOrder(id) {
     }
 
     // Open modal first, then render dynamic content
-    openModal(document.getElementById('orderDetailModal'));
+    const orderModal = document.getElementById('orderDetailModal');
+    console.log('Order modal element:', orderModal, 'classList:', orderModal?.classList?.toString());
+    if (orderModal) {
+      openModal(orderModal);
+    } else {
+      console.error('orderDetailModal NOT FOUND in DOM');
+      showToast('Error: modal no encontrado', true);
+    }
 
     // Quick actions based on current status
     try { renderQuickActions(order); } catch (_) {}
