@@ -10,4 +10,5 @@ interface ProductRepository {
     suspend fun update(id: String, request: ProductRequest): Product
     suspend fun deactivate(id: String)
     suspend fun updateStock(id: String, newStock: Int)
+    suspend fun updateDisplayOrder(id: String, displayOrder: Int)
 }

@@ -25,4 +25,10 @@ class ProductService(
     suspend fun update(id: String, request: ProductRequest): Product = productRepository.update(id, request)
 
     suspend fun deactivate(id: String) = productRepository.deactivate(id)
+
+    suspend fun reorder(productIds: List<String>) {
+        productIds.forEachIndexed { index, id ->
+            productRepository.updateDisplayOrder(id, index)
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.sexyshop.routing.product
 
+import com.sexyshop.models.product.ProductReorderRequest
 import com.sexyshop.models.product.ProductRequest
 import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.product.ProductService
@@ -30,6 +31,12 @@ fun Route.productRoutes(service: ProductService, imageService: ImageService) {
             val id = call.parameters["id"]!!
             val request = call.receive<ProductRequest>()
             call.respond(service.update(id, request))
+        }
+
+        put("/reorder") {
+            val request = call.receive<ProductReorderRequest>()
+            service.reorder(request.productIds)
+            call.respond(HttpStatusCode.NoContent)
         }
 
         delete("/{id}") {

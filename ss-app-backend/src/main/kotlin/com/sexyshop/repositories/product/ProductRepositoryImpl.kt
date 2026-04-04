@@ -12,6 +12,15 @@ class ProductRepositoryImpl(
     private val supabase: SupabaseClient,
 ) : ProductRepository {
 
+    @Serializable
+    private data class StockUpdate(val stock: Int)
+
+    @Serializable
+    private data class ActiveUpdate(@SerialName("is_active") val isActive: Boolean)
+
+    @Serializable
+    private data class DisplayOrderUpdate(@SerialName("display_order") val displayOrder: Int)
+
     override suspend fun getAll(categoryId: String?, activeOnly: Boolean): List<Product> {
         return supabase.from("products")
             .select {
@@ -21,7 +30,7 @@ class ProductRepositoryImpl(
                 if (categoryId != null) {
                     filter { eq("category_id", categoryId) }
                 }
-                order("created_at", Order.DESCENDING)
+                order("display_order", Order.ASCENDING)
             }
             .decodeList<Product>()
     }
@@ -57,14 +66,21 @@ class ProductRepositoryImpl(
 
     override suspend fun deactivate(id: String) {
         supabase.from("products")
-            .update(mapOf("is_active" to false)) {
+            .update(ActiveUpdate(false)) {
                 filter { eq("id", id) }
             }
     }
 
     override suspend fun updateStock(id: String, newStock: Int) {
         supabase.from("products")
-            .update(mapOf("stock" to newStock)) {
+            .update(StockUpdate(newStock)) {
+                filter { eq("id", id) }
+            }
+    }
+
+    override suspend fun updateDisplayOrder(id: String, displayOrder: Int) {
+        supabase.from("products")
+            .update(DisplayOrderUpdate(displayOrder)) {
                 filter { eq("id", id) }
             }
     }

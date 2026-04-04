@@ -15,6 +15,7 @@ data class Product(
     val stock: Int = 0,
     val badge: String? = null,
     @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("display_order") val displayOrder: Int = 0,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
 )
@@ -29,6 +30,12 @@ data class ProductRequest(
     @SerialName("category_id") val categoryId: String,
     val stock: Int = 0,
     val badge: String? = null,
+    @SerialName("display_order") val displayOrder: Int = 0,
+)
+
+@Serializable
+data class ProductReorderRequest(
+    @SerialName("product_ids") val productIds: List<String>,
 )
 
 @Serializable

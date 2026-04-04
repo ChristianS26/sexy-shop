@@ -25,7 +25,7 @@ let productFilters = {
   category: '',
   status: '',
   badge: '',
-  sort: 'newest',
+  sort: 'manual',
 };
 let productPage = 1;
 const PRODUCTS_PER_PAGE = 10;
@@ -125,7 +125,7 @@ function saveFiltersToHash() {
   if (productFilters.category) params.set('cat', productFilters.category);
   if (productFilters.status) params.set('st', productFilters.status);
   if (productFilters.badge) params.set('badge', productFilters.badge);
-  if (productFilters.sort !== 'newest') params.set('sort', productFilters.sort);
+  if (productFilters.sort !== 'manual') params.set('sort', productFilters.sort);
   if (productPage > 1) params.set('p', productPage);
 
   const qs = params.toString();
@@ -141,7 +141,7 @@ function loadFiltersFromHash() {
   productFilters.category = params.get('cat') || '';
   productFilters.status = params.get('st') || '';
   productFilters.badge = params.get('badge') || '';
-  productFilters.sort = params.get('sort') || 'newest';
+  productFilters.sort = params.get('sort') || 'manual';
   productPage = parseInt(params.get('p')) || 1;
 }
 
@@ -326,6 +326,7 @@ function getFilteredProducts() {
 
   // Sort
   switch (productFilters.sort) {
+    case 'manual': filtered.sort((a, b) => a.display_order - b.display_order); break;
     case 'name-asc': filtered.sort((a, b) => a.name.localeCompare(b.name)); break;
     case 'name-desc': filtered.sort((a, b) => b.name.localeCompare(a.name)); break;
     case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
@@ -387,6 +388,10 @@ function renderProducts() {
         <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
         <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
         <td class="table-actions">
+          ${productFilters.sort === 'manual' ? `
+            <button class="btn-icon" onclick="moveProduct('${p.id}', -1)" title="Subir">&#9650;</button>
+            <button class="btn-icon" onclick="moveProduct('${p.id}', 1)" title="Bajar">&#9660;</button>
+          ` : ''}
           <button class="btn-icon btn-edit" onclick="openProductModal('${p.id}')" title="Editar">&#9998;</button>
           <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Desactivar">&#128465;</button>
         </td>
@@ -426,6 +431,28 @@ function handleProductSearch(value) {
     productPage = 1;
     renderProducts();
   }, 300);
+}
+
+async function moveProduct(productId, direction) {
+  const sorted = getFilteredProducts();
+  const ids = sorted.map(p => p.id);
+  const currentIndex = ids.indexOf(productId);
+  const newIndex = currentIndex + direction;
+  if (newIndex < 0 || newIndex >= ids.length) return;
+
+  [ids[currentIndex], ids[newIndex]] = [ids[newIndex], ids[currentIndex]];
+
+  try {
+    await api('/products/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ product_ids: ids }),
+    });
+    await loadProducts();
+    renderProducts();
+  } catch (e) {
+    showToast('Error al reordenar', true);
+    console.error(e);
+  }
 }
 
 function openProductModal(id) {
