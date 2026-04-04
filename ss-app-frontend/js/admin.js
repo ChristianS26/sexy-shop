@@ -49,7 +49,6 @@ const PRODUCTS_PER_PAGE = APP_CONFIG.PRODUCTS_PER_PAGE;
 let selectedProducts = new Set();
 let selectedOrders = new Set();
 let expenses = [];
-let withdrawals = [];
 let financeMonth = '';
 
 // ═══════════════════════════════════════════
@@ -1327,10 +1326,6 @@ async function loadFinanceData() {
     expenses = [];
   }
 
-  // Load all withdrawals
-  try {
-    withdrawals = await api('/withdrawals');
-  } catch (e) { withdrawals = []; }
 
   // Filter orders for this month (non-cancelled)
   const monthOrders = orders.filter(o => {
@@ -1385,11 +1380,6 @@ async function loadFinanceData() {
   document.getElementById('finComision75').textContent = formatCurrency(commission75);
   document.getElementById('finTotalSocia').textContent = formatCurrency(totalPartner);
 
-  // Commission balance
-  const totalWithdrawn = withdrawals.reduce((sum, w) => sum + w.amount, 0);
-  const commissionBalance = commission25 - totalWithdrawn;
-  document.getElementById('finBalance').textContent = formatCurrency(commissionBalance);
-  document.getElementById('finBalanceSub').textContent = `${formatCurrency(commission25)} comisión - ${formatCurrency(totalWithdrawn)} retirado`;
 
   // Products sold table
   const prodBody = document.getElementById('finProductsBody');
@@ -1419,21 +1409,6 @@ async function loadFinanceData() {
         <td>${formatCurrency(e.amount)}</td>
         <td>${e.expense_date}</td>
         <td><button class="btn-icon btn-delete" onclick="deleteExpense('${e.id}')" title="Eliminar">&#128465;</button></td>
-      </tr>
-    `).join('');
-  }
-
-  // Withdrawals table
-  const wBody = document.getElementById('finWithdrawalsBody');
-  if (withdrawals.length === 0) {
-    wBody.innerHTML = '<tr><td colspan="4" class="table-empty">Sin retiros registrados</td></tr>';
-  } else {
-    wBody.innerHTML = withdrawals.map(w => `
-      <tr>
-        <td><strong>${formatCurrency(w.amount)}</strong></td>
-        <td>${escapeHtml(w.description || '\u2014')}</td>
-        <td>${w.withdrawal_date}</td>
-        <td><button class="btn-icon btn-delete" onclick="deleteWithdrawal('${w.id}')" title="Eliminar">&#128465;</button></td>
       </tr>
     `).join('');
   }
@@ -1502,61 +1477,6 @@ async function deleteExpense(id) {
 // ═══════════════════════════════════════════
 // WITHDRAWALS
 // ═══════════════════════════════════════════
-function openWithdrawalModal() {
-  const form = document.getElementById('withdrawalForm');
-  form.reset();
-  document.getElementById('withdrawalDate').value = new Date().toISOString().slice(0, 10);
-  // Show available balance
-  const balance = document.getElementById('finBalance').textContent;
-  document.getElementById('withdrawalAvailable').textContent = balance;
-  openModal(document.getElementById('withdrawalModal'));
-}
-
-async function saveWithdrawal(e) {
-  e.preventDefault();
-  const amount = parseFloat(document.getElementById('withdrawalAmount').value);
-  const date = document.getElementById('withdrawalDate').value;
-  const desc = document.getElementById('withdrawalDesc').value.trim();
-
-  if (!amount || amount <= 0 || !date) {
-    showToast('Completa los campos requeridos', true);
-    return;
-  }
-
-  const btn = document.querySelector('#withdrawalForm button[type="submit"]');
-  setButtonLoading(btn, true, 'Confirmar retiro');
-
-  try {
-    await api('/withdrawals', {
-      method: 'POST',
-      body: JSON.stringify({
-        amount: amount,
-        description: desc || null,
-        withdrawal_date: date,
-      }),
-    });
-    showToast('Retiro registrado');
-    closeModals();
-    loadFinanceData();
-  } catch (err) {
-    showToast('Error al registrar retiro', true);
-  } finally {
-    setButtonLoading(btn, false, 'Confirmar retiro');
-  }
-}
-
-async function deleteWithdrawal(id) {
-  const ok = await showConfirm('Eliminar retiro', '\u00bfEliminar este retiro?');
-  if (!ok) return;
-  try {
-    await api(`/withdrawals/${id}`, { method: 'DELETE' });
-    showToast('Retiro eliminado');
-    loadFinanceData();
-  } catch (e) {
-    showToast('Error al eliminar', true);
-  }
-}
-
 // ═══════════════════════════════════════════
 // BULK OPERATIONS
 // ═══════════════════════════════════════════
@@ -1842,7 +1762,6 @@ async function init() {
   document.getElementById('categoryForm').addEventListener('submit', saveCategory);
   document.getElementById('productForm').addEventListener('submit', saveProduct);
   document.getElementById('expenseForm').addEventListener('submit', saveExpense);
-  document.getElementById('withdrawalForm').addEventListener('submit', saveWithdrawal);
 
   setupSlugGeneration('categoryName', 'categorySlug');
   setupSlugGeneration('productName', 'productSlug');
