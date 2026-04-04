@@ -4,10 +4,17 @@ import com.sexyshop.models.image.ProductImage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 class ImageRepositoryImpl(
     private val supabase: SupabaseClient,
 ) : ImageRepository {
+
+    @Serializable
+    private data class DisplayOrderUpdate(
+        @SerialName("display_order") val displayOrder: Int,
+    )
 
     override suspend fun getByProductId(productId: String): List<ProductImage> {
         return supabase.from("product_images")
@@ -37,9 +44,9 @@ class ImageRepositoryImpl(
             .decodeSingle<ProductImage>()
     }
 
-    override suspend fun update(id: String, fields: Map<String, Any>) {
+    override suspend fun updateDisplayOrder(id: String, displayOrder: Int) {
         supabase.from("product_images")
-            .update(fields) {
+            .update(DisplayOrderUpdate(displayOrder)) {
                 filter { eq("id", id) }
             }
     }

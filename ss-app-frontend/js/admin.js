@@ -525,25 +525,15 @@ async function uploadProductImages() {
     return;
   }
 
-  // Check if product already has images to determine primary and order
-  let existingImages = [];
-  try {
-    existingImages = await api(`/products/${editingProductId}/images`);
-  } catch (e) { /* no images yet */ }
-
-  const hasPrimary = existingImages.some(img => img.is_primary);
-  let nextOrder = existingImages.length;
-
   showToast(`Subiendo ${files.length} imagen(es)...`);
   let uploaded = 0;
   let errors = 0;
 
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
+  for (const file of files) {
     const formData = new FormData();
     formData.append('productId', editingProductId);
     formData.append('file', file);
-    formData.append('isPrimary', (!hasPrimary && i === 0) ? 'true' : 'false');
+    formData.append('isPrimary', 'false');
 
     try {
       const res = await fetch(`${API_URL}/images/upload`, {
@@ -551,17 +541,6 @@ async function uploadProductImages() {
         body: formData,
       });
       if (!res.ok) throw new Error();
-
-      // Set display_order for this image
-      const imgData = await res.json();
-      if (imgData.id) {
-        await api(`/images/${imgData.id}/order`, {
-          method: 'PUT',
-          body: JSON.stringify({ display_order: nextOrder }),
-        });
-      }
-
-      nextOrder++;
       uploaded++;
     } catch (e) {
       errors++;
@@ -596,31 +575,21 @@ async function deleteProductImage(imageId, productId) {
 async function moveImage(imageId, productId, direction) {
   try {
     const grid = document.getElementById('productImagesGrid');
-    const cards = grid.querySelectorAll('.product-image-card');
-    let currentOrder = -1;
+    const cards = Array.from(grid.querySelectorAll('.product-image-card'));
+    const ids = cards.map(c => c.dataset.imageId);
 
-    cards.forEach((card, i) => {
-      if (card.dataset.imageId === imageId) currentOrder = i;
-    });
+    const currentIndex = ids.indexOf(imageId);
+    const newIndex = currentIndex + direction;
+    if (newIndex < 0 || newIndex >= ids.length) return;
 
-    const newOrder = currentOrder + direction;
-    if (newOrder < 0 || newOrder >= cards.length) return;
+    // Swap in array
+    [ids[currentIndex], ids[newIndex]] = [ids[newIndex], ids[currentIndex]];
 
-    await fetch(`${API_URL}/images/${imageId}/order`, {
+    // Send full reorder
+    await api('/images/reorder', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ display_order: newOrder }),
+      body: JSON.stringify({ image_ids: ids }),
     });
-
-    // Swap the other image's order
-    const otherCard = cards[newOrder];
-    if (otherCard) {
-      await fetch(`${API_URL}/images/${otherCard.dataset.imageId}/order`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_order: currentOrder }),
-      });
-    }
 
     loadProductImages(productId);
   } catch (e) {

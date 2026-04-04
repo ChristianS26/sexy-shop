@@ -1,5 +1,6 @@
 package com.sexyshop.routing.image
 
+import com.sexyshop.models.image.ImageReorderRequest
 import com.sexyshop.services.image.ImageService
 import io.ktor.http.*
 import io.ktor.http.content.*
@@ -50,18 +51,9 @@ fun Route.imageRoutes(service: ImageService) {
             call.respond(HttpStatusCode.Created, response)
         }
 
-        put("/{id}/primary") {
-            val id = call.parameters["id"]!!
-            service.setPrimary(id)
-            call.respond(HttpStatusCode.NoContent)
-        }
-
-        put("/{id}/order") {
-            val id = call.parameters["id"]!!
-            @kotlinx.serialization.Serializable
-            data class OrderBody(val display_order: Int)
-            val body = call.receive<OrderBody>()
-            service.updateOrder(id, body.display_order)
+        put("/reorder") {
+            val request = call.receive<ImageReorderRequest>()
+            service.reorder(request.imageIds)
             call.respond(HttpStatusCode.NoContent)
         }
 

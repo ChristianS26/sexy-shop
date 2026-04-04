@@ -26,55 +26,47 @@ class ImageService(
         val extension = fileName.substringAfterLast('.', "jpg")
         val storagePath = "products/$productId/${UUID.randomUUID()}.$extension"
 
-        // Upload to Supabase Storage
         val bucket = supabase.storage.from(config.storageBucket)
         bucket.upload(storagePath, fileBytes)
 
-        // Get public URL
         val imageUrl = bucket.publicUrl(storagePath)
 
-        // Save reference in database
+        // Set display_order to next available
+        val existing = imageRepository.getByProductId(productId)
+        val nextOrder = if (existing.isEmpty()) 0 else existing.maxOf { it.displayOrder } + 1
+
         val image = imageRepository.create(
             ProductImage(
                 productId = productId,
                 imageUrl = imageUrl,
                 storagePath = storagePath,
                 isPrimary = isPrimary,
+                displayOrder = nextOrder,
             )
         )
 
         return ImageUploadResponse(id = image.id, imageUrl = image.imageUrl)
     }
 
-    suspend fun setPrimary(imageId: String) {
-        val image = imageRepository.getById(imageId)
-            ?: throw NoSuchElementException("Image not found: $imageId")
-
-        // Unset all as non-primary for this product
-        val allImages = imageRepository.getByProductId(image.productId)
-        allImages.forEach { img ->
-            if (img.isPrimary) {
-                imageRepository.update(img.id, mapOf("is_primary" to false))
-            }
+    suspend fun reorder(imageIds: List<String>) {
+        imageIds.forEachIndexed { index, id ->
+            imageRepository.updateDisplayOrder(id, index)
         }
-
-        // Set this one as primary
-        imageRepository.update(imageId, mapOf("is_primary" to true))
-    }
-
-    suspend fun updateOrder(imageId: String, displayOrder: Int) {
-        imageRepository.update(imageId, mapOf("display_order" to displayOrder))
     }
 
     suspend fun delete(id: String) {
         val image = imageRepository.getById(id)
             ?: throw NoSuchElementException("Image not found: $id")
 
-        // Delete from storage
         val bucket = supabase.storage.from(config.storageBucket)
         bucket.delete(image.storagePath)
 
-        // Delete from database
         imageRepository.delete(id)
+
+        // Re-index remaining images
+        val remaining = imageRepository.getByProductId(image.productId)
+        remaining.forEachIndexed { index, img ->
+            imageRepository.updateDisplayOrder(img.id, index)
+        }
     }
 }

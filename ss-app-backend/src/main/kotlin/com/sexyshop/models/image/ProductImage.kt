@@ -19,3 +19,8 @@ data class ImageUploadResponse(
     val id: String,
     @SerialName("image_url") val imageUrl: String,
 )
+
+@Serializable
+data class ImageReorderRequest(
+    @SerialName("image_ids") val imageIds: List<String>,
+)
