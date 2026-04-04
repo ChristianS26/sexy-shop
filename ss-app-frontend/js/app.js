@@ -120,7 +120,7 @@ function renderCategories() {
   const tabs = [allTab, ...categories];
 
   grid.innerHTML = tabs.map(cat => `
-    <button class="catalog-tab ${cat.id === activeCategory ? 'catalog-tab--active' : ''}"
+    <button type="button" class="catalog-tab ${cat.id === activeCategory ? 'catalog-tab--active' : ''}"
             onclick="filterCategory('${cat.id}')">
       <span class="catalog-tab__icon">${cat.icon}</span>
       <span class="catalog-tab__name">${escapeHtml(cat.name)}</span>
@@ -129,9 +129,18 @@ function renderCategories() {
 }
 
 function filterCategory(catId) {
+  // Save scroll position relative to the toolbar
+  const toolbar = document.getElementById('catalogToolbar');
+  const toolbarTop = toolbar.getBoundingClientRect().top + window.scrollY;
+
   activeCategory = catId;
   renderCategories();
   renderProducts();
+
+  // Restore scroll: keep toolbar at top if user was past it
+  if (window.scrollY > toolbarTop - 80) {
+    window.scrollTo({ top: toolbarTop - 80, behavior: 'instant' });
+  }
 }
 
 function changeStoreSort(value) {
