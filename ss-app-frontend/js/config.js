@@ -36,6 +36,39 @@ function isSessionExpired(session) {
   } catch { return true; }
 }
 
+function isSessionExpiringSoon(session) {
+  if (!session || !session.access_token) return true;
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+    // Expiring within 1 hour
+    return payload.exp < (Date.now() / 1000) + 3600;
+  } catch { return true; }
+}
+
+async function refreshSession(refreshToken) {
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${APP_CONFIG.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': APP_CONFIG.SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    const currentSession = getSession();
+    if (currentSession) {
+      currentSession.access_token = data.access_token;
+      currentSession.refresh_token = data.refresh_token;
+      localStorage.setItem('sb_session', JSON.stringify(currentSession));
+    }
+    return true;
+  } catch { return false; }
+}
+
 function clearSession() {
   localStorage.removeItem('sb_session');
 }

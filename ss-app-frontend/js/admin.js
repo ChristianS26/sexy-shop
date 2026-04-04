@@ -3,16 +3,25 @@
 // ═══════════════════════════════════════════
 const session = getSession();
 if (!session || session.role !== 'admin' || isSessionExpired(session)) {
-  clearSession();
-  window.location.href = 'login.html';
-}
-// Check session expiration every 5 minutes
-setInterval(() => {
-  if (isSessionExpired(getSession())) {
+  // Try refresh before kicking out
+  if (session && session.refresh_token) {
+    refreshSession(session.refresh_token).then(ok => {
+      if (!ok) { clearSession(); window.location.href = 'login.html'; }
+    });
+  } else {
     clearSession();
     window.location.href = 'login.html';
   }
-}, 5 * 60 * 1000);
+}
+// Auto-refresh session every 30 minutes
+setInterval(async () => {
+  const s = getSession();
+  if (!s) { window.location.href = 'login.html'; return; }
+  if (isSessionExpired(s) || isSessionExpiringSoon(s)) {
+    const ok = await refreshSession(s.refresh_token);
+    if (!ok) { clearSession(); window.location.href = 'login.html'; }
+  }
+}, 30 * 60 * 1000);
 
 // ═══════════════════════════════════════════
 // CONFIG
