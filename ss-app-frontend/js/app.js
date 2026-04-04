@@ -274,16 +274,17 @@ function updateCart() {
   countEl.classList.toggle('show', totalItems > 0);
 
   const itemsEl = document.getElementById('cartItems');
-  const emptyEl = document.getElementById('cartEmpty');
   const footerEl = document.getElementById('cartFooter');
 
   if (cart.length === 0) {
-    emptyEl.style.display = 'flex';
     footerEl.style.display = 'none';
-    itemsEl.innerHTML = '';
-    itemsEl.appendChild(emptyEl);
+    itemsEl.innerHTML = `
+      <div class="cart-empty">
+        <div class="cart-empty-icon">&#128722;</div>
+        <p>Tu carrito está vacío</p>
+        <small>Agrega productos para comenzar</small>
+      </div>`;
   } else {
-    emptyEl.style.display = 'none';
     footerEl.style.display = 'block';
     document.getElementById('cartTotal').textContent = `$${totalPrice.toFixed(2)} MXN`;
 
@@ -301,9 +302,9 @@ function updateCart() {
           <div class="cart-item-price">$${(item.price * item.qty).toFixed(2)}</div>
         </div>
         <div class="cart-item-qty">
-          <button onclick="updateQty('${item.id}', -1)">&minus;</button>
+          <button type="button" onclick="updateQty('${item.id}', -1)">&minus;</button>
           <span>${item.qty}</span>
-          <button onclick="updateQty('${item.id}', 1)">+</button>
+          <button type="button" onclick="updateQty('${item.id}', 1)">+</button>
         </div>
       </div>
     `;
