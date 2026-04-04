@@ -99,10 +99,20 @@ function toggleMenu() {
   document.getElementById('navLinks').classList.toggle('mobile-open');
 }
 
-document.querySelectorAll('.nav-link').forEach(link => {
-  link.addEventListener('click', () => {
+// Smooth scroll for all internal anchor links
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="#"]');
+  if (!link) return;
+
+  const href = link.getAttribute('href');
+  if (!href || href === '#') return;
+
+  const target = document.querySelector(href);
+  if (target) {
+    e.preventDefault();
     document.getElementById('navLinks').classList.remove('mobile-open');
-  });
+    target.scrollIntoView({ behavior: 'smooth' });
+  }
 });
 
 // ═══════════════════════════════════════════
@@ -132,14 +142,6 @@ function filterCategory(catId) {
   activeCategory = catId;
   renderCategories();
   renderProducts();
-
-  // Scroll to products grid if it's not visible
-  const grid = document.getElementById('productsGrid');
-  const rect = grid.getBoundingClientRect();
-  if (rect.top < 0 || rect.top > window.innerHeight) {
-    const toolbar = document.getElementById('catalogToolbar');
-    toolbar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 }
 
 function changeStoreSort(value) {

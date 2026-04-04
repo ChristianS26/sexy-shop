@@ -42,7 +42,6 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -1207,7 +1206,7 @@ ul { list-style: none; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
 
   .catalog { padding: 48px 0 40px; }
-  .catalog-toolbar { top: 72px; padding: 12px 0; }
+  .catalog-toolbar { padding: 12px 0; }
   .catalog-tab { padding: 8px 14px; font-size: 0.82rem; }
   .catalog-controls { flex-wrap: wrap; gap: 8px; }
 }
