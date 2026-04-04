@@ -732,6 +732,19 @@ body {
   font-weight: 500;
 }
 
+.order-wa-link {
+  display: inline-block;
+  margin-left: 6px;
+  text-decoration: none;
+  font-size: 1rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.order-wa-link:hover {
+  opacity: 1;
+}
+
 .admin-order-status-update {
   margin-top: 20px;
   padding-top: 20px;

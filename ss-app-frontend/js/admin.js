@@ -945,10 +945,25 @@ function startInlineEdit(productId, field, currentValue, cell) {
 // ═══════════════════════════════════════════
 // ORDERS
 // ═══════════════════════════════════════════
+let orderSearchQuery = '';
+
 function renderOrders() {
   const filterValue = document.getElementById('orderStatusFilter')?.value || 'all';
-  const filtered = filterValue === 'all' ? orders : orders.filter(o => o.status === filterValue);
+  let filtered = filterValue === 'all' ? orders : orders.filter(o => o.status === filterValue);
+
+  if (orderSearchQuery) {
+    const q = orderSearchQuery.toLowerCase();
+    filtered = filtered.filter(o =>
+      o.customer_name.toLowerCase().includes(q) ||
+      o.customer_phone.includes(q) ||
+      o.id.toLowerCase().startsWith(q)
+    );
+  }
+
   const sorted = [...filtered].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const countEl = document.getElementById('orderCount');
+  if (countEl) countEl.textContent = `${sorted.length} pedido${sorted.length !== 1 ? 's' : ''}`;
 
   const tbody = document.getElementById('ordersTable');
   if (sorted.length === 0) {
@@ -961,7 +976,7 @@ function renderOrders() {
       <td><code>${order.id.slice(0, 8)}</code></td>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone)}</td>
-      <td>$${order.total.toFixed(2)}</td>
+      <td>${formatCurrency(order.total)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
       <td class="table-actions">
@@ -975,6 +990,15 @@ function filterOrders() {
   renderOrders();
 }
 
+let orderSearchTimer;
+function handleOrderSearch(value) {
+  clearTimeout(orderSearchTimer);
+  orderSearchTimer = setTimeout(() => {
+    orderSearchQuery = value;
+    renderOrders();
+  }, 300);
+}
+
 async function viewOrder(id) {
   try {
     const data = await api(`/orders/${id}`);
@@ -983,7 +1007,11 @@ async function viewOrder(id) {
 
     document.getElementById('orderDetailId').textContent = order.id.slice(0, 8);
     document.getElementById('orderDetailName').textContent = order.customer_name;
-    document.getElementById('orderDetailPhone').textContent = order.customer_phone;
+
+    const phoneEl = document.getElementById('orderDetailPhone');
+    const phoneClean = (order.customer_phone || '').replace(/\D/g, '');
+    phoneEl.innerHTML = `${escapeHtml(order.customer_phone)} <a href="https://wa.me/52${phoneClean}" target="_blank" class="order-wa-link" title="Contactar por WhatsApp">&#128172;</a>`;
+
     document.getElementById('orderDetailAddress').textContent = order.customer_address || 'No especificada';
     document.getElementById('orderDetailNotes').value = order.notes || '';
     document.getElementById('orderDetailTotal').textContent = formatCurrency(order.total);
@@ -1089,6 +1117,9 @@ async function saveOrderNotes() {
   const select = document.getElementById('orderStatusSelect');
   const orderId = select.dataset.orderId;
   const notes = document.getElementById('orderDetailNotes').value;
+  const btn = document.querySelector('.admin-order-notes .admin-btn');
+
+  if (btn) setButtonLoading(btn, true, 'Guardar notas');
 
   try {
     await api(`/orders/${orderId}/notes`, {
@@ -1096,9 +1127,13 @@ async function saveOrderNotes() {
       body: JSON.stringify({ notes }),
     });
     showToast('Notas guardadas');
+    loadOrderTimeline(orderId);
+    await loadOrders();
   } catch (e) {
     showToast('Error al guardar notas', true);
     console.error(e);
+  } finally {
+    if (btn) setButtonLoading(btn, false, 'Guardar notas');
   }
 }
 
@@ -1298,13 +1333,26 @@ function exportProductsCSV() {
 }
 
 function exportOrdersCSV() {
+  const filterValue = document.getElementById('orderStatusFilter')?.value || 'all';
+  let filtered = filterValue === 'all' ? orders : orders.filter(o => o.status === filterValue);
+
+  if (orderSearchQuery) {
+    const q = orderSearchQuery.toLowerCase();
+    filtered = filtered.filter(o =>
+      o.customer_name.toLowerCase().includes(q) ||
+      o.customer_phone.includes(q) ||
+      o.id.toLowerCase().startsWith(q)
+    );
+  }
+
   const headers = ['ID', 'Cliente', 'Teléfono', 'Dirección', 'Total', 'Estado', 'Notas', 'Fecha'];
   const statusLabels = { pending: 'Pendiente', confirmed: 'Confirmado', shipped: 'Enviado', delivered: 'Entregado', cancelled: 'Cancelado' };
-  const rows = orders.map(o => [
+  const rows = filtered.map(o => [
     o.id.slice(0, 8), o.customer_name, o.customer_phone, o.customer_address || '', o.total, statusLabels[o.status] || o.status, o.notes || '', o.created_at ? new Date(o.created_at).toLocaleDateString('es-MX') : ''
   ]);
-  downloadCSV(arrayToCSV(headers, rows), `pedidos_${new Date().toISOString().slice(0, 10)}.csv`);
-  showToast(`${orders.length} pedidos exportados`);
+  const label = filterValue === 'all' ? 'todos' : filterValue;
+  downloadCSV(arrayToCSV(headers, rows), `pedidos_${label}_${new Date().toISOString().slice(0, 10)}.csv`);
+  showToast(`${filtered.length} pedidos exportados`);
 }
 
 // ═══════════════════════════════════════════

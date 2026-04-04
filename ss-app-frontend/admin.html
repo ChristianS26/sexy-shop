@@ -281,10 +281,13 @@
 
     <!-- ===== ORDERS SECTION ===== -->
     <section class="admin-section admin-section--hidden" id="ordersSection">
-      <div class="admin-section__header">
-        <h2 class="admin-section__title">Pedidos</h2>
-        <div class="admin-section__filters">
-          <select class="admin-select" id="orderStatusFilter" onchange="filterOrders()">
+      <div class="admin-toolbar">
+        <div class="admin-toolbar__search">
+          <span class="admin-toolbar__search-icon">&#128269;</span>
+          <input type="text" id="orderSearch" placeholder="Buscar por nombre, tel&eacute;fono o ID..." oninput="handleOrderSearch(this.value)">
+        </div>
+        <div class="admin-toolbar__filters">
+          <select id="orderStatusFilter" onchange="filterOrders()">
             <option value="all">Todos</option>
             <option value="pending">Pendiente</option>
             <option value="confirmed">Confirmado</option>
@@ -293,7 +296,13 @@
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
-        <button class="admin-btn admin-btn--secondary" onclick="exportOrdersCSV()">&#128190; CSV</button>
+        <div class="admin-toolbar__actions">
+          <button class="admin-btn admin-btn--secondary" onclick="exportOrdersCSV()">&#128190; CSV</button>
+        </div>
+      </div>
+
+      <div class="admin-stats-bar">
+        <span id="orderCount">0 pedidos</span>
       </div>
 
       <div class="admin-bulk-bar" id="orderBulkBar" style="display:none">
