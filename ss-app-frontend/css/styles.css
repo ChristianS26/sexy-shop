@@ -1931,9 +1931,47 @@ ul { list-style: none; }
   border-top: 1px solid var(--gray-200);
 }
 
+.checkout-payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .checkout-pay-btn {
-  font-size: 1rem;
+  width: 100%;
   padding: 14px;
+  border: none;
+  border-radius: 50px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.checkout-pay-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkout-pay-btn--mp {
+  background: #009ee3;
+  color: #fff;
+}
+
+.checkout-pay-btn--mp:hover {
+  background: #007eb8;
+}
+
+.checkout-pay-btn--wa {
+  background: transparent;
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-700);
+}
+
+.checkout-pay-btn--wa:hover {
+  border-color: #25d366;
+  color: #25d366;
 }
 
 .checkout-form__divider {

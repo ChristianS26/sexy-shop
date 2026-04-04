@@ -386,10 +386,15 @@
         <span class="cart-total-amount" id="checkoutTotal">$0.00</span>
       </div>
     </div>
-    <button class="cart-checkout checkout-pay-btn" id="payBtn" onclick="processOrder()">
-      Pagar pedido
-    </button>
-    <p class="checkout-form__note">El pago se coordina por WhatsApp despu&eacute;s de confirmar.</p>
+    <div class="checkout-payment-methods">
+      <button class="checkout-pay-btn checkout-pay-btn--mp" id="payMpBtn" onclick="payWithMercadoPago()">
+        Pagar con Mercado Pago
+      </button>
+      <button class="checkout-pay-btn checkout-pay-btn--wa" id="payWaBtn" onclick="processOrder()">
+        Coordinar por WhatsApp
+      </button>
+    </div>
+    <p class="checkout-form__note">Mercado Pago acepta tarjeta, OXXO y transferencia.</p>
   </div>
 </aside>
 

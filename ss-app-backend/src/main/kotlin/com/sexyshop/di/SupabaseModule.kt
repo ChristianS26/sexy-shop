@@ -1,15 +1,28 @@
 package com.sexyshop.di
 
+import com.sexyshop.config.AppConfig
 import com.sexyshop.config.SupabaseConfig
 import com.sexyshop.infrastructure.supabase.createSupabase
 import org.koin.dsl.module
 
 val supabaseModule = module {
     single {
+        AppConfig(
+            supabaseUrl = System.getenv("SUPABASE_URL") ?: error("SUPABASE_URL not set"),
+            supabaseApiKey = System.getenv("SUPABASE_API_KEY") ?: error("SUPABASE_API_KEY not set"),
+            supabaseBucket = System.getenv("SUPABASE_STORAGE_BUCKET") ?: "product-images",
+            mpAccessToken = System.getenv("MP_ACCESS_TOKEN") ?: "",
+            mpPublicKey = System.getenv("MP_PUBLIC_KEY") ?: "",
+            frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
+        )
+    }
+
+    single {
+        val app = get<AppConfig>()
         SupabaseConfig(
-            url = System.getenv("SUPABASE_URL") ?: error("SUPABASE_URL not set"),
-            apiKey = System.getenv("SUPABASE_API_KEY") ?: error("SUPABASE_API_KEY not set"),
-            storageBucket = System.getenv("SUPABASE_STORAGE_BUCKET") ?: "product-images",
+            url = app.supabaseUrl,
+            apiKey = app.supabaseApiKey,
+            storageBucket = app.supabaseBucket,
         )
     }
 

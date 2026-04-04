@@ -461,6 +461,79 @@ async function processOrder() {
   }
 }
 
+async function payWithMercadoPago() {
+  clearCheckoutErrors();
+
+  if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
+  if (!validatePhone('checkoutPhone')) return;
+  if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
+  if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
+  if (!validateCheckoutField('checkoutCity', 'Ciudad requerida')) return;
+  if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
+  if (!validateCheckoutField('checkoutState', 'Estado requerido')) return;
+
+  const btn = document.getElementById('payMpBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="checkout-spinner"></span> Conectando...';
+
+  try {
+    const items = cart.map(item => ({
+      product_id: item.id,
+      title: item.name,
+      quantity: item.qty,
+      unit_price: item.price,
+    }));
+
+    const res = await fetch(`${API_URL}/payments/create-preference`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items,
+        customer_name: document.getElementById('checkoutName').value.trim(),
+        customer_phone: document.getElementById('checkoutPhone').value.trim(),
+        customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
+        customer_street: document.getElementById('checkoutStreet').value.trim(),
+        customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),
+        customer_city: document.getElementById('checkoutCity').value.trim(),
+        customer_state: document.getElementById('checkoutState').value.trim(),
+        customer_zip: document.getElementById('checkoutZip').value.trim(),
+        customer_references: document.getElementById('checkoutReferences').value.trim() || null,
+        notes: document.getElementById('checkoutNotes').value.trim() || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al crear preferencia de pago');
+    }
+
+    const data = await res.json();
+
+    // Save cart to localStorage before redirecting (to create order on return)
+    localStorage.setItem('pending_mp_order', JSON.stringify({
+      items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
+      customer_name: document.getElementById('checkoutName').value.trim(),
+      customer_phone: document.getElementById('checkoutPhone').value.trim(),
+      customer_address: `${document.getElementById('checkoutStreet').value.trim()}, Col. ${document.getElementById('checkoutNeighborhood').value.trim()}, ${document.getElementById('checkoutCity').value.trim()}, ${document.getElementById('checkoutState').value.trim()}, C.P. ${document.getElementById('checkoutZip').value.trim()}`,
+      customer_street: document.getElementById('checkoutStreet').value.trim(),
+      customer_neighborhood: document.getElementById('checkoutNeighborhood').value.trim(),
+      customer_city: document.getElementById('checkoutCity').value.trim(),
+      customer_state: document.getElementById('checkoutState').value.trim(),
+      customer_zip: document.getElementById('checkoutZip').value.trim(),
+      customer_references: document.getElementById('checkoutReferences').value.trim() || null,
+      notes: document.getElementById('checkoutNotes').value.trim() || null,
+    }));
+
+    // Redirect to Mercado Pago
+    window.location.href = data.init_point;
+
+  } catch (err) {
+    showToast(err.message || 'Error al conectar con Mercado Pago');
+    btn.disabled = false;
+    btn.textContent = 'Pagar con Mercado Pago';
+  }
+}
+
 function closeAfterOrder() {
   hideCheckoutForm();
   toggleCart();
