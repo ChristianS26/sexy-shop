@@ -48,6 +48,8 @@ let productPage = 1;
 const PRODUCTS_PER_PAGE = APP_CONFIG.PRODUCTS_PER_PAGE;
 let selectedProducts = new Set();
 let selectedOrders = new Set();
+let expenses = [];
+let financeMonth = '';
 
 // ═══════════════════════════════════════════
 // API HELPERS
@@ -124,7 +126,7 @@ function showSection(section) {
   const activeLink = document.querySelector(`.admin-sidebar__link[data-section="${section}"]`);
   if (activeLink) activeLink.classList.add('admin-sidebar__link--active');
 
-  const titles = { dashboard: 'Dashboard', categories: 'Categorías', products: 'Productos', orders: 'Pedidos' };
+  const titles = { dashboard: 'Dashboard', categories: 'Categorías', products: 'Productos', orders: 'Pedidos', finances: 'Finanzas' };
   document.getElementById('sectionTitle').textContent = titles[section] || '';
 
   document.getElementById('adminSidebar').classList.remove('open');
@@ -134,7 +136,7 @@ function showSection(section) {
 
 function getSectionFromHash() {
   const hash = window.location.hash.replace('#', '').split('?')[0];
-  const valid = ['dashboard', 'categories', 'products', 'orders'];
+  const valid = ['dashboard', 'categories', 'products', 'orders', 'finances'];
   return valid.includes(hash) ? hash : 'dashboard';
 }
 
@@ -179,6 +181,7 @@ function renderSection(section) {
     case 'categories': renderCategories(); break;
     case 'products': renderProducts(); break;
     case 'orders': renderOrders(); break;
+    case 'finances': renderFinances(); break;
   }
 }
 
@@ -690,6 +693,7 @@ function openProductModal(id) {
     document.getElementById('productSlug').value = p.slug;
     document.getElementById('productDescription').value = p.description || '';
     document.getElementById('productPrice').value = p.price;
+    document.getElementById('productCostPrice').value = p.cost_price || 0;
     document.getElementById('productOldPrice').value = p.old_price || '';
     document.getElementById('productCategorySelect').value = p.category_id;
     document.getElementById('productStock').value = p.stock;
@@ -741,6 +745,7 @@ async function saveProduct(e) {
     slug: document.getElementById('productSlug').value.trim(),
     description: document.getElementById('productDescription').value.trim(),
     price: parseFloat(document.getElementById('productPrice').value),
+    cost_price: parseFloat(document.getElementById('productCostPrice').value) || 0,
     old_price: oldPriceVal ? parseFloat(oldPriceVal) : null,
     category_id: document.getElementById('productCategorySelect').value,
     stock: parseInt(document.getElementById('productStock').value) || 0,
@@ -1268,6 +1273,173 @@ function closeConfirmDialog(result = false) {
 }
 
 // ═══════════════════════════════════════════
+// FINANCES
+// ═══════════════════════════════════════════
+function renderFinances() {
+  // Set default month to current
+  const monthInput = document.getElementById('financeMonth');
+  if (!financeMonth) {
+    const now = new Date();
+    financeMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  monthInput.value = financeMonth;
+  loadFinanceData();
+}
+
+async function loadFinanceData() {
+  const monthInput = document.getElementById('financeMonth');
+  financeMonth = monthInput.value;
+  if (!financeMonth) return;
+
+  const [year, month] = financeMonth.split('-').map(Number);
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+  // Load expenses for the month
+  try {
+    expenses = await api(`/expenses?from=${from}&to=${to}`);
+  } catch (e) {
+    expenses = [];
+  }
+
+  // Filter orders for this month (non-cancelled)
+  const monthOrders = orders.filter(o => {
+    if (o.status === 'cancelled') return false;
+    if (!o.created_at) return false;
+    const d = o.created_at.slice(0, 10);
+    return d >= from && d <= to;
+  });
+
+  // Calculate revenue
+  const revenue = monthOrders.reduce((sum, o) => sum + o.total, 0);
+
+  // Calculate cost and product breakdown
+  // We need order items — load them for each order
+  const productSales = {};
+  for (const order of monthOrders) {
+    try {
+      const detail = await api(`/orders/${order.id}`);
+      const items = detail.items || [];
+      items.forEach(item => {
+        const product = products.find(p => p.id === item.product_id);
+        const costPrice = product ? (product.cost_price || 0) : 0;
+        const key = item.product_name;
+        if (!productSales[key]) {
+          productSales[key] = { name: key, qty: 0, revenue: 0, cost: 0 };
+        }
+        productSales[key].qty += item.quantity;
+        productSales[key].revenue += item.subtotal;
+        productSales[key].cost += costPrice * item.quantity;
+      });
+    } catch (e) { /* skip */ }
+  }
+
+  const totalCost = Object.values(productSales).reduce((sum, p) => sum + p.cost, 0);
+  const grossProfit = revenue - totalCost;
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const netProfit = grossProfit - totalExpenses;
+  const ownerShare = Math.max(0, netProfit * 0.25);
+
+  // Update cards
+  document.getElementById('finVentas').textContent = formatCurrency(revenue);
+  document.getElementById('finCosto').textContent = formatCurrency(totalCost);
+  document.getElementById('finRendimiento').textContent = formatCurrency(grossProfit);
+  document.getElementById('finGastos').textContent = formatCurrency(totalExpenses);
+  document.getElementById('finGanancia').textContent = formatCurrency(netProfit);
+  document.getElementById('finMiParte').textContent = formatCurrency(ownerShare);
+
+  // Products sold table
+  const prodBody = document.getElementById('finProductsBody');
+  const sortedProducts = Object.values(productSales).sort((a, b) => b.revenue - a.revenue);
+  if (sortedProducts.length === 0) {
+    prodBody.innerHTML = '<tr><td colspan="5" class="table-empty">Sin ventas este mes</td></tr>';
+  } else {
+    prodBody.innerHTML = sortedProducts.map(p => `
+      <tr>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${p.qty}</td>
+        <td>${formatCurrency(p.revenue)}</td>
+        <td>${formatCurrency(p.cost)}</td>
+        <td>${formatCurrency(p.revenue - p.cost)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Expenses table
+  const expBody = document.getElementById('finExpensesBody');
+  if (expenses.length === 0) {
+    expBody.innerHTML = '<tr><td colspan="4" class="table-empty">Sin gastos registrados</td></tr>';
+  } else {
+    expBody.innerHTML = expenses.map(e => `
+      <tr>
+        <td>${escapeHtml(e.description)}</td>
+        <td>${formatCurrency(e.amount)}</td>
+        <td>${e.expense_date}</td>
+        <td><button class="btn-icon btn-delete" onclick="deleteExpense('${e.id}')" title="Eliminar">&#128465;</button></td>
+      </tr>
+    `).join('');
+  }
+}
+
+function openExpenseModal() {
+  const form = document.getElementById('expenseForm');
+  form.reset();
+  // Default date to today
+  document.getElementById('expenseDate').value = new Date().toISOString().slice(0, 10);
+  openModal(document.getElementById('expenseModal'));
+}
+
+async function saveExpense(e) {
+  e.preventDefault();
+  const desc = document.getElementById('expenseDesc').value.trim();
+  const amount = parseFloat(document.getElementById('expenseAmount').value);
+  const date = document.getElementById('expenseDate').value;
+  const category = document.getElementById('expenseCategory').value;
+
+  if (!desc || !amount || !date) {
+    showToast('Completa todos los campos', true);
+    return;
+  }
+
+  const btn = document.querySelector('#expenseForm button[type="submit"]');
+  setButtonLoading(btn, true, 'Guardar');
+
+  try {
+    await api('/expenses', {
+      method: 'POST',
+      body: JSON.stringify({
+        description: desc,
+        amount: amount,
+        category: category,
+        expense_date: date,
+      }),
+    });
+    showToast('Gasto registrado');
+    closeModals();
+    loadFinanceData();
+  } catch (err) {
+    showToast('Error al registrar gasto', true);
+    console.error(err);
+  } finally {
+    setButtonLoading(btn, false, 'Guardar');
+  }
+}
+
+async function deleteExpense(id) {
+  const ok = await showConfirm('Eliminar gasto', '¿Eliminar este gasto?');
+  if (!ok) return;
+
+  try {
+    await api(`/expenses/${id}`, { method: 'DELETE' });
+    showToast('Gasto eliminado');
+    loadFinanceData();
+  } catch (e) {
+    showToast('Error al eliminar', true);
+  }
+}
+
+// ═══════════════════════════════════════════
 // BULK OPERATIONS
 // ═══════════════════════════════════════════
 function toggleProductSelect(id, checked) {
@@ -1551,6 +1723,7 @@ async function init() {
 
   document.getElementById('categoryForm').addEventListener('submit', saveCategory);
   document.getElementById('productForm').addEventListener('submit', saveProduct);
+  document.getElementById('expenseForm').addEventListener('submit', saveExpense);
 
   setupSlugGeneration('categoryName', 'categorySlug');
   setupSlugGeneration('productName', 'productSlug');

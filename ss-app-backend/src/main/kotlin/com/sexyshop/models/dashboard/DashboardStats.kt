@@ -14,6 +14,14 @@ data class DashboardStats(
     @SerialName("top_products") val topProducts: List<TopProduct>,
     @SerialName("low_stock_alerts") val lowStockAlerts: List<LowStockProduct>,
     @SerialName("status_distribution") val statusDistribution: Map<String, Int>,
+    @SerialName("total_cost") val totalCost: Double,
+    @SerialName("gross_profit") val grossProfit: Double,
+    @SerialName("total_expenses") val totalExpenses: Double,
+    @SerialName("net_profit") val netProfit: Double,
+    @SerialName("owner_share") val ownerShare: Double,
+    @SerialName("monthly_expenses") val monthlyExpenses: Double,
+    @SerialName("monthly_cost") val monthlyCost: Double,
+    @SerialName("monthly_profit") val monthlyProfit: Double,
 )
 
 @Serializable

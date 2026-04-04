@@ -1540,6 +1540,26 @@ body {
 }
 
 /* ═══════════════════════════════════════════
+   FINANCE HIGHLIGHT CARD
+   ═══════════════════════════════════════════ */
+.admin-stat-card--highlight {
+  background: linear-gradient(135deg, #1a1a2e, #2d2d44);
+  color: #fff;
+}
+
+.admin-stat-card--highlight .admin-stat-card__label {
+  color: rgba(255,255,255,0.7);
+}
+
+.admin-stat-card--highlight .admin-stat-card__icon {
+  background: rgba(233,30,99,0.2);
+}
+
+.finance-stats {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
 @media (max-width: 768px) {
@@ -1592,6 +1612,10 @@ body {
 
   .admin-form-row {
     grid-template-columns: 1fr;
+  }
+
+  .finance-stats {
+    grid-template-columns: 1fr 1fr;
   }
 
   .order-detail {

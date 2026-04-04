@@ -1,7 +1,9 @@
 package com.sexyshop.routing
 
+import com.sexyshop.repositories.expense.ExpenseRepository
 import com.sexyshop.routing.category.categoryRoutes
 import com.sexyshop.routing.dashboard.dashboardRoutes
+import com.sexyshop.routing.expense.expenseRoutes
 import com.sexyshop.routing.image.imageRoutes
 import com.sexyshop.routing.order.orderRoutes
 import com.sexyshop.routing.product.productRoutes
@@ -20,6 +22,7 @@ fun Application.configureRouting() {
     val orderService by inject<OrderService>()
     val imageService by inject<ImageService>()
     val dashboardService by inject<DashboardService>()
+    val expenseRepository by inject<ExpenseRepository>()
 
     routing {
         route("/api") {
@@ -27,6 +30,7 @@ fun Application.configureRouting() {
             productRoutes(productService, imageService)
             orderRoutes(orderService)
             imageRoutes(imageService)
+            expenseRoutes(expenseRepository)
             dashboardRoutes(dashboardService)
         }
     }

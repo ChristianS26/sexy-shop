@@ -26,6 +26,7 @@ fun Application.module() {
             productModule,
             orderModule,
             imageModule,
+            expenseModule,
             dashboardModule,
         )
     }
