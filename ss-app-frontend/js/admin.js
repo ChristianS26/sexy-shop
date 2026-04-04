@@ -717,11 +717,17 @@ function openModal(modal) {
   modal.classList.add('open');
 }
 
-function closeModals() {
+async function closeModals() {
+  const wasEditingProduct = editingProductId != null;
   document.getElementById('modalOverlay').classList.remove('open');
   document.querySelectorAll('.admin-modal').forEach(m => m.classList.remove('open'));
   editingCategoryId = null;
   editingProductId = null;
+
+  if (wasEditingProduct) {
+    await loadProducts();
+    renderProducts();
+  }
 }
 
 // ═══════════════════════════════════════════
