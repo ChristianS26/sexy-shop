@@ -393,9 +393,9 @@ async function processOrder() {
   const notes = document.getElementById('checkoutNotes').value.trim();
   const fullAddress = `${street}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
 
-  const payBtn = document.getElementById('payBtn');
+  const payBtn = document.getElementById('payWaBtn');
   payBtn.disabled = true;
-  payBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando pedido...';
+  payBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando...';
 
   try {
     const orderData = {
