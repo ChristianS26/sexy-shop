@@ -524,8 +524,8 @@ function getFilteredProducts() {
     filtered = filtered.filter(p => {
       const name = p.name.toLowerCase();
       const slug = p.slug.toLowerCase();
-      // Match if name or slug contains the query
-      if (name.includes(q) || slug.includes(q)) return true;
+      // Match if name contains the query
+      if (name.includes(q)) return true;
       // Match description only for 3+ char queries
       if (q.length >= 3 && (p.description || '').toLowerCase().includes(q)) return true;
       return false;
@@ -596,12 +596,7 @@ function renderProducts() {
       <tr class="${p.is_active === false ? 'row-inactive' : ''}">
         <td><input type="checkbox" class="product-checkbox" data-id="${p.id}" onchange="toggleProductSelect('${p.id}', this.checked)" ${selectedProducts.has(p.id) ? 'checked' : ''}></td>
         <td>${thumb}</td>
-        <td>
-          <div class="product-cell">
-            <strong>${escapeHtml(p.name)}</strong>
-            <small class="product-cell__slug">${escapeHtml(p.slug)}</small>
-          </div>
-        </td>
+        <td><strong>${escapeHtml(p.name)}</strong></td>
         <td>${cat ? cat.name : '—'}</td>
         <td class="inline-editable" onclick="startInlineEdit('${p.id}', 'price', ${p.price}, this)">
           <span class="price-current">$${p.price.toFixed(2)}</span>
@@ -713,13 +708,14 @@ async function saveProduct(e) {
   clearFieldErrors(form);
 
   const nameErr = validateRequired(document.getElementById('productName').value, 'Nombre');
-  const slugErr = validateSlug(document.getElementById('productSlug').value);
   const priceErr = validatePrice(document.getElementById('productPrice').value);
   const catErr = validateRequired(document.getElementById('productCategorySelect').value, 'Categoría');
   const stockErr = validateStock(document.getElementById('productStock').value);
 
+  // Auto-generate slug from name
+  document.getElementById('productSlug').value = generateSlug(document.getElementById('productName').value);
+
   if (nameErr) { showFieldError(document.getElementById('productName'), nameErr); return; }
-  if (slugErr) { showFieldError(document.getElementById('productSlug'), slugErr); return; }
   if (priceErr) { showFieldError(document.getElementById('productPrice'), priceErr); return; }
   if (catErr) { showFieldError(document.getElementById('productCategorySelect'), catErr); return; }
   if (stockErr) { showFieldError(document.getElementById('productStock'), stockErr); return; }
@@ -1450,9 +1446,7 @@ function setupSlugGeneration(nameId, slugId) {
   const nameInput = document.getElementById(nameId);
   const slugInput = document.getElementById(slugId);
   nameInput.addEventListener('input', () => {
-    if (!editingCategoryId && !editingProductId) {
-      slugInput.value = generateSlug(nameInput.value);
-    }
+    slugInput.value = generateSlug(nameInput.value);
   });
 }
 
