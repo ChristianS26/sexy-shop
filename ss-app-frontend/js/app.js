@@ -48,7 +48,7 @@ async function fetchProducts() {
         const imgRes = await fetch(`${API_URL}/products/${p.id}/images`);
         const images = await imgRes.json();
         p.images = images;
-        p.primaryImage = images.find(i => i.is_primary) || images[0] || null;
+        p.primaryImage = images[0] || null;
       } catch (e) {
         p.images = [];
         p.primaryImage = null;

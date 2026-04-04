@@ -65,7 +65,7 @@ async function loadProducts() {
     await Promise.all(products.map(async (p) => {
       try {
         const images = await api(`/products/${p.id}/images`);
-        p.primaryImage = images.find(i => i.is_primary) || images[0] || null;
+        p.primaryImage = images[0] || null;
       } catch (e) {
         p.primaryImage = null;
       }
@@ -497,15 +497,14 @@ async function loadProductImages(productId) {
       return;
     }
     grid.innerHTML = images.map((img, i) => `
-      <div class="product-image-card ${img.is_primary ? 'primary' : ''}" data-image-id="${img.id}">
+      <div class="product-image-card ${i === 0 ? 'primary' : ''}" data-image-id="${img.id}">
         <img src="${img.image_url}" alt="Producto">
         <div class="product-image-card__actions">
           ${i > 0 ? `<button type="button" class="product-image-card__btn" onclick="moveImage('${img.id}', '${productId}', -1)" title="Mover izquierda">&#9664;</button>` : ''}
           ${i < images.length - 1 ? `<button type="button" class="product-image-card__btn" onclick="moveImage('${img.id}', '${productId}', 1)" title="Mover derecha">&#9654;</button>` : ''}
-          ${!img.is_primary ? `<button type="button" class="product-image-card__btn" onclick="setPrimaryImage('${img.id}', '${productId}')" title="Hacer principal">&#11088;</button>` : ''}
           <button type="button" class="product-image-card__btn product-image-card__btn--delete" onclick="deleteProductImage('${img.id}', '${productId}')" title="Eliminar">&#10005;</button>
         </div>
-        ${img.is_primary ? '<div class="product-image-card__primary-label">Principal</div>' : ''}
+        ${i === 0 ? '<div class="product-image-card__primary-label">Principal</div>' : ''}
       </div>
     `).join('');
   } catch (e) {
@@ -590,17 +589,6 @@ async function deleteProductImage(imageId, productId) {
     loadProductImages(productId);
   } catch (e) {
     showToast('Error al eliminar imagen', true);
-    console.error(e);
-  }
-}
-
-async function setPrimaryImage(imageId, productId) {
-  try {
-    await fetch(`${API_URL}/images/${imageId}/primary`, { method: 'PUT' });
-    showToast('Imagen principal actualizada');
-    loadProductImages(productId);
-  } catch (e) {
-    showToast('Error al actualizar imagen', true);
     console.error(e);
   }
 }
