@@ -321,26 +321,38 @@ function toggleCart() {
   document.body.classList.toggle('no-scroll', !isOpen);
 }
 
-async function checkout() {
-  if (cart.length === 0) return;
+function showCheckoutForm() {
+  document.getElementById('cartItems').style.display = 'none';
+  document.getElementById('cartFooter').style.display = 'none';
+  document.getElementById('checkoutForm').style.display = 'flex';
+  document.getElementById('checkoutTotal').textContent = document.getElementById('cartTotal').textContent;
+}
 
-  const name = prompt('Tu nombre:');
-  if (!name) return;
-  const phone = prompt('Tu número de WhatsApp (10 dígitos):');
-  if (!phone) return;
-  const address = prompt('Dirección de entrega (opcional):') || '';
+function hideCheckoutForm() {
+  document.getElementById('checkoutForm').style.display = 'none';
+  document.getElementById('cartItems').style.display = 'block';
+  document.getElementById('cartFooter').style.display = 'block';
+}
 
-  const checkoutBtn = document.querySelector('.cart-checkout');
-  const originalBtnHtml = checkoutBtn?.innerHTML;
-  if (checkoutBtn) { checkoutBtn.disabled = true; checkoutBtn.textContent = 'Procesando pedido...'; }
+async function processOrder() {
+  const name = document.getElementById('checkoutName').value.trim();
+  const phone = document.getElementById('checkoutPhone').value.trim();
+  const address = document.getElementById('checkoutAddress').value.trim();
+  const notes = document.getElementById('checkoutNotes').value.trim();
+
+  if (!name) { showToast('Ingresa tu nombre'); return; }
+  if (!phone) { showToast('Ingresa tu número de WhatsApp'); return; }
+
+  const payBtn = document.getElementById('payBtn');
+  payBtn.disabled = true;
+  payBtn.textContent = 'Procesando...';
 
   try {
-    // Create order in API
     const orderData = {
       customer_name: name,
       customer_phone: phone,
       customer_address: address || null,
-      notes: null,
+      notes: notes || null,
       items: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
@@ -360,41 +372,41 @@ async function checkout() {
 
     const order = await res.json();
 
-    // Build WhatsApp message
-    let message = `Hola, acabo de hacer el pedido #${order.id.slice(0, 8)}:\n\n`;
-    let total = 0;
+    // Show success in the checkout form
+    document.getElementById('checkoutForm').innerHTML = `
+      <div class="checkout-success">
+        <div class="checkout-success__icon">&#10004;</div>
+        <h3 class="checkout-success__title">¡Pedido creado!</h3>
+        <p class="checkout-success__id">Pedido #${order.id.slice(0, 8)}</p>
+        <p class="checkout-success__msg">Te contactaremos por WhatsApp para coordinar el pago y la entrega.</p>
+        <a href="https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, acabo de hacer el pedido #${order.id.slice(0, 8)}. ¿Me pueden confirmar?`)}" target="_blank" class="checkout-success__wa-btn">
+          Confirmar por WhatsApp
+        </a>
+        <button class="checkout-success__close" onclick="closeAfterOrder()">Seguir comprando</button>
+      </div>
+    `;
 
-    cart.forEach(item => {
-      const subtotal = item.price * item.qty;
-      total += subtotal;
-      message += `• ${item.name} x${item.qty} — $${subtotal.toFixed(2)}\n`;
-    });
-
-    message += `\n*Total: $${total.toFixed(2)} MXN*`;
-    message += `\n\nNombre: ${name}`;
-    message += `\nTeléfono: ${phone}`;
-    if (address) message += `\nDirección: ${address}`;
-    message += `\n\n¿Me pueden confirmar forma de entrega? Gracias.`;
-
-    // Clear cart and refresh products (stock updated)
+    // Clear cart
     cart = [];
     saveCart();
     updateCart();
-    toggleCart();
     await fetchProducts();
     renderProducts();
 
-    showToast('Pedido creado exitosamente');
-
-    // Open WhatsApp
-    const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encoded}`, '_blank');
-
   } catch (err) {
     showToast(err.message || 'Error al crear pedido');
-    console.error(err);
-  } finally {
-    if (checkoutBtn) { checkoutBtn.disabled = false; checkoutBtn.innerHTML = originalBtnHtml; }
+    payBtn.disabled = false;
+    payBtn.textContent = 'Pagar pedido';
+  }
+}
+
+function closeAfterOrder() {
+  hideCheckoutForm();
+  toggleCart();
+  // Reset checkout form for next order
+  const form = document.getElementById('checkoutForm');
+  if (form.querySelector('.checkout-success')) {
+    location.reload();
   }
 }
 
