@@ -518,14 +518,18 @@ function closeCategoryOrder() {
 function getFilteredProducts() {
   let filtered = [...products];
 
-  // Search
-  if (productFilters.search) {
+  // Search (min 2 chars, match by word start)
+  if (productFilters.search && productFilters.search.length >= 2) {
     const q = productFilters.search.toLowerCase();
-    filtered = filtered.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      p.slug.toLowerCase().includes(q) ||
-      (p.description || '').toLowerCase().includes(q)
-    );
+    filtered = filtered.filter(p => {
+      const name = p.name.toLowerCase();
+      const slug = p.slug.toLowerCase();
+      // Match if name or slug contains the query
+      if (name.includes(q) || slug.includes(q)) return true;
+      // Match description only for 3+ char queries
+      if (q.length >= 3 && (p.description || '').toLowerCase().includes(q)) return true;
+      return false;
+    });
   }
 
   // Category
@@ -643,11 +647,23 @@ function handleProductFilter(field, value) {
 let productSearchTimer;
 function handleProductSearch(value) {
   clearTimeout(productSearchTimer);
+  const clearBtn = document.getElementById('productSearchClear');
+  if (clearBtn) clearBtn.style.display = value ? 'flex' : 'none';
   productSearchTimer = setTimeout(() => {
     productFilters.search = value;
     productPage = 1;
     renderProducts();
   }, 300);
+}
+
+function clearProductSearch() {
+  const input = document.getElementById('productSearch');
+  input.value = '';
+  document.getElementById('productSearchClear').style.display = 'none';
+  productFilters.search = '';
+  productPage = 1;
+  renderProducts();
+  input.focus();
 }
 
 function openProductModal(id) {
@@ -994,10 +1010,21 @@ function filterOrders() {
 let orderSearchTimer;
 function handleOrderSearch(value) {
   clearTimeout(orderSearchTimer);
+  const clearBtn = document.getElementById('orderSearchClear');
+  if (clearBtn) clearBtn.style.display = value ? 'flex' : 'none';
   orderSearchTimer = setTimeout(() => {
     orderSearchQuery = value;
     renderOrders();
   }, 300);
+}
+
+function clearOrderSearch() {
+  const input = document.getElementById('orderSearch');
+  input.value = '';
+  document.getElementById('orderSearchClear').style.display = 'none';
+  orderSearchQuery = '';
+  renderOrders();
+  input.focus();
 }
 
 async function viewOrder(id) {

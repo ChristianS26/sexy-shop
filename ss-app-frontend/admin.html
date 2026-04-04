@@ -200,6 +200,7 @@
         <div class="admin-toolbar__search">
           <span class="admin-toolbar__search-icon">&#128269;</span>
           <input type="text" id="productSearch" placeholder="Buscar productos..." oninput="handleProductSearch(this.value)">
+          <button type="button" class="admin-toolbar__search-clear" id="productSearchClear" onclick="clearProductSearch()" style="display:none">&times;</button>
         </div>
 
         <div class="admin-toolbar__filters">
@@ -285,6 +286,7 @@
         <div class="admin-toolbar__search">
           <span class="admin-toolbar__search-icon">&#128269;</span>
           <input type="text" id="orderSearch" placeholder="Buscar por nombre, tel&eacute;fono o ID..." oninput="handleOrderSearch(this.value)">
+          <button type="button" class="admin-toolbar__search-clear" id="orderSearchClear" onclick="clearOrderSearch()" style="display:none">&times;</button>
         </div>
         <div class="admin-toolbar__filters">
           <select id="orderStatusFilter" onchange="filterOrders()">
@@ -409,7 +411,7 @@
       <div class="admin-form-row">
         <div class="admin-form-group">
           <label class="admin-form-group__label" for="productPrice">Precio</label>
-          <input class="admin-form-group__input" type="number" id="productPrice" required min="0" step="0.01" placeholder="0.00">
+          <input class="admin-form-group__input" type="number" id="productPrice" required min="0.01" step="0.01" placeholder="0.00">
         </div>
 
         <div class="admin-form-group">
