@@ -261,10 +261,14 @@ body {
 }
 
 /* Status distribution */
+.admin-status-distribution {
+  padding: 0 24px 24px;
+}
+
 .admin-status-bar {
   display: flex;
-  height: 24px;
-  border-radius: 12px;
+  height: 10px;
+  border-radius: 6px;
   overflow: hidden;
   margin-bottom: 16px;
 }
@@ -275,11 +279,11 @@ body {
 }
 
 .admin-status-segment:first-child {
-  border-radius: 12px 0 0 12px;
+  border-radius: 6px 0 0 6px;
 }
 
 .admin-status-segment:last-child {
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 6px 6px 0;
 }
 
 .admin-status-legend {
