@@ -102,13 +102,21 @@ async function loadProducts() {
   }
 }
 
+let shipments = [];
+
 async function loadOrders() {
   try {
     orders = await api('/orders');
+    // Load shipments for all orders
+    try { shipments = await api('/shipping'); } catch (e) { shipments = []; }
   } catch (e) {
     console.error('Error loading orders:', e);
     showToast('Error al cargar pedidos', true);
   }
+}
+
+function getShipmentForOrder(orderId) {
+  return shipments.find(s => s.order_id === orderId) || null;
 }
 
 async function loadAll() {
@@ -1037,7 +1045,7 @@ function renderOrders() {
 
   const tbody = document.getElementById('ordersTable');
   if (sorted.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#128230;</div><div class="admin-empty-state__title">No hay pedidos</div><div class="admin-empty-state__subtitle">Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes compren.</div></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#128230;</div><div class="admin-empty-state__title">No hay pedidos</div><div class="admin-empty-state__subtitle">Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes compren.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = sorted.map(order => `
@@ -1050,6 +1058,11 @@ function renderOrders() {
       <td>${formatCurrency(order.total)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
+      <td>${(() => {
+        const s = getShipmentForOrder(order.id);
+        if (!s) return '<span class="shipping-tag shipping-tag--none">Sin guía</span>';
+        return `<a href="${escapeHtml(s.label_url || '#')}" target="_blank" class="shipping-tag shipping-tag--active" title="${escapeHtml(s.tracking_number)}">${escapeHtml(s.carrier?.toUpperCase())} &#128206;</a>`;
+      })()}</td>
       <td class="table-actions">
         <button class="btn-icon btn-view" onclick="viewOrder('${order.id}')" title="Ver detalle">&#128065;</button>
       </td>

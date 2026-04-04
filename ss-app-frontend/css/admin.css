@@ -1780,6 +1780,32 @@ body {
   color: var(--admin-primary);
 }
 
+/* Shipping tag in orders table */
+.shipping-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.shipping-tag--none {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.shipping-tag--active {
+  background: #ecfdf5;
+  color: #047857;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.shipping-tag--active:hover {
+  background: #d1fae5;
+}
+
 /* Shipping preview */
 .shipping-preview {
   border: 1px solid var(--border-color);

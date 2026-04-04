@@ -9,6 +9,12 @@ class ShipmentRepositoryImpl(
     private val supabase: SupabaseClient,
 ) : ShipmentRepository {
 
+    override suspend fun getAll(): List<Shipment> {
+        return supabase.from("shipments")
+            .select()
+            .decodeList<Shipment>()
+    }
+
     override suspend fun getByOrderId(orderId: String): Shipment? {
         return supabase.from("shipments")
             .select {

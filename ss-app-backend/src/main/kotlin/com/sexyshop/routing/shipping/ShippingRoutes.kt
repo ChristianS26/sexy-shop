@@ -244,6 +244,12 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
             }
         }
 
+        // Get all shipments
+        get {
+            if (!call.requireAdmin(supabase)) return@get
+            call.respond(shipmentRepository.getAll())
+        }
+
         // Get shipment for an order
         get("/order/{orderId}") {
             if (!call.requireAdmin(supabase)) return@get
