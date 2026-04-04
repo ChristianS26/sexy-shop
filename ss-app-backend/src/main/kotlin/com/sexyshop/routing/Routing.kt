@@ -39,7 +39,7 @@ fun Application.configureRouting() {
             expenseRoutes(expenseRepository)
             withdrawalRoutes(withdrawalRepository)
             dashboardRoutes(dashboardService)
-            paymentRoutes(appConfig)
+            paymentRoutes(appConfig, orderService)
         }
     }
 }

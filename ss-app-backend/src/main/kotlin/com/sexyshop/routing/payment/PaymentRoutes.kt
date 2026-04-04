@@ -1,6 +1,9 @@
 package com.sexyshop.routing.payment
 
 import com.sexyshop.config.AppConfig
+import com.sexyshop.models.order.OrderItemRequest
+import com.sexyshop.models.order.OrderRequest
+import com.sexyshop.services.order.OrderService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.request.*
@@ -42,7 +45,7 @@ data class PreferenceResponse(
     @SerialName("init_point") val initPoint: String,
 )
 
-fun Route.paymentRoutes(config: AppConfig) {
+fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
     route("/payments") {
         post("/create-preference") {
             if (config.mpAccessToken.isEmpty()) {
@@ -52,7 +55,6 @@ fun Route.paymentRoutes(config: AppConfig) {
 
             val request = call.receive<CreatePreferenceRequest>()
 
-            // Build MP preference payload
             val mpItems = buildJsonArray {
                 request.items.forEach { item ->
                     addJsonObject {
@@ -64,7 +66,6 @@ fun Route.paymentRoutes(config: AppConfig) {
                 }
             }
 
-            // Store order data as external_reference (JSON string with customer info)
             val orderMeta = buildJsonObject {
                 put("customer_name", request.customerName)
                 put("customer_phone", request.customerPhone)
@@ -96,9 +97,9 @@ fun Route.paymentRoutes(config: AppConfig) {
                 })
                 put("auto_return", "approved")
                 put("statement_descriptor", "SEXY SHOP")
+                put("notification_url", "https://ss-app-backend-production.up.railway.app/api/payments/webhook")
             }
 
-            // Call MP API
             val client = HttpClient(CIO)
             try {
                 val response = client.post("https://api.mercadopago.com/checkout/preferences") {
@@ -114,7 +115,7 @@ fun Route.paymentRoutes(config: AppConfig) {
                     call.respond(PreferenceResponse(id = prefId, initPoint = initPoint))
                 } else {
                     val errorBody = response.bodyAsText()
-                    call.application.log.error("MP error: $errorBody")
+                    call.application.log.error("MP preference error: $errorBody")
                     call.respond(HttpStatusCode.BadGateway, mapOf("error" to "Error creating payment preference"))
                 }
             } finally {
@@ -122,9 +123,93 @@ fun Route.paymentRoutes(config: AppConfig) {
             }
         }
 
-        // MP public key for frontend
+        // Mercado Pago webhook
+        post("/webhook") {
+            val body = call.receiveText()
+            call.application.log.info("MP webhook received: $body")
+
+            // Respond 200 immediately (MP requires fast response)
+            call.respond(HttpStatusCode.OK)
+
+            // Parse webhook
+            try {
+                val json = Json.parseToJsonElement(body).jsonObject
+                val type = json["type"]?.jsonPrimitive?.content
+                val action = json["action"]?.jsonPrimitive?.content
+
+                if (type == "payment" && action == "payment.created") {
+                    val paymentId = json["data"]?.jsonObject?.get("id")?.jsonPrimitive?.content
+                        ?: return@post
+
+                    // Get payment details from MP API
+                    val client = HttpClient(CIO)
+                    try {
+                        val paymentResponse = client.get("https://api.mercadopago.com/v1/payments/$paymentId") {
+                            header("Authorization", "Bearer ${config.mpAccessToken}")
+                        }
+
+                        if (paymentResponse.status.isSuccess()) {
+                            val payment = Json.parseToJsonElement(paymentResponse.bodyAsText()).jsonObject
+                            val status = payment["status"]?.jsonPrimitive?.content
+
+                            if (status == "approved") {
+                                val externalRef = payment["external_reference"]?.jsonPrimitive?.content
+                                if (externalRef != null) {
+                                    createOrderFromPayment(externalRef, orderService, call)
+                                }
+                            }
+
+                            call.application.log.info("MP payment $paymentId status: $status")
+                        }
+                    } finally {
+                        client.close()
+                    }
+                }
+            } catch (e: Exception) {
+                call.application.log.error("Webhook processing error", e)
+            }
+        }
+
         get("/config") {
             call.respond(mapOf("public_key" to config.mpPublicKey))
         }
+    }
+}
+
+private suspend fun createOrderFromPayment(
+    externalReference: String,
+    orderService: OrderService,
+    call: io.ktor.server.routing.RoutingCall,
+) {
+    try {
+        val meta = Json.parseToJsonElement(externalReference).jsonObject
+        val items = meta["items"]?.jsonArray?.map { item ->
+            val obj = item.jsonObject
+            OrderItemRequest(
+                productId = obj["product_id"]!!.jsonPrimitive.content,
+                quantity = obj["quantity"]!!.jsonPrimitive.int,
+            )
+        } ?: return
+
+        val orderRequest = OrderRequest(
+            customerName = meta["customer_name"]!!.jsonPrimitive.content,
+            customerPhone = meta["customer_phone"]!!.jsonPrimitive.content,
+            customerAddress = meta["customer_address"]?.jsonPrimitive?.content,
+            customerStreet = meta["customer_street"]?.jsonPrimitive?.content,
+            customerNeighborhood = meta["customer_neighborhood"]?.jsonPrimitive?.content,
+            customerCity = meta["customer_city"]?.jsonPrimitive?.content,
+            customerState = meta["customer_state"]?.jsonPrimitive?.content,
+            customerZip = meta["customer_zip"]?.jsonPrimitive?.content,
+            customerReferences = meta["customer_references"]?.jsonPrimitive?.content,
+            notes = (meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]",
+            items = items,
+        )
+
+        val order = orderService.create(orderRequest)
+        // Auto-confirm since payment is approved
+        orderService.updateStatus(order.id, "confirmed")
+        call.application.log.info("Order created from MP payment: ${order.id}")
+    } catch (e: Exception) {
+        call.application.log.error("Failed to create order from MP payment", e)
     }
 }

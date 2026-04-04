@@ -6,5 +6,6 @@ data class AppConfig(
     val supabaseBucket: String,
     val mpAccessToken: String,
     val mpPublicKey: String,
+    val mpWebhookSecret: String,
     val frontendUrl: String,
 )

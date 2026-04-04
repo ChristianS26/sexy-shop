@@ -13,6 +13,7 @@ val supabaseModule = module {
             supabaseBucket = System.getenv("SUPABASE_STORAGE_BUCKET") ?: "product-images",
             mpAccessToken = System.getenv("MP_ACCESS_TOKEN") ?: "",
             mpPublicKey = System.getenv("MP_PUBLIC_KEY") ?: "",
+            mpWebhookSecret = System.getenv("MP_WEBHOOK_SECRET") ?: "",
             frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
         )
     }

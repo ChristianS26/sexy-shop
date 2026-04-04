@@ -80,6 +80,11 @@
 </style>
 </head>
 <body>
+  <script>
+    // Clear cart after successful payment
+    localStorage.removeItem('cart');
+    localStorage.removeItem('pending_mp_order');
+  </script>
   <div class="result-card">
     <div class="result-icon result-icon--success">&#10004;</div>
     <h1 class="result-title">Pago exitoso</h1>
