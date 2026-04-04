@@ -843,6 +843,7 @@ async function init() {
 
   await loadAll();
   showSection(getSectionFromHash());
+  document.querySelector('.admin-content').classList.add('ready');
 }
 
 init();
