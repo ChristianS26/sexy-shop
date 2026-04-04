@@ -1,12 +1,14 @@
 package com.sexyshop.routing
 
 import com.sexyshop.repositories.expense.ExpenseRepository
+import com.sexyshop.repositories.withdrawal.WithdrawalRepository
 import com.sexyshop.routing.category.categoryRoutes
 import com.sexyshop.routing.dashboard.dashboardRoutes
 import com.sexyshop.routing.expense.expenseRoutes
 import com.sexyshop.routing.image.imageRoutes
 import com.sexyshop.routing.order.orderRoutes
 import com.sexyshop.routing.product.productRoutes
+import com.sexyshop.routing.withdrawal.withdrawalRoutes
 import com.sexyshop.services.category.CategoryService
 import com.sexyshop.services.dashboard.DashboardService
 import com.sexyshop.services.image.ImageService
@@ -23,6 +25,7 @@ fun Application.configureRouting() {
     val imageService by inject<ImageService>()
     val dashboardService by inject<DashboardService>()
     val expenseRepository by inject<ExpenseRepository>()
+    val withdrawalRepository by inject<WithdrawalRepository>()
 
     routing {
         route("/api") {
@@ -31,6 +34,7 @@ fun Application.configureRouting() {
             orderRoutes(orderService)
             imageRoutes(imageService)
             expenseRoutes(expenseRepository)
+            withdrawalRoutes(withdrawalRepository)
             dashboardRoutes(dashboardService)
         }
     }

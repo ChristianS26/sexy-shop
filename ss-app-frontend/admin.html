@@ -400,6 +400,36 @@
         </div>
       </div>
 
+      <!-- Commission balance -->
+      <div class="finance-balance">
+        <div class="finance-balance__info">
+          <span class="finance-balance__label">Balance de comisiones</span>
+          <span class="finance-balance__amount" id="finBalance">$0</span>
+          <span class="finance-balance__sub" id="finBalanceSub">Acumulado - Retirado</span>
+        </div>
+        <button class="admin-btn admin-btn--primary" onclick="openWithdrawalModal()">Retirar</button>
+      </div>
+
+      <!-- Withdrawals history -->
+      <div class="admin-table-wrapper" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px 0">
+          <h2 class="admin-table-wrapper__title" style="padding:0">Retiros</h2>
+        </div>
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Monto</th>
+                <th>Descripci&oacute;n</th>
+                <th>Fecha</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="finWithdrawalsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Two column: Products sold + Expenses -->
       <div class="admin-dashboard-grid">
         <!-- Products sold this month -->
@@ -688,6 +718,36 @@
       <div class="admin-modal__actions">
         <button type="button" class="admin-btn admin-btn--secondary" onclick="closeModals()">Cancelar</button>
         <button type="submit" class="admin-btn admin-btn--primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== WITHDRAWAL MODAL ===== -->
+  <div class="admin-modal admin-modal--sm" id="withdrawalModal">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title">Retirar comisi&oacute;n</h3>
+      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+    </div>
+    <form class="admin-modal__body" id="withdrawalForm">
+      <div class="admin-form-group">
+        <label class="admin-form-group__label">Balance disponible</label>
+        <div class="finance-balance__available" id="withdrawalAvailable">$0</div>
+      </div>
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="withdrawalAmount">Monto a retirar *</label>
+        <input class="admin-form-group__input" type="number" id="withdrawalAmount" required min="0.01" step="0.01" placeholder="0.00">
+      </div>
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="withdrawalDate">Fecha *</label>
+        <input class="admin-form-group__input" type="date" id="withdrawalDate" required>
+      </div>
+      <div class="admin-form-group">
+        <label class="admin-form-group__label" for="withdrawalDesc">Descripci&oacute;n</label>
+        <input class="admin-form-group__input" type="text" id="withdrawalDesc" placeholder="Opcional">
+      </div>
+      <div class="admin-modal__actions">
+        <button type="button" class="admin-btn admin-btn--secondary" onclick="closeModals()">Cancelar</button>
+        <button type="submit" class="admin-btn admin-btn--primary">Confirmar retiro</button>
       </div>
     </form>
   </div>

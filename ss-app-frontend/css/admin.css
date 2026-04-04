@@ -1559,6 +1559,50 @@ body {
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Finance balance */
+.finance-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-radius: var(--card-radius);
+  margin-bottom: 20px;
+}
+
+.finance-balance__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.finance-balance__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #047857;
+}
+
+.finance-balance__amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.finance-balance__sub {
+  font-size: 0.78rem;
+  color: #059669;
+}
+
+.finance-balance__available {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #065f46;
+  padding: 8px 0;
+}
+
 /* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */

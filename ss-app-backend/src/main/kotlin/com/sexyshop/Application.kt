@@ -28,6 +28,7 @@ fun Application.module() {
             imageModule,
             expenseModule,
             dashboardModule,
+            withdrawalModule,
         )
     }
 
