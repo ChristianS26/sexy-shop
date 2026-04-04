@@ -1373,7 +1373,12 @@ async function loadFinanceData() {
   }
 
   const totalCost = Object.values(productSales).reduce((sum, p) => sum + p.cost, 0);
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Separate operational expenses from withdrawals/distributions
+  const retiroCategories = ['retiro_comision', 'retiro_socia', 'retiro_inversion', 'mercancia'];
+  const operationalExpenses = expenses.filter(e => !retiroCategories.includes(e.category));
+  const totalExpenses = operationalExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalAllExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const netProfit = revenue - totalCost - totalExpenses;
   const commission25 = Math.max(0, netProfit * 0.25);
   const commission75 = Math.max(0, netProfit * 0.75);
@@ -1402,7 +1407,7 @@ async function loadFinanceData() {
     let allExpenses = [];
     try { allExpenses = await api('/expenses'); } catch(e) {}
     const allTimeExpenses = allExpenses.reduce((sum, e) => sum + e.amount, 0);
-    const cashBalance = initialBalance + allTimeRevenue - allTimeExpenses;
+    const cashBalance = initialBalance + allTimeRevenue - allTimeExpenses; // ALL expenses affect cash
     document.getElementById('finSaldoCaja').textContent = formatCurrency(cashBalance);
     document.getElementById('finSaldoSub').textContent = `${formatCurrency(initialBalance)} inicial + ${formatCurrency(allTimeRevenue)} ventas - ${formatCurrency(allTimeExpenses)} gastos`;
   } catch (e) {
