@@ -160,6 +160,7 @@
                 <th>Icono</th>
                 <th>Nombre</th>
                 <th>Slug</th>
+                <th>Productos</th>
                 <th>Orden</th>
                 <th>Acciones</th>
               </tr>
@@ -171,6 +172,22 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== CATEGORY PRODUCTS ORDER ===== -->
+    <div class="admin-modal admin-modal--wide" id="categoryOrderModal">
+      <div class="admin-modal__header">
+        <h3 class="admin-modal__title" id="categoryOrderTitle">Ordenar productos</h3>
+        <button class="admin-modal__close" onclick="closeCategoryOrder()">&times;</button>
+      </div>
+      <div class="admin-modal__body">
+        <p class="admin-category-order__hint">Usa las flechas para ordenar. El primer producto aparece primero en la tienda.</p>
+        <div class="admin-category-order__grid" id="categoryOrderGrid"></div>
+        <div class="admin-modal__actions">
+          <button class="admin-btn admin-btn--secondary" onclick="closeCategoryOrder()">Cancelar</button>
+          <button class="admin-btn admin-btn--primary" id="saveCategoryOrderBtn" onclick="saveCategoryOrder()">Guardar orden</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== PRODUCTS SECTION ===== -->
     <section class="admin-section admin-section--hidden" id="productsSection">
@@ -205,7 +222,6 @@
           </select>
 
           <select id="productSort" onchange="handleProductFilter('sort', this.value)">
-            <option value="manual">Orden manual</option>
             <option value="newest">M&aacute;s reciente</option>
             <option value="name-asc">Nombre A-Z</option>
             <option value="name-desc">Nombre Z-A</option>

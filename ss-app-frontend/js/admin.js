@@ -33,7 +33,7 @@ let productFilters = {
   category: '',
   status: '',
   badge: '',
-  sort: 'manual',
+  sort: 'newest',
 };
 let productPage = 1;
 const PRODUCTS_PER_PAGE = APP_CONFIG.PRODUCTS_PER_PAGE;
@@ -135,7 +135,7 @@ function saveFiltersToHash() {
   if (productFilters.category) params.set('cat', productFilters.category);
   if (productFilters.status) params.set('st', productFilters.status);
   if (productFilters.badge) params.set('badge', productFilters.badge);
-  if (productFilters.sort !== 'manual') params.set('sort', productFilters.sort);
+  if (productFilters.sort !== 'newest') params.set('sort', productFilters.sort);
   if (productPage > 1) params.set('p', productPage);
 
   const qs = params.toString();
@@ -151,7 +151,7 @@ function loadFiltersFromHash() {
   productFilters.category = params.get('cat') || '';
   productFilters.status = params.get('st') || '';
   productFilters.badge = params.get('badge') || '';
-  productFilters.sort = params.get('sort') || 'manual';
+  productFilters.sort = params.get('sort') || 'newest';
   productPage = parseInt(params.get('p')) || 1;
 }
 
@@ -267,23 +267,28 @@ async function renderDashboard() {
 function renderCategories() {
   const tbody = document.getElementById('categoriesTable');
   if (categories.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#9776;</div><div class="admin-empty-state__title">No hay categor\u00edas</div><div class="admin-empty-state__subtitle">Crea tu primera categor\u00eda para organizar productos.</div></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#9776;</div><div class="admin-empty-state__title">No hay categor\u00edas</div><div class="admin-empty-state__subtitle">Crea tu primera categor\u00eda para organizar productos.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = categories
     .sort((a, b) => a.display_order - b.display_order)
-    .map(cat => `
+    .map(cat => {
+      const productCount = products.filter(p => p.category_id === cat.id).length;
+      return `
     <tr>
       <td style="font-size:1.5rem">${cat.icon}</td>
       <td><strong>${escapeHtml(cat.name)}</strong></td>
       <td><code>${escapeHtml(cat.slug)}</code></td>
+      <td>${productCount}</td>
       <td>${cat.display_order}</td>
       <td class="table-actions">
+        <button class="btn-icon" onclick="openCategoryProductOrder('${cat.id}')" title="Ordenar productos">&#9776;</button>
         <button class="btn-icon btn-edit" onclick="openCategoryModal('${cat.id}')" title="Editar">&#9998;</button>
         <button class="btn-icon btn-delete" onclick="deleteCategory('${cat.id}')" title="Eliminar">&#128465;</button>
       </td>
     </tr>
-  `).join('');
+  `;
+    }).join('');
 }
 
 function openCategoryModal(id) {
@@ -377,6 +382,97 @@ async function deleteCategory(id) {
 }
 
 // ═══════════════════════════════════════════
+// CATEGORY PRODUCT ORDER
+// ═══════════════════════════════════════════
+let categoryOrderIds = [];
+let categoryOrderCatId = null;
+
+function openCategoryProductOrder(catId) {
+  const cat = categories.find(c => c.id === catId);
+  if (!cat) return;
+
+  categoryOrderCatId = catId;
+  document.getElementById('categoryOrderTitle').textContent = `Ordenar: ${cat.name}`;
+
+  const catProducts = products
+    .filter(p => p.category_id === catId && p.is_active !== false)
+    .sort((a, b) => a.display_order - b.display_order);
+
+  categoryOrderIds = catProducts.map(p => p.id);
+  renderCategoryOrderGrid(catProducts);
+
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('categoryOrderModal').classList.add('open');
+}
+
+function renderCategoryOrderGrid(orderedProducts) {
+  const grid = document.getElementById('categoryOrderGrid');
+
+  if (orderedProducts.length === 0) {
+    grid.innerHTML = '<div class="admin-empty-state"><div class="admin-empty-state__icon">&#9733;</div><div class="admin-empty-state__title">Sin productos</div><div class="admin-empty-state__subtitle">Esta categoría no tiene productos activos.</div></div>';
+    return;
+  }
+
+  grid.innerHTML = orderedProducts.map((p, i) => {
+    const thumb = p.primaryImage
+      ? `<img src="${p.primaryImage.image_url}" alt="" class="category-order-card__img">`
+      : `<div class="category-order-card__placeholder">${escapeHtml(categories.find(c => c.id === p.category_id)?.icon || '🛍')}</div>`;
+
+    return `
+    <div class="category-order-card" data-product-id="${p.id}">
+      <div class="category-order-card__position">${i + 1}</div>
+      ${thumb}
+      <div class="category-order-card__info">
+        <strong>${escapeHtml(p.name)}</strong>
+        <span>${formatCurrency(p.price)}</span>
+      </div>
+      <div class="category-order-card__actions">
+        ${i > 0 ? `<button class="btn-icon" onclick="moveCategoryProduct(${i}, -1)" title="Subir">&#9650;</button>` : '<div style="width:36px"></div>'}
+        ${i < orderedProducts.length - 1 ? `<button class="btn-icon" onclick="moveCategoryProduct(${i}, 1)" title="Bajar">&#9660;</button>` : '<div style="width:36px"></div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function moveCategoryProduct(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= categoryOrderIds.length) return;
+
+  [categoryOrderIds[index], categoryOrderIds[newIndex]] = [categoryOrderIds[newIndex], categoryOrderIds[index]];
+
+  const orderedProducts = categoryOrderIds.map(id => products.find(p => p.id === id)).filter(Boolean);
+  renderCategoryOrderGrid(orderedProducts);
+}
+
+async function saveCategoryOrder() {
+  const btn = document.getElementById('saveCategoryOrderBtn');
+  setButtonLoading(btn, true, 'Guardar orden');
+
+  try {
+    await api('/products/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ product_ids: categoryOrderIds }),
+    });
+    showToast('Orden guardado');
+    closeCategoryOrder();
+    await loadProducts();
+    renderCategories();
+  } catch (e) {
+    showToast('Error al guardar orden', true);
+    console.error(e);
+  } finally {
+    setButtonLoading(btn, false, 'Guardar orden');
+  }
+}
+
+function closeCategoryOrder() {
+  document.getElementById('categoryOrderModal').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
+  categoryOrderIds = [];
+  categoryOrderCatId = null;
+}
+
+// ═══════════════════════════════════════════
 // PRODUCTS
 // ═══════════════════════════════════════════
 function getFilteredProducts() {
@@ -409,7 +505,6 @@ function getFilteredProducts() {
 
   // Sort
   switch (productFilters.sort) {
-    case 'manual': filtered.sort((a, b) => a.display_order - b.display_order); break;
     case 'name-asc': filtered.sort((a, b) => a.name.localeCompare(b.name)); break;
     case 'name-desc': filtered.sort((a, b) => b.name.localeCompare(a.name)); break;
     case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
@@ -474,10 +569,6 @@ function renderProducts() {
         <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
         <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
         <td class="table-actions">
-          ${productFilters.sort === 'manual' ? `
-            <button class="btn-icon" onclick="moveProduct('${p.id}', -1)" title="Subir">&#9650;</button>
-            <button class="btn-icon" onclick="moveProduct('${p.id}', 1)" title="Bajar">&#9660;</button>
-          ` : ''}
           <button class="btn-icon btn-edit" onclick="openProductModal('${p.id}')" title="Editar">&#9998;</button>
           <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Desactivar">&#128465;</button>
         </td>
@@ -517,28 +608,6 @@ function handleProductSearch(value) {
     productPage = 1;
     renderProducts();
   }, 300);
-}
-
-async function moveProduct(productId, direction) {
-  const sorted = getFilteredProducts();
-  const ids = sorted.map(p => p.id);
-  const currentIndex = ids.indexOf(productId);
-  const newIndex = currentIndex + direction;
-  if (newIndex < 0 || newIndex >= ids.length) return;
-
-  [ids[currentIndex], ids[newIndex]] = [ids[newIndex], ids[currentIndex]];
-
-  try {
-    await api('/products/reorder', {
-      method: 'PUT',
-      body: JSON.stringify({ product_ids: ids }),
-    });
-    await loadProducts();
-    renderProducts();
-  } catch (e) {
-    showToast('Error al reordenar', true);
-    console.error(e);
-  }
 }
 
 function openProductModal(id) {
