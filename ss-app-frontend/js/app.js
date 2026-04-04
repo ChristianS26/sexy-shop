@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
-const API_URL = 'https://ss-app-backend-production.up.railway.app/api';
+const API_URL = APP_CONFIG.API_URL;
 
 // Visual mappings per category slug (bg gradient + emoji fallback)
 const CATEGORY_VISUALS = {
@@ -127,7 +127,7 @@ function renderCategories() {
     <div class="category-card ${(cat.id === activeCategory) ? 'active' : ''}"
          onclick="filterCategory('${cat.id}')">
       <div class="category-icon">${cat.icon}</div>
-      <div class="category-name">${cat.name}</div>
+      <div class="category-name">${escapeHtml(cat.name)}</div>
       <div class="category-count">${cat.productCount} productos</div>
     </div>
   `).join('');
@@ -166,9 +166,9 @@ function renderProducts() {
         <div class="product-quick-add" onclick="addToCart('${product.id}')">${product.stock <= 0 ? 'Agotado' : 'Agregar al carrito'}</div>
       </div>
       <div class="product-info">
-        <div class="product-category">${cat ? cat.name : ''}</div>
-        <h3 class="product-name">${product.name}</h3>
-        <p class="product-desc">${product.description || ''}</p>
+        <div class="product-category">${cat ? escapeHtml(cat.name) : ''}</div>
+        <h3 class="product-name">${escapeHtml(product.name)}</h3>
+        <p class="product-desc">${escapeHtml(product.description || '')}</p>
         <div class="product-footer">
           <div>
             <span class="product-price">$${product.price.toFixed(2)}</span>
@@ -275,7 +275,7 @@ function updateCart() {
           <span>${visuals.emoji}</span>
         </div>
         <div class="cart-item-info">
-          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-name">${escapeHtml(item.name)}</div>
           <div class="cart-item-price">$${(item.price * item.qty).toFixed(2)}</div>
         </div>
         <div class="cart-item-qty">
@@ -307,6 +307,10 @@ async function checkout() {
   const phone = prompt('Tu número de WhatsApp (10 dígitos):');
   if (!phone) return;
   const address = prompt('Dirección de entrega (opcional):') || '';
+
+  const checkoutBtn = document.querySelector('.cart-checkout');
+  const originalBtnHtml = checkoutBtn?.innerHTML;
+  if (checkoutBtn) { checkoutBtn.disabled = true; checkoutBtn.textContent = 'Procesando pedido...'; }
 
   try {
     // Create order in API
@@ -362,11 +366,13 @@ async function checkout() {
 
     // Open WhatsApp
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/526222279504?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encoded}`, '_blank');
 
   } catch (err) {
     showToast(err.message || 'Error al crear pedido');
     console.error(err);
+  } finally {
+    if (checkoutBtn) { checkoutBtn.disabled = false; checkoutBtn.innerHTML = originalBtnHtml; }
   }
 }
 

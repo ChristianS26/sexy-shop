@@ -1,15 +1,23 @@
 // ═══════════════════════════════════════════
 // AUTH GUARD
 // ═══════════════════════════════════════════
-const session = JSON.parse(localStorage.getItem('sb_session') || 'null');
-if (!session || session.role !== 'admin') {
+const session = getSession();
+if (!session || session.role !== 'admin' || isSessionExpired(session)) {
+  clearSession();
   window.location.href = 'login.html';
 }
+// Check session expiration every 5 minutes
+setInterval(() => {
+  if (isSessionExpired(getSession())) {
+    clearSession();
+    window.location.href = 'login.html';
+  }
+}, 5 * 60 * 1000);
 
 // ═══════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════
-const API_URL = 'https://ss-app-backend-production.up.railway.app/api';
+const API_URL = APP_CONFIG.API_URL;
 
 // ═══════════════════════════════════════════
 // STATE
@@ -28,7 +36,7 @@ let productFilters = {
   sort: 'manual',
 };
 let productPage = 1;
-const PRODUCTS_PER_PAGE = 10;
+const PRODUCTS_PER_PAGE = APP_CONFIG.PRODUCTS_PER_PAGE;
 
 // ═══════════════════════════════════════════
 // API HELPERS
@@ -186,7 +194,7 @@ function renderDashboard() {
   tbody.innerHTML = recent.map(order => `
     <tr>
       <td><code>${order.id.slice(0, 8)}</code></td>
-      <td>${order.customer_name}</td>
+      <td>${escapeHtml(order.customer_name)}</td>
       <td>$${order.total.toFixed(2)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
@@ -208,8 +216,8 @@ function renderCategories() {
     .map(cat => `
     <tr>
       <td style="font-size:1.5rem">${cat.icon}</td>
-      <td><strong>${cat.name}</strong></td>
-      <td><code>${cat.slug}</code></td>
+      <td><strong>${escapeHtml(cat.name)}</strong></td>
+      <td><code>${escapeHtml(cat.slug)}</code></td>
       <td>${cat.display_order}</td>
       <td class="table-actions">
         <button class="btn-icon btn-edit" onclick="openCategoryModal('${cat.id}')" title="Editar">&#9998;</button>
@@ -247,6 +255,21 @@ function openCategoryModal(id) {
 
 async function saveCategory(e) {
   e.preventDefault();
+  const form = document.getElementById('categoryForm');
+  const btn = form.querySelector('button[type="submit"]');
+  clearFieldErrors(form);
+
+  // Validation
+  const nameErr = validateRequired(document.getElementById('categoryName').value, 'Nombre');
+  const slugErr = validateSlug(document.getElementById('categorySlug').value);
+  const iconErr = validateRequired(document.getElementById('categoryIcon').value, 'Icono');
+
+  if (nameErr) { showFieldError(document.getElementById('categoryName'), nameErr); return; }
+  if (slugErr) { showFieldError(document.getElementById('categorySlug'), slugErr); return; }
+  if (iconErr) { showFieldError(document.getElementById('categoryIcon'), iconErr); return; }
+
+  setButtonLoading(btn, true, 'Guardar');
+
   const data = {
     name: document.getElementById('categoryName').value.trim(),
     slug: document.getElementById('categorySlug').value.trim(),
@@ -272,6 +295,7 @@ async function saveCategory(e) {
     }
     console.error(e);
   } finally {
+    setButtonLoading(btn, false);
     await loadCategories();
     renderCategories();
   }
@@ -375,8 +399,8 @@ function renderProducts() {
         <td>${thumb}</td>
         <td>
           <div class="product-cell">
-            <strong>${p.name}</strong>
-            <small class="product-cell__slug">${p.slug}</small>
+            <strong>${escapeHtml(p.name)}</strong>
+            <small class="product-cell__slug">${escapeHtml(p.slug)}</small>
           </div>
         </td>
         <td>${cat ? cat.name : '—'}</td>
@@ -497,6 +521,24 @@ function populateCategorySelect() {
 
 async function saveProduct(e) {
   e.preventDefault();
+  const form = document.getElementById('productForm');
+  const btn = form.querySelector('button[type="submit"]');
+  clearFieldErrors(form);
+
+  const nameErr = validateRequired(document.getElementById('productName').value, 'Nombre');
+  const slugErr = validateSlug(document.getElementById('productSlug').value);
+  const priceErr = validatePrice(document.getElementById('productPrice').value);
+  const catErr = validateRequired(document.getElementById('productCategorySelect').value, 'Categoría');
+  const stockErr = validateStock(document.getElementById('productStock').value);
+
+  if (nameErr) { showFieldError(document.getElementById('productName'), nameErr); return; }
+  if (slugErr) { showFieldError(document.getElementById('productSlug'), slugErr); return; }
+  if (priceErr) { showFieldError(document.getElementById('productPrice'), priceErr); return; }
+  if (catErr) { showFieldError(document.getElementById('productCategorySelect'), catErr); return; }
+  if (stockErr) { showFieldError(document.getElementById('productStock'), stockErr); return; }
+
+  setButtonLoading(btn, true, 'Guardar');
+
   const oldPriceVal = document.getElementById('productOldPrice').value;
   const data = {
     name: document.getElementById('productName').value.trim(),
@@ -528,6 +570,7 @@ async function saveProduct(e) {
     }
     console.error(e);
   } finally {
+    setButtonLoading(btn, false);
     await loadProducts();
     renderProducts();
   }
@@ -592,32 +635,38 @@ async function uploadProductImages() {
   }
 
   showToast(`Subiendo ${files.length} imagen(es)...`);
+  const uploadBtn = document.querySelector('#productImagesSection .admin-btn--secondary');
+  if (uploadBtn) uploadBtn.disabled = true;
   let uploaded = 0;
   let errors = 0;
 
-  for (const file of files) {
-    const formData = new FormData();
-    formData.append('productId', editingProductId);
-    formData.append('file', file);
-    formData.append('isPrimary', 'false');
+  try {
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('productId', editingProductId);
+      formData.append('file', file);
+      formData.append('isPrimary', 'false');
 
-    try {
-      const res = await fetch(`${API_URL}/images/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) throw new Error();
-      uploaded++;
-    } catch (e) {
-      errors++;
-      console.error('Error uploading', file.name, e);
+      try {
+        const res = await fetch(`${API_URL}/images/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) throw new Error();
+        uploaded++;
+      } catch (e) {
+        errors++;
+        console.error('Error uploading', file.name, e);
+      }
     }
-  }
 
-  if (errors > 0) {
-    showToast(`${uploaded} subidas, ${errors} fallidas`, true);
-  } else {
-    showToast(`${uploaded} imagen(es) subidas`);
+    if (errors > 0) {
+      showToast(`${uploaded} subidas, ${errors} fallidas`, true);
+    } else {
+      showToast(`${uploaded} imagen(es) subidas`);
+    }
+  } finally {
+    if (uploadBtn) uploadBtn.disabled = false;
   }
 
   fileInput.value = '';
@@ -680,8 +729,8 @@ function renderOrders() {
   tbody.innerHTML = sorted.map(order => `
     <tr>
       <td><code>${order.id.slice(0, 8)}</code></td>
-      <td>${order.customer_name}</td>
-      <td>${order.customer_phone}</td>
+      <td>${escapeHtml(order.customer_name)}</td>
+      <td>${escapeHtml(order.customer_phone)}</td>
       <td>$${order.total.toFixed(2)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
@@ -735,6 +784,8 @@ async function updateOrderStatus() {
   const select = document.getElementById('orderStatusSelect');
   const orderId = select.dataset.orderId;
   const status = select.value;
+  const btn = document.querySelector('.admin-order-status-update__controls .admin-btn');
+  setButtonLoading(btn, true, 'Actualizar');
 
   try {
     await api(`/orders/${orderId}/status`, {
@@ -748,6 +799,8 @@ async function updateOrderStatus() {
   } catch (e) {
     showToast('Error al actualizar estado', true);
     console.error(e);
+  } finally {
+    setButtonLoading(btn, false, 'Actualizar');
   }
 }
 
@@ -809,21 +862,9 @@ const EMOJI_OPTIONS = [
 
 function renderEmojiPicker() {
   const picker = document.getElementById('emojiPicker');
-  const input = document.getElementById('categoryIcon');
-
   picker.innerHTML = EMOJI_OPTIONS.map(emoji =>
     `<button type="button" class="emoji-picker__btn" data-emoji="${emoji}">${emoji}</button>`
   ).join('');
-
-  picker.addEventListener('click', (e) => {
-    const btn = e.target.closest('.emoji-picker__btn');
-    if (!btn) return;
-
-    input.value = btn.dataset.emoji;
-
-    picker.querySelectorAll('.emoji-picker__btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
 }
 
 function syncEmojiPicker(value) {
@@ -912,6 +953,15 @@ async function init() {
   setupSlugGeneration('productName', 'productSlug');
 
   document.getElementById('modalOverlay').addEventListener('click', closeModals);
+
+  // Emoji picker - single delegated listener
+  document.getElementById('emojiPicker').addEventListener('click', (e) => {
+    const btn = e.target.closest('.emoji-picker__btn');
+    if (!btn) return;
+    document.getElementById('categoryIcon').value = btn.dataset.emoji;
+    document.querySelectorAll('.emoji-picker__btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
 
   loadFiltersFromHash();
   await loadAll();

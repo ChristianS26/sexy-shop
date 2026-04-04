@@ -153,15 +153,15 @@
     </div>
   </div>
 
+  <script src="js/config.js"></script>
   <script>
-    const SUPABASE_URL = 'https://litzzmjoiujifddkrryp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdHp6bWpvaXVqaWZkZGtycnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNDU4NTQsImV4cCI6MjA5MDgyMTg1NH0.d2jUA16jXjxTOlYswSmw1lqJt-3_o6CwJdpaMixhPYo';
+    const SUPABASE_URL = APP_CONFIG.SUPABASE_URL;
+    const SUPABASE_ANON_KEY = APP_CONFIG.SUPABASE_ANON_KEY;
 
     // Check if already logged in
-    const session = localStorage.getItem('sb_session');
-    if (session) {
-      const parsed = JSON.parse(session);
-      if (parsed.role === 'admin') {
+    const session = getSession();
+    if (session && !isSessionExpired(session)) {
+      if (session.role === 'admin') {
         window.location.href = 'admin.html';
       }
     }
