@@ -11,6 +11,7 @@ import com.sexyshop.routing.order.orderRoutes
 import com.sexyshop.routing.payment.paymentRoutes
 import com.sexyshop.routing.product.productRoutes
 import com.sexyshop.routing.settings.settingsRoutes
+import com.sexyshop.routing.shipping.shippingRoutes
 import com.sexyshop.routing.withdrawal.withdrawalRoutes
 import com.sexyshop.services.category.CategoryService
 import com.sexyshop.services.dashboard.DashboardService
@@ -46,6 +47,7 @@ fun Application.configureRouting() {
             dashboardRoutes(dashboardService, supabaseClient)
             paymentRoutes(appConfig, orderService, emailService, productService)
             settingsRoutes(supabaseClient)
+            shippingRoutes(appConfig, supabaseClient)
         }
     }
 }

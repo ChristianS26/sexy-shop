@@ -1532,6 +1532,110 @@ async function deleteExpense(id) {
 // WITHDRAWALS
 // ═══════════════════════════════════════════
 // ═══════════════════════════════════════════
+// SHIPPING
+// ═══════════════════════════════════════════
+async function quoteShipping() {
+  const select = document.getElementById('orderStatusSelect');
+  const orderId = select.dataset.orderId;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  const zip = order.customer_zip || '';
+  if (!zip) {
+    showToast('El pedido no tiene código postal', true);
+    return;
+  }
+
+  const content = document.getElementById('orderShippingContent');
+  content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Cotizando...</span>';
+
+  try {
+    const res = await api('/shipping/quote', {
+      method: 'POST',
+      body: JSON.stringify({
+        recipient_zip: zip,
+        weight: '1',
+        large: '25',
+        width: '20',
+        height: '15',
+      }),
+    });
+
+    const quotes = res.result || [];
+    if (quotes.length === 0) {
+      content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Sin opciones de envío disponibles</span>';
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="shipping-quotes">
+        ${quotes.map(q => `
+          <div class="shipping-quote" onclick="selectShippingQuote('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}')">
+            <div class="shipping-quote__carrier">${escapeHtml(q.Currier?.toUpperCase())}</div>
+            <div class="shipping-quote__service">${escapeHtml(q.Service)}</div>
+            <div class="shipping-quote__price">${formatCurrency(parseFloat(q.Total))}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (e) {
+    content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cotizar</span>';
+    console.error(e);
+  }
+}
+
+async function selectShippingQuote(currier, service, price) {
+  const select = document.getElementById('orderStatusSelect');
+  const orderId = select.dataset.orderId;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  const ok = await showConfirm('Generar guía', `¿Crear guía con ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}?`, 'Generar');
+  if (!ok) return;
+
+  const content = document.getElementById('orderShippingContent');
+  content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Generando guía...</span>';
+
+  try {
+    const res = await api('/shipping/create-label', {
+      method: 'POST',
+      body: JSON.stringify({
+        currier: currier,
+        service: service,
+        recipient_name: order.customer_name,
+        recipient_phone: order.customer_phone,
+        recipient_street: order.customer_street || order.customer_address || '',
+        recipient_suburb: order.customer_neighborhood || '',
+        recipient_zip: order.customer_zip || '',
+        recipient_city: order.customer_city || '',
+        recipient_state: order.customer_state || '',
+        weight: '1',
+      }),
+    });
+
+    const result = res.result || {};
+    const guia = result.NumeroGuia || 'N/A';
+    const pdf = result.pdf || '';
+
+    content.innerHTML = `
+      <div class="shipping-label-result">
+        <div class="shipping-label-result__info">
+          <strong>${escapeHtml(currier.toUpperCase())}</strong> — ${escapeHtml(service)}<br>
+          <span style="font-size:0.82rem;color:var(--text-secondary)">Guía: <code>${escapeHtml(guia)}</code></span>
+        </div>
+        ${pdf ? `<a href="${escapeHtml(pdf)}" target="_blank" class="admin-btn admin-btn--sm admin-btn--primary">Descargar etiqueta</a>` : ''}
+      </div>
+      ${res.mock ? '<p style="font-size:0.75rem;color:#b45309;margin-top:8px">⚠️ Modo simulación (API key no configurada)</p>' : ''}
+    `;
+
+    showToast(`Guía generada: ${guia}`);
+  } catch (e) {
+    content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al generar guía</span><br><button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:8px">Reintentar</button>';
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════
 // BULK OPERATIONS
 // ═══════════════════════════════════════════
 function toggleProductSelect(id, checked) {

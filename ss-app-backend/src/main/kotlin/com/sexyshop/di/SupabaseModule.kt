@@ -18,6 +18,8 @@ val supabaseModule = module {
             notificationEmail = System.getenv("NOTIFICATION_EMAIL") ?: "sexyshopguaymas@gmail.com",
             frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
             backendUrl = System.getenv("BACKEND_URL") ?: "https://ss-app-backend-production.up.railway.app",
+            epackApiKey = System.getenv("EPACK_API_KEY") ?: "",
+            shipperZip = System.getenv("SHIPPER_ZIP") ?: "85400",
         )
     }
 

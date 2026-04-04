@@ -326,7 +326,9 @@ function showCheckoutForm() {
   document.getElementById('cartItems').style.display = 'none';
   document.getElementById('cartFooter').style.display = 'none';
   document.getElementById('checkoutForm').style.display = 'flex';
-  document.getElementById('checkoutTotal').textContent = document.getElementById('cartTotal').textContent;
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  document.getElementById('checkoutSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('checkoutTotal').textContent = `$${(subtotal + APP_CONFIG.SHIPPING_COST).toFixed(2)}`;
 }
 
 function hideCheckoutForm() {
@@ -411,7 +413,7 @@ async function processOrder() {
       customer_state: state,
       customer_zip: zip,
       customer_references: references || null,
-      notes: notes || null,
+      notes: ((notes ? notes + ' | ' : '') + 'Envío: $99').trim(),
       items: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,

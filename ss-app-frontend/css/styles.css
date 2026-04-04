@@ -1931,6 +1931,24 @@ ul { list-style: none; }
   border-top: 1px solid var(--gray-200);
 }
 
+.checkout-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+}
+
+.checkout-summary__row--total {
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1.5px solid var(--gray-200);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--black);
+}
+
 .checkout-payment-methods {
   display: flex;
   flex-direction: column;
