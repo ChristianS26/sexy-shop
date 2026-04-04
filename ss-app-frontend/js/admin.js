@@ -615,10 +615,14 @@ function renderProducts() {
           <span class="stock-badge ${stockClass}">${p.stock}</span>
         </td>
         <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
-        <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
+        <td>
+          <button class="status-toggle ${p.is_active !== false ? 'status-toggle--active' : ''}" onclick="toggleProductActive('${p.id}')" title="${p.is_active !== false ? 'Desactivar' : 'Activar'}">
+            <span class="status-toggle__dot"></span>
+            <span class="status-toggle__label">${p.is_active !== false ? 'Activo' : 'Inactivo'}</span>
+          </button>
+        </td>
         <td class="table-actions">
           <button class="btn-icon btn-edit" onclick="openProductModal('${p.id}')" title="Editar">&#9998;</button>
-          <button class="btn-icon btn-delete" onclick="deleteProduct('${p.id}')" title="Desactivar">&#128465;</button>
         </td>
       </tr>
     `;
@@ -768,18 +772,38 @@ async function saveProduct(e) {
   }
 }
 
-async function deleteProduct(id) {
+async function toggleProductActive(id) {
   const p = products.find(pr => pr.id === id);
-  const ok = await showConfirm('Desactivar producto', `¿Desactivar "${p.name}"? No se mostrará en la tienda.`, 'Desactivar');
+  if (!p) return;
+
+  const isActive = p.is_active !== false;
+  const action = isActive ? 'desactivar' : 'activar';
+  const msg = isActive
+    ? `¿Desactivar "${p.name}"? No se mostrará en la tienda.`
+    : `¿Activar "${p.name}"? Volverá a mostrarse en la tienda.`;
+
+  const ok = await showConfirm(isActive ? 'Desactivar producto' : 'Activar producto', msg, isActive ? 'Desactivar' : 'Activar');
   if (!ok) return;
 
   try {
-    await api(`/products/${id}`, { method: 'DELETE' });
-    showToast('Producto desactivado');
+    if (isActive) {
+      await api(`/products/${id}`, { method: 'DELETE' });
+      showToast('Producto desactivado');
+    } else {
+      await api(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: p.name, slug: p.slug, description: p.description,
+          price: p.price, old_price: p.old_price, category_id: p.category_id,
+          stock: p.stock, badge: p.badge, is_active: true, display_order: p.display_order,
+        }),
+      });
+      showToast('Producto activado');
+    }
     await loadProducts();
     renderProducts();
   } catch (e) {
-    showToast('Error al desactivar producto', true);
+    showToast(`Error al ${action} producto`, true);
     console.error(e);
   }
 }

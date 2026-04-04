@@ -1194,6 +1194,50 @@ body {
   margin-top: 4px;
 }
 
+/* ═══════════════════════════════════════════
+   STATUS TOGGLE
+   ═══════════════════════════════════════════ */
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: #f3f4f6;
+  color: #6b7280;
+  transition: all 0.2s;
+}
+
+.status-toggle:hover {
+  background: #e5e7eb;
+}
+
+.status-toggle__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9ca3af;
+  transition: background 0.2s;
+}
+
+.status-toggle--active {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.status-toggle--active:hover {
+  background: #d1fae5;
+}
+
+.status-toggle--active .status-toggle__dot {
+  background: #10b981;
+}
+
 /* (order notes and quick actions are now inside order-detail cards) */
 
 /* ═══════════════════════════════════════════
