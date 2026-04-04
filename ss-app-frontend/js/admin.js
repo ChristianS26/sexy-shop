@@ -1077,13 +1077,16 @@ async function viewOrder(id) {
     const phoneClean = (order.customer_phone || '').replace(/\D/g, '');
     phoneEl.innerHTML = `${escapeHtml(order.customer_phone)} <a href="https://wa.me/52${phoneClean}" target="_blank" class="order-wa-link" title="Contactar por WhatsApp">&#128172;</a>`;
 
-    document.getElementById('orderDetailStreet').textContent = order.customer_street || order.customer_address || '—';
-    document.getElementById('orderDetailNeighborhood').textContent = order.customer_neighborhood || '—';
-    document.getElementById('orderDetailCityState').textContent =
-      (order.customer_city || order.customer_state || order.customer_zip)
-        ? `${order.customer_city || ''}, ${order.customer_state || ''}, C.P. ${order.customer_zip || ''}`
-        : '—';
-    document.getElementById('orderDetailReferences').textContent = order.customer_references || '—';
+    // Build address block
+    const addrParts = [];
+    if (order.customer_street) addrParts.push(order.customer_street);
+    if (order.customer_neighborhood) addrParts.push(`Col. ${order.customer_neighborhood}`);
+    const cityLine = [order.customer_city, order.customer_state].filter(Boolean).join(', ');
+    if (cityLine) addrParts.push(cityLine);
+    if (order.customer_zip) addrParts.push(`C.P. ${order.customer_zip}`);
+    if (order.customer_references) addrParts.push(`Ref: ${order.customer_references}`);
+    document.getElementById('orderDetailAddress').textContent = addrParts.length > 0 ? addrParts.join('\n') : (order.customer_address || '—');
+
     document.getElementById('orderDetailNotes').value = order.notes || '';
     document.getElementById('orderDetailTotal').textContent = formatCurrency(order.total);
     document.getElementById('orderDetailDate').textContent = formatDate(order.created_at);

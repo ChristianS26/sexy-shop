@@ -474,101 +474,74 @@
   <!-- ===== ORDER DETAIL MODAL ===== -->
   <div class="admin-modal admin-modal--order" id="orderDetailModal">
     <div class="admin-modal__header">
-      <h3 class="admin-modal__title">Pedido <code id="orderDetailId">&mdash;</code></h3>
+      <h3 class="admin-modal__title">Pedido <code id="orderDetailId">&mdash;</code> &middot; <span id="orderDetailDate" style="font-weight:400;font-size:0.85rem"></span></h3>
       <div class="admin-modal__header-actions">
-        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="printOrder()">&#128424; Imprimir</button>
+        <div class="order-detail__quick-actions" id="orderQuickActions"></div>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="printOrder()">&#128424;</button>
         <button class="admin-modal__close" onclick="closeModals()">&times;</button>
       </div>
     </div>
 
     <div class="order-detail">
-      <!-- Left: Customer info + actions -->
+      <!-- Left: Customer + Address -->
       <div class="order-detail__sidebar">
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Cliente</h4>
+        <div class="order-detail__inline-fields">
           <div class="order-detail__field">
-            <span class="order-detail__label">Nombre</span>
+            <span class="order-detail__label">Cliente</span>
             <span class="order-detail__value" id="orderDetailName">&mdash;</span>
           </div>
           <div class="order-detail__field">
             <span class="order-detail__label">Tel&eacute;fono</span>
             <span class="order-detail__value" id="orderDetailPhone">&mdash;</span>
           </div>
-          <div class="order-detail__field">
-            <span class="order-detail__label">Fecha</span>
-            <span class="order-detail__value" id="orderDetailDate">&mdash;</span>
-          </div>
         </div>
 
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Direcci&oacute;n de env&iacute;o</h4>
-          <div class="order-detail__field">
-            <span class="order-detail__label">Calle</span>
-            <span class="order-detail__value" id="orderDetailStreet">&mdash;</span>
-          </div>
-          <div class="order-detail__field">
-            <span class="order-detail__label">Colonia</span>
-            <span class="order-detail__value" id="orderDetailNeighborhood">&mdash;</span>
-          </div>
-          <div class="order-detail__field">
-            <span class="order-detail__label">Ciudad / Estado / C.P.</span>
-            <span class="order-detail__value" id="orderDetailCityState">&mdash;</span>
-          </div>
-          <div class="order-detail__field">
-            <span class="order-detail__label">Referencias</span>
-            <span class="order-detail__value" id="orderDetailReferences">&mdash;</span>
-          </div>
+        <div class="order-detail__section-label">Env&iacute;o</div>
+        <div class="order-detail__address" id="orderDetailAddress">&mdash;</div>
+
+        <div class="order-detail__section-label">Notas</div>
+        <div class="order-detail__notes-row">
+          <textarea class="admin-form-group__textarea" id="orderDetailNotes" rows="1" placeholder="Agregar notas..."></textarea>
+          <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="saveOrderNotes()">Guardar</button>
         </div>
 
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Notas</h4>
-          <textarea class="admin-form-group__textarea" id="orderDetailNotes" rows="2" placeholder="Agregar notas..."></textarea>
-          <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="saveOrderNotes()" style="margin-top:8px">Guardar</button>
-        </div>
-
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Estado</h4>
-          <div class="order-detail__quick-actions" id="orderQuickActions"></div>
-          <div class="order-detail__status-manual">
-            <select class="admin-form-group__select" id="orderStatusSelect">
-              <option value="pending">Pendiente</option>
-              <option value="confirmed">Confirmado</option>
-              <option value="shipped">Enviado</option>
-              <option value="delivered">Entregado</option>
-              <option value="cancelled">Cancelado</option>
-            </select>
-            <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="updateOrderStatus()">Cambiar</button>
-          </div>
+        <div class="order-detail__section-label">Cambiar estado</div>
+        <div class="order-detail__status-manual">
+          <select class="admin-form-group__select" id="orderStatusSelect">
+            <option value="pending">Pendiente</option>
+            <option value="confirmed">Confirmado</option>
+            <option value="shipped">Enviado</option>
+            <option value="delivered">Entregado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+          <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="updateOrderStatus()">Cambiar</button>
         </div>
       </div>
 
-      <!-- Right: Items + total + timeline -->
+      <!-- Right: Items + timeline -->
       <div class="order-detail__main">
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Productos</h4>
-          <div class="admin-table-scroll">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Cant.</th>
-                  <th>Precio</th>
-                  <th>Subtotal</th>
-                </tr>
-              </thead>
-              <tbody id="orderDetailItems"></tbody>
-            </table>
-          </div>
-          <div class="order-detail__total">
-            <span>Total</span>
-            <span id="orderDetailTotal">&mdash;</span>
-          </div>
+        <div class="admin-table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cant.</th>
+                <th>Precio</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="orderDetailItems"></tbody>
+          </table>
+        </div>
+        <div class="order-detail__total">
+          <span>Total</span>
+          <span id="orderDetailTotal">&mdash;</span>
         </div>
 
-        <div class="order-detail__card">
-          <h4 class="order-detail__card-title">Historial</h4>
+        <details class="order-detail__timeline-toggle">
+          <summary>Historial</summary>
           <div class="admin-order-timeline" id="orderTimeline"></div>
-        </div>
+        </details>
       </div>
     </div>
   </div>
