@@ -134,7 +134,11 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 if (response.status.isSuccess()) {
                     val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
                     val prefId = body["id"]?.jsonPrimitive?.content ?: ""
-                    val initPoint = body["init_point"]?.jsonPrimitive?.content ?: ""
+                    val initPoint = if (config.mpTestMode) {
+                        body["sandbox_init_point"]?.jsonPrimitive?.content ?: ""
+                    } else {
+                        body["init_point"]?.jsonPrimitive?.content ?: ""
+                    }
                     call.respond(PreferenceResponse(id = prefId, initPoint = initPoint))
                 } else {
                     val errorBody = response.bodyAsText()
