@@ -267,7 +267,7 @@ async function renderDashboard() {
 function renderCategories() {
   const tbody = document.getElementById('categoriesTable');
   if (categories.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="table-empty">No hay categorías</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#9776;</div><div class="admin-empty-state__title">No hay categor\u00edas</div><div class="admin-empty-state__subtitle">Crea tu primera categor\u00eda para organizar productos.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = categories
@@ -445,7 +445,7 @@ function renderProducts() {
   // Render table
   const tbody = document.getElementById('productsTable');
   if (pageProducts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No se encontraron productos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#9733;</div><div class="admin-empty-state__title">No se encontraron productos</div><div class="admin-empty-state__subtitle">Intenta cambiar los filtros o crea un nuevo producto.</div></div></td></tr>';
   } else {
     tbody.innerHTML = pageProducts.map(p => {
       const cat = categories.find(c => c.id === p.category_id);
@@ -464,11 +464,13 @@ function renderProducts() {
           </div>
         </td>
         <td>${cat ? cat.name : '—'}</td>
-        <td>
+        <td class="inline-editable" onclick="startInlineEdit('${p.id}', 'price', ${p.price}, this)">
           <span class="price-current">$${p.price.toFixed(2)}</span>
           ${p.old_price ? `<span class="price-old">$${p.old_price.toFixed(2)}</span>` : ''}
         </td>
-        <td><span class="stock-badge ${stockClass}">${p.stock}</span></td>
+        <td class="inline-editable" onclick="startInlineEdit('${p.id}', 'stock', ${p.stock}, this)">
+          <span class="stock-badge ${stockClass}">${p.stock}</span>
+        </td>
         <td>${p.badge ? badgeLabel(p.badge) : '—'}</td>
         <td>${p.is_active !== false ? '<span class="status-badge status-active">Activo</span>' : '<span class="status-badge status-inactive">Inactivo</span>'}</td>
         <td class="table-actions">
@@ -774,6 +776,64 @@ async function moveImage(imageId, productId, direction) {
 }
 
 // ═══════════════════════════════════════════
+// INLINE EDITING
+// ═══════════════════════════════════════════
+function startInlineEdit(productId, field, currentValue, cell) {
+  if (cell.querySelector('.inline-edit-input')) return; // Already editing
+
+  const original = cell.innerHTML;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'inline-edit-input';
+  input.value = currentValue;
+  input.step = field === 'price' ? '0.01' : '1';
+  input.min = field === 'price' ? '0.01' : '0';
+
+  cell.innerHTML = '';
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+
+  const save = async () => {
+    const newValue = field === 'price' ? parseFloat(input.value) : parseInt(input.value);
+    if (isNaN(newValue) || (field === 'price' && newValue <= 0) || (field === 'stock' && newValue < 0)) {
+      cell.innerHTML = original;
+      return;
+    }
+
+    if (newValue === currentValue) {
+      cell.innerHTML = original;
+      return;
+    }
+
+    try {
+      const p = products.find(pr => pr.id === productId);
+      if (!p) return;
+      const updateData = {
+        name: p.name, slug: p.slug, description: p.description,
+        price: field === 'price' ? newValue : p.price,
+        old_price: p.old_price, category_id: p.category_id,
+        stock: field === 'stock' ? newValue : p.stock,
+        badge: p.badge, is_active: p.is_active, display_order: p.display_order,
+      };
+      await api(`/products/${productId}`, { method: 'PUT', body: JSON.stringify(updateData) });
+      showToast(`${field === 'price' ? 'Precio' : 'Stock'} actualizado`);
+      await loadProducts();
+      renderProducts();
+    } catch (e) {
+      cell.innerHTML = original;
+      showToast('Error al actualizar', true);
+    }
+  };
+
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { cell.innerHTML = original; }
+  });
+}
+
+// ═══════════════════════════════════════════
 // ORDERS
 // ═══════════════════════════════════════════
 function renderOrders() {
@@ -783,7 +843,7 @@ function renderOrders() {
 
   const tbody = document.getElementById('ordersTable');
   if (sorted.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No hay pedidos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="table-empty"><div class="admin-empty-state"><div class="admin-empty-state__icon">&#128230;</div><div class="admin-empty-state__title">No hay pedidos</div><div class="admin-empty-state__subtitle">Los pedidos aparecer\u00e1n aqu\u00ed cuando los clientes compren.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = sorted.map(order => `
@@ -1271,6 +1331,18 @@ async function init() {
     document.getElementById('categoryIcon').value = btn.dataset.emoji;
     document.querySelectorAll('.emoji-picker__btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const confirmDialog = document.getElementById('confirmDialog');
+      if (confirmDialog.classList.contains('open')) {
+        closeConfirmDialog();
+      } else {
+        closeModals();
+      }
+    }
   });
 
   loadFiltersFromHash();
