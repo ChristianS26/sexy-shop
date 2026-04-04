@@ -1292,6 +1292,18 @@ async function loadFinanceData() {
   financeMonth = monthInput.value;
   if (!financeMonth) return;
 
+  // Show loader
+  const section = document.getElementById('financesSection');
+  let overlay = section.querySelector('.finance-loader');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'finance-loader';
+    overlay.innerHTML = '<div class="finance-loader__spinner"></div><span>Calculando...</span>';
+    section.style.position = 'relative';
+    section.appendChild(overlay);
+  }
+  overlay.classList.add('active');
+
   const [year, month] = financeMonth.split('-').map(Number);
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
@@ -1414,6 +1426,9 @@ async function loadFinanceData() {
       </tr>
     `).join('');
   }
+
+  // Hide loader
+  overlay.classList.remove('active');
 }
 
 function openExpenseModal() {
