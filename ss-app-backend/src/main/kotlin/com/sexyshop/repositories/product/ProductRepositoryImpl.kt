@@ -64,6 +64,13 @@ class ProductRepositoryImpl(
             .decodeSingle<Product>()
     }
 
+    override suspend fun activate(id: String) {
+        supabase.from("products")
+            .update(ActiveUpdate(true)) {
+                filter { eq("id", id) }
+            }
+    }
+
     override suspend fun deactivate(id: String) {
         supabase.from("products")
             .update(ActiveUpdate(false)) {

@@ -790,14 +790,7 @@ async function toggleProductActive(id) {
       await api(`/products/${id}`, { method: 'DELETE' });
       showToast('Producto desactivado');
     } else {
-      await api(`/products/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: p.name, slug: p.slug, description: p.description,
-          price: p.price, old_price: p.old_price, category_id: p.category_id,
-          stock: p.stock, badge: p.badge, is_active: true, display_order: p.display_order,
-        }),
-      });
+      await fetch(`${API_URL}/products/${id}/activate`, { method: 'PUT' });
       showToast('Producto activado');
     }
     await loadProducts();

@@ -24,6 +24,8 @@ class ProductService(
 
     suspend fun update(id: String, request: ProductRequest): Product = productRepository.update(id, request)
 
+    suspend fun activate(id: String) = productRepository.activate(id)
+
     suspend fun deactivate(id: String) = productRepository.deactivate(id)
 
     suspend fun reorder(productIds: List<String>) {
