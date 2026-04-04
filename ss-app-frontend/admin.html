@@ -455,12 +455,12 @@
       <div class="admin-form-group" id="productImagesSection" style="display:none">
         <label class="admin-form-group__label">Im&aacute;genes del producto</label>
         <div class="product-images-grid" id="productImagesGrid"></div>
-        <div class="product-image-upload">
+        <div class="product-image-upload" id="productImageUploadArea">
           <input type="file" id="productImageFile" accept="image/*" multiple style="display:none" onchange="uploadProductImages()">
           <button type="button" class="admin-btn admin-btn--secondary" onclick="document.getElementById('productImageFile').click()">
             &#128247; Subir imagen
           </button>
-          <span class="product-image-upload__hint">JPG, PNG o WebP. M&aacute;x 5MB.</span>
+          <span class="product-image-upload__hint">JPG, PNG o WebP. M&aacute;x 5MB. L&iacute;mite 5 fotos.</span>
         </div>
       </div>
 

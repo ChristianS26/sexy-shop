@@ -820,6 +820,9 @@ async function loadProductImages(productId) {
         ${i === 0 ? '<div class="product-image-card__primary-label">Principal</div>' : ''}
       </div>
     `).join('');
+    // Hide upload button if at limit
+    const uploadArea = document.getElementById('productImageUploadArea');
+    if (uploadArea) uploadArea.style.display = images.length >= 5 ? 'none' : 'flex';
   } catch (e) {
     grid.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cargar imágenes</span>';
     console.error(e);
@@ -830,6 +833,21 @@ async function uploadProductImages() {
   const fileInput = document.getElementById('productImageFile');
   const files = Array.from(fileInput.files);
   if (files.length === 0 || !editingProductId) return;
+
+  // Check current image count
+  let currentImages = [];
+  try { currentImages = await api(`/products/${editingProductId}/images`); } catch (e) {}
+  const remaining = 5 - currentImages.length;
+  if (remaining <= 0) {
+    showToast('Máximo 5 imágenes por producto', true);
+    fileInput.value = '';
+    return;
+  }
+  if (files.length > remaining) {
+    showToast(`Solo puedes subir ${remaining} imagen(es) más (máx. 5)`, true);
+    fileInput.value = '';
+    return;
+  }
 
   const oversized = files.filter(f => f.size > 5 * 1024 * 1024);
   if (oversized.length > 0) {
