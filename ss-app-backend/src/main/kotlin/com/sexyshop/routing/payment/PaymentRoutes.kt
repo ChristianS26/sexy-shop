@@ -3,6 +3,7 @@ package com.sexyshop.routing.payment
 import com.sexyshop.config.AppConfig
 import com.sexyshop.models.order.OrderItemRequest
 import com.sexyshop.models.order.OrderRequest
+import com.sexyshop.services.email.EmailService
 import com.sexyshop.services.order.OrderService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -48,7 +49,7 @@ data class PreferenceResponse(
     @SerialName("init_point") val initPoint: String,
 )
 
-fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
+fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailService: EmailService) {
     route("/payments") {
         post("/create-preference") {
             if (config.mpAccessToken.isEmpty()) {
@@ -159,7 +160,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
                             if (status == "approved") {
                                 val externalRef = payment["external_reference"]?.jsonPrimitive?.content
                                 if (externalRef != null) {
-                                    createOrderFromPayment(externalRef, orderService)
+                                    createOrderFromPayment(externalRef, orderService, emailService)
                                 }
                             }
                         }
@@ -178,7 +179,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService) {
     }
 }
 
-private suspend fun createOrderFromPayment(externalReference: String, orderService: OrderService) {
+private suspend fun createOrderFromPayment(externalReference: String, orderService: OrderService, emailService: EmailService) {
     try {
         val meta = Json.parseToJsonElement(externalReference).jsonObject
         val items = meta["items"]?.jsonArray?.map { item ->
@@ -206,6 +207,10 @@ private suspend fun createOrderFromPayment(externalReference: String, orderServi
         val order = orderService.create(orderRequest)
         orderService.updateStatus(order.id, "confirmed")
         logger.info("Order created from MP payment: ${order.id}")
+
+        // Send notification email
+        val (_, orderItems) = orderService.getById(order.id)
+        emailService.sendNewOrderNotificationToAdmin(order, orderItems)
     } catch (e: Exception) {
         logger.error("Failed to create order from MP payment", e)
     }

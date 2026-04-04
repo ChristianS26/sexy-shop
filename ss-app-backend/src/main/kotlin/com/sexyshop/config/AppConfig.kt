@@ -7,5 +7,7 @@ data class AppConfig(
     val mpAccessToken: String,
     val mpPublicKey: String,
     val mpWebhookSecret: String,
+    val resendApiKey: String,
+    val notificationEmail: String,
     val frontendUrl: String,
 )

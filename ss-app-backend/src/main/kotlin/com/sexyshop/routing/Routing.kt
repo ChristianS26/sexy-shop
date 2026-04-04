@@ -13,6 +13,7 @@ import com.sexyshop.routing.product.productRoutes
 import com.sexyshop.routing.withdrawal.withdrawalRoutes
 import com.sexyshop.services.category.CategoryService
 import com.sexyshop.services.dashboard.DashboardService
+import com.sexyshop.services.email.EmailService
 import com.sexyshop.services.image.ImageService
 import com.sexyshop.services.order.OrderService
 import com.sexyshop.services.product.ProductService
@@ -27,6 +28,7 @@ fun Application.configureRouting() {
     val orderService by inject<OrderService>()
     val imageService by inject<ImageService>()
     val dashboardService by inject<DashboardService>()
+    val emailService by inject<EmailService>()
     val expenseRepository by inject<ExpenseRepository>()
     val withdrawalRepository by inject<WithdrawalRepository>()
 
@@ -34,12 +36,12 @@ fun Application.configureRouting() {
         route("/api") {
             categoryRoutes(categoryService)
             productRoutes(productService, imageService)
-            orderRoutes(orderService)
+            orderRoutes(orderService, emailService)
             imageRoutes(imageService)
             expenseRoutes(expenseRepository)
             withdrawalRoutes(withdrawalRepository)
             dashboardRoutes(dashboardService)
-            paymentRoutes(appConfig, orderService)
+            paymentRoutes(appConfig, orderService, emailService)
         }
     }
 }

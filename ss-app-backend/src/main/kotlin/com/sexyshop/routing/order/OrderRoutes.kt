@@ -4,13 +4,15 @@ import com.sexyshop.models.order.OrderDetailResponse
 import com.sexyshop.models.order.OrderNotesUpdate
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.models.order.OrderStatusUpdate
+import com.sexyshop.services.email.EmailService
 import com.sexyshop.services.order.OrderService
 import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.coroutines.launch
 
-fun Route.orderRoutes(service: OrderService) {
+fun Route.orderRoutes(service: OrderService, emailService: EmailService) {
     route("/orders") {
         get {
             val status = call.parameters["status"]
@@ -25,7 +27,17 @@ fun Route.orderRoutes(service: OrderService) {
 
         post {
             val request = call.receive<OrderRequest>()
-            call.respond(HttpStatusCode.Created, service.create(request))
+            val order = service.create(request)
+            call.respond(HttpStatusCode.Created, order)
+
+            // Send emails in background (non-blocking)
+            launch {
+                try {
+                    val (_, items) = service.getById(order.id)
+                    emailService.sendNewOrderNotificationToAdmin(order, items)
+                    // Send to customer if they provided a phone (we don't have email yet)
+                } catch (_: Exception) {}
+            }
         }
 
         put("/{id}/status") {

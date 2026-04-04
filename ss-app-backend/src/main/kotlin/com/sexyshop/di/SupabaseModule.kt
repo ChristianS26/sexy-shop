@@ -14,6 +14,8 @@ val supabaseModule = module {
             mpAccessToken = System.getenv("MP_ACCESS_TOKEN") ?: "",
             mpPublicKey = System.getenv("MP_PUBLIC_KEY") ?: "",
             mpWebhookSecret = System.getenv("MP_WEBHOOK_SECRET") ?: "",
+            resendApiKey = System.getenv("RESEND_API_KEY") ?: "",
+            notificationEmail = System.getenv("NOTIFICATION_EMAIL") ?: "sexyshopguaymas@gmail.com",
             frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
         )
     }
