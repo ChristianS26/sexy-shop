@@ -33,8 +33,7 @@
       <span class="nav-brand-name">Sexy</span><span class="nav-brand-accent">Shop</span>
     </a>
     <div class="nav-links" id="navLinks">
-      <a href="#categorias" class="nav-link">Categorías</a>
-      <a href="#productos" class="nav-link">Productos</a>
+      <a href="#productos" class="nav-link">Catálogo</a>
       <a href="#nosotros" class="nav-link">Nosotros</a>
       <a href="#contacto" class="nav-link">Contacto</a>
       <button class="nav-cart" id="cartBtn" onclick="toggleCart()">
@@ -107,31 +106,34 @@
   </div>
 </section>
 
-<!-- ═══════ CATEGORIES ═══════ -->
-<section class="categories" id="categorias">
+<!-- ═══════ CATALOG (Categories + Products unified) ═══════ -->
+<section class="catalog" id="productos">
   <div class="container">
-    <div class="categories-header reveal">
-      <div class="section-label">Explora</div>
-      <h2 class="section-title">Nuestras categorías</h2>
-      <p class="section-subtitle">Encuentra exactamente lo que buscas en nuestra tienda cuidadosamente curada.</p>
+    <div class="catalog-header reveal">
+      <div class="section-label">Catálogo</div>
+      <h2 class="section-title">Nuestros productos</h2>
+      <p class="section-subtitle">Explora nuestra colección cuidadosamente seleccionada.</p>
     </div>
-    <div class="categories-grid reveal" id="categoriesGrid">
-      <!-- Rendered by JS -->
-    </div>
-  </div>
-</section>
 
-<!-- ═══════ PRODUCTS ═══════ -->
-<section class="products" id="productos">
-  <div class="container">
-    <div class="products-header reveal">
-      <div>
-        <div class="section-label">Catálogo</div>
-        <h2 class="section-title">Productos destacados</h2>
-        <p class="section-subtitle">Selección de nuestros artículos más populares y novedades.</p>
+    <!-- Category tabs + controls (sticky) -->
+    <div class="catalog-toolbar" id="catalogToolbar">
+      <div class="catalog-tabs" id="categoriesGrid">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="catalog-controls">
+        <select class="catalog-sort" id="storeSortSelect" onchange="changeStoreSort(this.value)">
+          <option value="default">Orden de tienda</option>
+          <option value="price-asc">Menor precio</option>
+          <option value="price-desc">Mayor precio</option>
+          <option value="newest">Más recientes</option>
+          <option value="name-asc">A - Z</option>
+        </select>
+        <span class="catalog-count" id="productCount"></span>
       </div>
     </div>
-    <div class="products-grid reveal" id="productsGrid">
+
+    <!-- Products grid -->
+    <div class="products-grid" id="productsGrid">
       <!-- Rendered by JS -->
     </div>
   </div>

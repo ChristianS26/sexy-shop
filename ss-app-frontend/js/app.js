@@ -106,30 +106,25 @@ document.querySelectorAll('.nav-link').forEach(link => {
 });
 
 // ═══════════════════════════════════════════
-// RENDER CATEGORIES
+// STATE — STORE SORT
+// ═══════════════════════════════════════════
+let storeSort = 'default';
+
+// ═══════════════════════════════════════════
+// RENDER CATEGORY TABS
 // ═══════════════════════════════════════════
 function renderCategories() {
   const grid = document.getElementById('categoriesGrid');
 
-  const allCategory = {
-    id: 'todos', name: 'Todos', icon: '⭐',
-    productCount: products.length
-  };
+  const allTab = { id: 'todos', name: 'Todos', icon: '⭐' };
+  const tabs = [allTab, ...categories];
 
-  const catCards = categories.map(cat => {
-    const count = products.filter(p => p.category_id === cat.id).length;
-    return { ...cat, productCount: count };
-  });
-
-  const allCats = [allCategory, ...catCards];
-
-  grid.innerHTML = allCats.map(cat => `
-    <div class="category-card ${(cat.id === activeCategory) ? 'active' : ''}"
-         onclick="filterCategory('${cat.id}')">
-      <div class="category-icon">${cat.icon}</div>
-      <div class="category-name">${escapeHtml(cat.name)}</div>
-      <div class="category-count">${cat.productCount} productos</div>
-    </div>
+  grid.innerHTML = tabs.map(cat => `
+    <button class="catalog-tab ${cat.id === activeCategory ? 'catalog-tab--active' : ''}"
+            onclick="filterCategory('${cat.id}')">
+      <span class="catalog-tab__icon">${cat.icon}</span>
+      <span class="catalog-tab__name">${escapeHtml(cat.name)}</span>
+    </button>
   `).join('');
 }
 
@@ -137,7 +132,11 @@ function filterCategory(catId) {
   activeCategory = catId;
   renderCategories();
   renderProducts();
-  document.getElementById('productos').scrollIntoView({ behavior: 'smooth' });
+}
+
+function changeStoreSort(value) {
+  storeSort = value;
+  renderProducts();
 }
 
 // ═══════════════════════════════════════════
@@ -145,9 +144,22 @@ function filterCategory(catId) {
 // ═══════════════════════════════════════════
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
-  const filtered = activeCategory === 'todos'
-    ? products
+  let filtered = activeCategory === 'todos'
+    ? [...products]
     : products.filter(p => p.category_id === activeCategory);
+
+  // Sort
+  switch (storeSort) {
+    case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
+    case 'price-desc': filtered.sort((a, b) => b.price - a.price); break;
+    case 'newest': filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); break;
+    case 'name-asc': filtered.sort((a, b) => a.name.localeCompare(b.name)); break;
+    default: filtered.sort((a, b) => a.display_order - b.display_order); break;
+  }
+
+  // Update count
+  const countEl = document.getElementById('productCount');
+  if (countEl) countEl.textContent = `${filtered.length} producto${filtered.length !== 1 ? 's' : ''}`;
 
   grid.innerHTML = filtered.map(product => {
     const visuals = getProductVisuals(product);
