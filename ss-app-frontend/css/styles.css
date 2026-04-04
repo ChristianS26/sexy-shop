@@ -348,6 +348,16 @@ ul { list-style: none; }
   transform: scale(1);
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-cart__label {
+  display: inline;
+}
+
 /* Mobile menu */
 .nav-menu-btn {
   display: none;
@@ -368,6 +378,8 @@ ul { list-style: none; }
 @media (max-width: 768px) {
   .nav-links { display: none; }
   .nav-menu-btn { display: flex; }
+  .nav-cart__label { display: none; }
+  .nav-cart { padding: 8px; border: none; }
 
   .nav-links.mobile-open {
     display: flex;
