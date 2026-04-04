@@ -1780,6 +1780,49 @@ body {
   color: var(--admin-primary);
 }
 
+/* Shipping preview */
+.shipping-preview {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.shipping-preview__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #f9fafb;
+  font-size: 0.88rem;
+}
+
+.shipping-preview__price {
+  font-weight: 700;
+  color: var(--admin-primary);
+}
+
+.shipping-preview__details {
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shipping-preview__details strong {
+  color: var(--text-primary);
+}
+
+.shipping-preview__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-color);
+  background: #fafafa;
+}
+
 .shipping-label-result {
   display: flex;
   align-items: center;

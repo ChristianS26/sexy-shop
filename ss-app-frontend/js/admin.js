@@ -1570,13 +1570,14 @@ async function quoteShipping() {
     content.innerHTML = `
       <div class="shipping-quotes">
         ${quotes.map(q => `
-          <div class="shipping-quote" onclick="selectShippingQuote('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}')">
+          <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}')">
             <div class="shipping-quote__carrier">${escapeHtml(q.Currier?.toUpperCase())}</div>
             <div class="shipping-quote__service">${escapeHtml(q.Service)}</div>
             <div class="shipping-quote__price">${formatCurrency(parseFloat(q.Total))}</div>
           </div>
         `).join('')}
       </div>
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px">&#8635; Recotizar</button>
     `;
   } catch (e) {
     content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cotizar</span>';
@@ -1584,14 +1585,47 @@ async function quoteShipping() {
   }
 }
 
-async function selectShippingQuote(currier, service, price) {
+function previewShippingLabel(currier, service, price) {
   const select = document.getElementById('orderStatusSelect');
   const orderId = select.dataset.orderId;
   const order = orders.find(o => o.id === orderId);
   if (!order) return;
 
-  const ok = await showConfirm('Generar guía', `¿Crear guía con ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}?`, 'Generar');
+  const content = document.getElementById('orderShippingContent');
+  const addr = [
+    order.customer_street,
+    order.customer_ext_num ? `#${order.customer_ext_num}` : '',
+    order.customer_int_num ? `Int. ${order.customer_int_num}` : '',
+  ].filter(Boolean).join(' ');
+
+  content.innerHTML = `
+    <div class="shipping-preview">
+      <div class="shipping-preview__header">
+        <strong>${escapeHtml(currier.toUpperCase())}</strong> — ${escapeHtml(service)}
+        <span class="shipping-preview__price">${formatCurrency(parseFloat(price))}</span>
+      </div>
+      <div class="shipping-preview__details">
+        <div><strong>Destinatario:</strong> ${escapeHtml(order.customer_name)}</div>
+        <div><strong>Dirección:</strong> ${escapeHtml(addr)}, Col. ${escapeHtml(order.customer_neighborhood || '')}</div>
+        <div><strong>Ciudad:</strong> ${escapeHtml(order.customer_city || '')}, ${escapeHtml(order.customer_state || '')} C.P. ${escapeHtml(order.customer_zip || '')}</div>
+        <div><strong>Teléfono:</strong> ${escapeHtml(order.customer_phone)}</div>
+      </div>
+      <div class="shipping-preview__actions">
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}')">Confirmar y generar guía</button>
+      </div>
+    </div>
+  `;
+}
+
+async function confirmShippingLabel(currier, service, price) {
+  const ok = await showConfirm('Confirmar generación', `¿Generar guía ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}? Esta acción generará un cargo.`, 'Generar guía');
   if (!ok) return;
+
+  const select = document.getElementById('orderStatusSelect');
+  const orderId = select.dataset.orderId;
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
 
   const content = document.getElementById('orderShippingContent');
   content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Generando guía...</span>';
