@@ -37,6 +37,8 @@ let productFilters = {
 };
 let productPage = 1;
 const PRODUCTS_PER_PAGE = APP_CONFIG.PRODUCTS_PER_PAGE;
+let selectedProducts = new Set();
+let selectedOrders = new Set();
 
 // ═══════════════════════════════════════════
 // API HELPERS
@@ -443,7 +445,7 @@ function renderProducts() {
   // Render table
   const tbody = document.getElementById('productsTable');
   if (pageProducts.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No se encontraron productos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="table-empty">No se encontraron productos</td></tr>';
   } else {
     tbody.innerHTML = pageProducts.map(p => {
       const cat = categories.find(c => c.id === p.category_id);
@@ -453,6 +455,7 @@ function renderProducts() {
         : `<div class="product-thumb product-thumb--empty">&#128247;</div>`;
       return `
       <tr class="${p.is_active === false ? 'row-inactive' : ''}">
+        <td><input type="checkbox" class="product-checkbox" data-id="${p.id}" onchange="toggleProductSelect('${p.id}', this.checked)" ${selectedProducts.has(p.id) ? 'checked' : ''}></td>
         <td>${thumb}</td>
         <td>
           <div class="product-cell">
@@ -780,11 +783,12 @@ function renderOrders() {
 
   const tbody = document.getElementById('ordersTable');
   if (sorted.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="table-empty">No hay pedidos</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="table-empty">No hay pedidos</td></tr>';
     return;
   }
   tbody.innerHTML = sorted.map(order => `
     <tr>
+      <td><input type="checkbox" class="order-checkbox" data-id="${order.id}" onchange="toggleOrderSelect('${order.id}', this.checked)" ${selectedOrders.has(order.id) ? 'checked' : ''}></td>
       <td><code>${order.id.slice(0, 8)}</code></td>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone)}</td>
@@ -979,6 +983,159 @@ function closeConfirmDialog(result = false) {
   document.getElementById('confirmDialog').classList.remove('open');
   document.getElementById('confirmOverlay').classList.remove('open');
   if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(result); }
+}
+
+// ═══════════════════════════════════════════
+// BULK OPERATIONS
+// ═══════════════════════════════════════════
+function toggleProductSelect(id, checked) {
+  if (checked) selectedProducts.add(id); else selectedProducts.delete(id);
+  updateProductBulkBar();
+}
+
+function toggleSelectAllProducts(checked) {
+  const checkboxes = document.querySelectorAll('.product-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = checked;
+    if (checked) selectedProducts.add(cb.dataset.id); else selectedProducts.delete(cb.dataset.id);
+  });
+  updateProductBulkBar();
+}
+
+function updateProductBulkBar() {
+  const bar = document.getElementById('productBulkBar');
+  const count = selectedProducts.size;
+  bar.style.display = count > 0 ? 'flex' : 'none';
+  document.getElementById('productBulkCount').textContent = `${count} seleccionado${count !== 1 ? 's' : ''}`;
+}
+
+function clearProductSelection() {
+  selectedProducts.clear();
+  document.querySelectorAll('.product-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('productSelectAll').checked = false;
+  updateProductBulkBar();
+}
+
+async function bulkProductAction(action) {
+  const count = selectedProducts.size;
+  if (count === 0) return;
+
+  const labels = { activate: 'activar', deactivate: 'desactivar', delete: 'eliminar' };
+  const ok = await showConfirm('Acción masiva', `¿${labels[action]} ${count} producto${count !== 1 ? 's' : ''}?`, labels[action]);
+  if (!ok) return;
+
+  showToast(`Procesando ${count} productos...`);
+  let success = 0;
+
+  for (const id of selectedProducts) {
+    try {
+      if (action === 'delete' || action === 'deactivate') {
+        await api(`/products/${id}`, { method: 'DELETE' });
+      } else if (action === 'activate') {
+        const p = products.find(pr => pr.id === id);
+        if (p) await api(`/products/${id}`, { method: 'PUT', body: JSON.stringify({ ...p, is_active: true }) });
+      }
+      success++;
+    } catch (e) { console.error(e); }
+  }
+
+  showToast(`${success} de ${count} productos procesados`);
+  clearProductSelection();
+  await loadProducts();
+  renderProducts();
+}
+
+function toggleOrderSelect(id, checked) {
+  if (checked) selectedOrders.add(id); else selectedOrders.delete(id);
+  updateOrderBulkBar();
+}
+
+function toggleSelectAllOrders(checked) {
+  const checkboxes = document.querySelectorAll('.order-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = checked;
+    if (checked) selectedOrders.add(cb.dataset.id); else selectedOrders.delete(cb.dataset.id);
+  });
+  updateOrderBulkBar();
+}
+
+function updateOrderBulkBar() {
+  const bar = document.getElementById('orderBulkBar');
+  const count = selectedOrders.size;
+  bar.style.display = count > 0 ? 'flex' : 'none';
+  document.getElementById('orderBulkCount').textContent = `${count} seleccionado${count !== 1 ? 's' : ''}`;
+}
+
+function clearOrderSelection() {
+  selectedOrders.clear();
+  document.querySelectorAll('.order-checkbox').forEach(cb => cb.checked = false);
+  document.getElementById('orderSelectAll').checked = false;
+  updateOrderBulkBar();
+}
+
+async function bulkOrderAction(status) {
+  const count = selectedOrders.size;
+  if (count === 0) return;
+
+  const labels = { confirmed: 'confirmar', shipped: 'enviar', delivered: 'entregar', cancelled: 'cancelar' };
+  const ok = await showConfirm('Acción masiva', `¿${labels[status]} ${count} pedido${count !== 1 ? 's' : ''}?`, labels[status]);
+  if (!ok) return;
+
+  showToast(`Procesando ${count} pedidos...`);
+  let success = 0;
+
+  for (const id of selectedOrders) {
+    try {
+      await api(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+      success++;
+    } catch (e) { console.error(e); }
+  }
+
+  showToast(`${success} de ${count} pedidos actualizados`);
+  clearOrderSelection();
+  await loadOrders();
+  renderOrders();
+}
+
+// ═══════════════════════════════════════════
+// CSV EXPORT
+// ═══════════════════════════════════════════
+function arrayToCSV(headers, rows) {
+  const escape = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach(row => lines.push(row.map(escape).join(',')));
+  return '\uFEFF' + lines.join('\n'); // BOM for Excel UTF-8
+}
+
+function downloadCSV(content, filename) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportProductsCSV() {
+  const filtered = getFilteredProducts();
+  const headers = ['Nombre', 'Slug', 'Categoría', 'Precio', 'Precio anterior', 'Stock', 'Badge', 'Activo', 'Orden'];
+  const rows = filtered.map(p => {
+    const cat = categories.find(c => c.id === p.category_id);
+    return [p.name, p.slug, cat ? cat.name : '', p.price, p.old_price || '', p.stock, p.badge || '', p.is_active !== false ? 'Sí' : 'No', p.display_order];
+  });
+  downloadCSV(arrayToCSV(headers, rows), `productos_${new Date().toISOString().slice(0, 10)}.csv`);
+  showToast(`${filtered.length} productos exportados`);
+}
+
+function exportOrdersCSV() {
+  const headers = ['ID', 'Cliente', 'Teléfono', 'Dirección', 'Total', 'Estado', 'Notas', 'Fecha'];
+  const statusLabels = { pending: 'Pendiente', confirmed: 'Confirmado', shipped: 'Enviado', delivered: 'Entregado', cancelled: 'Cancelado' };
+  const rows = orders.map(o => [
+    o.id.slice(0, 8), o.customer_name, o.customer_phone, o.customer_address || '', o.total, statusLabels[o.status] || o.status, o.notes || '', o.created_at ? new Date(o.created_at).toLocaleDateString('es-MX') : ''
+  ]);
+  downloadCSV(arrayToCSV(headers, rows), `pedidos_${new Date().toISOString().slice(0, 10)}.csv`);
+  showToast(`${orders.length} pedidos exportados`);
 }
 
 // ═══════════════════════════════════════════

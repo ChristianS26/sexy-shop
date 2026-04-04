@@ -217,6 +217,7 @@
         </div>
 
         <div class="admin-toolbar__actions">
+          <button class="admin-btn admin-btn--secondary" onclick="exportProductsCSV()">&#128190; CSV</button>
           <button class="admin-btn admin-btn--primary" onclick="openProductModal()">+ Nuevo Producto</button>
         </div>
       </div>
@@ -226,12 +227,21 @@
         <span id="productCount">0 productos encontrados</span>
       </div>
 
+      <div class="admin-bulk-bar" id="productBulkBar" style="display:none">
+        <span class="admin-bulk-bar__count" id="productBulkCount">0 seleccionados</span>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="bulkProductAction('activate')">Activar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="bulkProductAction('deactivate')">Desactivar</button>
+        <button class="admin-btn admin-btn--sm" style="background:#ef4444;color:#fff" onclick="bulkProductAction('delete')">Eliminar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="clearProductSelection()">Cancelar</button>
+      </div>
+
       <!-- Products table -->
       <div class="admin-table-wrapper">
         <div class="admin-table-scroll">
           <table class="admin-table">
             <thead>
               <tr>
+                <th style="width:40px"><input type="checkbox" id="productSelectAll" onchange="toggleSelectAllProducts(this.checked)"></th>
                 <th style="width:50px"></th>
                 <th>Nombre</th>
                 <th>Categor&iacute;a</th>
@@ -267,6 +277,16 @@
             <option value="cancelled">Cancelado</option>
           </select>
         </div>
+        <button class="admin-btn admin-btn--secondary" onclick="exportOrdersCSV()">&#128190; CSV</button>
+      </div>
+
+      <div class="admin-bulk-bar" id="orderBulkBar" style="display:none">
+        <span class="admin-bulk-bar__count" id="orderBulkCount">0 seleccionados</span>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="bulkOrderAction('confirmed')">Confirmar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="bulkOrderAction('shipped')">Enviar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="bulkOrderAction('delivered')">Entregar</button>
+        <button class="admin-btn admin-btn--sm" style="background:#ef4444;color:#fff" onclick="bulkOrderAction('cancelled')">Cancelar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="clearOrderSelection()">Cancelar selecci&oacute;n</button>
       </div>
 
       <div class="admin-table-wrapper">
@@ -274,6 +294,7 @@
           <table class="admin-table">
             <thead>
               <tr>
+                <th style="width:40px"><input type="checkbox" id="orderSelectAll" onchange="toggleSelectAllOrders(this.checked)"></th>
                 <th>ID</th>
                 <th>Cliente</th>
                 <th>Tel&eacute;fono</th>
