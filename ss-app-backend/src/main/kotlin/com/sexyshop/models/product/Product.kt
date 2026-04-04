@@ -30,6 +30,7 @@ data class ProductRequest(
     @SerialName("category_id") val categoryId: String,
     val stock: Int = 0,
     val badge: String? = null,
+    @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("display_order") val displayOrder: Int = 0,
 )
 
