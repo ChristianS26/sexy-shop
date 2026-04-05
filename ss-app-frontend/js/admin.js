@@ -1167,6 +1167,9 @@ async function viewOrder(id) {
     // Load timeline (non-blocking)
     loadOrderTimeline(order.id);
 
+    // Calculate and fill package dimensions
+    calculateOrderDimensions(order, items);
+
     // Check if order has shipment
     loadOrderShipment(order.id);
 
@@ -1558,60 +1561,26 @@ async function deleteExpense(id) {
 // ═══════════════════════════════════════════
 // SHIPPING
 // ═══════════════════════════════════════════
-async function prepareShippingQuote() {
-  const select = document.getElementById('orderStatusSelect');
-  const orderId = select.dataset.orderId;
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-
-  const zip = order.customer_zip || '';
-  if (!zip) {
-    showToast('El pedido no tiene código postal', true);
-    return;
-  }
-
-  const content = document.getElementById('orderShippingContent');
-  content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Calculando dimensiones...</span>';
-
-  // Calculate weight and dimensions from order items
+function calculateOrderDimensions(order, items) {
   let totalWeight = 0;
   let maxLength = 25, maxWidth = 20, maxHeight = 15;
-  try {
-    const detail = await api(`/orders/${orderId}`);
-    const items = detail.items || [];
-    items.forEach(item => {
-      const product = products.find(p => p.id === item.product_id);
-      if (product) {
-        totalWeight += (product.weight || 0.5) * item.quantity;
-        if (product.length) maxLength = Math.max(maxLength, product.length);
-        if (product.width) maxWidth = Math.max(maxWidth, product.width);
-        if (product.height) maxHeight = Math.max(maxHeight, product.height);
-      }
-    });
-  } catch (e) {}
+
+  (items || []).forEach(item => {
+    const product = products.find(p => p.id === item.product_id);
+    if (product) {
+      totalWeight += (product.weight || 0.5) * item.quantity;
+      if (product.length) maxLength = Math.max(maxLength, product.length);
+      if (product.width) maxWidth = Math.max(maxWidth, product.width);
+      if (product.height) maxHeight = Math.max(maxHeight, product.height);
+    }
+  });
+
   if (totalWeight < 0.1) totalWeight = 0.5;
 
-  const w = Math.round(totalWeight * 10) / 10;
-  const l = Math.ceil(maxLength);
-  const wd = Math.ceil(maxWidth);
-  const h = Math.ceil(maxHeight);
-
-  content.innerHTML = `
-    <div class="shipping-preview">
-      <div class="shipping-preview__dims" style="border-top:none">
-        <span class="shipping-preview__dims-title">Dimensiones del paquete</span>
-        <div class="shipping-preview__dims-row">
-          <label>Peso (kg)<input type="number" id="shipWeight" value="${w}" min="0.1" step="0.1"></label>
-          <label>Largo (cm)<input type="number" id="shipLength" value="${l}" min="1" step="1"></label>
-          <label>Ancho (cm)<input type="number" id="shipWidth" value="${wd}" min="1" step="1"></label>
-          <label>Alto (cm)<input type="number" id="shipHeight" value="${h}" min="1" step="1"></label>
-        </div>
-      </div>
-      <div class="shipping-preview__actions">
-        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="quoteShipping()">Cotizar envío</button>
-      </div>
-    </div>
-  `;
+  document.getElementById('shipWeight').value = Math.round(totalWeight * 10) / 10;
+  document.getElementById('shipLength').value = Math.ceil(maxLength);
+  document.getElementById('shipWidth').value = Math.ceil(maxWidth);
+  document.getElementById('shipHeight').value = Math.ceil(maxHeight);
 }
 
 async function quoteShipping() {
@@ -1626,19 +1595,10 @@ async function quoteShipping() {
     return;
   }
 
-  // Read from editable fields or use defaults
   const qWeight = document.getElementById('shipWeight')?.value || '1';
   const qLength = document.getElementById('shipLength')?.value || '25';
   const qWidth = document.getElementById('shipWidth')?.value || '20';
   const qHeight = document.getElementById('shipHeight')?.value || '15';
-
-  // Save for later
-  window._shippingDims = {
-    weight: parseFloat(qWeight),
-    length: parseInt(qLength),
-    width: parseInt(qWidth),
-    height: parseInt(qHeight),
-  };
 
   const content = document.getElementById('orderShippingContent');
   content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Cotizando...</span>';
@@ -1692,8 +1652,6 @@ function previewShippingLabel(currier, service, price) {
     order.customer_int_num ? `Int. ${order.customer_int_num}` : '',
   ].filter(Boolean).join(' ');
 
-  const dims = window._shippingDims || { weight: 1, length: 25, width: 20, height: 15 };
-
   content.innerHTML = `
     <div class="shipping-preview">
       <div class="shipping-preview__header">
@@ -1706,17 +1664,8 @@ function previewShippingLabel(currier, service, price) {
         <div><strong>Ciudad:</strong> ${escapeHtml(order.customer_city || '')}, ${escapeHtml(order.customer_state || '')} C.P. ${escapeHtml(order.customer_zip || '')}</div>
         <div><strong>Teléfono:</strong> ${escapeHtml(order.customer_phone)}</div>
       </div>
-      <div class="shipping-preview__dims">
-        <span class="shipping-preview__dims-title">Paquete (editable)</span>
-        <div class="shipping-preview__dims-row">
-          <label>Peso (kg)<input type="number" id="shipWeight" value="${dims.weight}" min="0.1" step="0.1"></label>
-          <label>Largo (cm)<input type="number" id="shipLength" value="${dims.length}" min="1" step="1"></label>
-          <label>Ancho (cm)<input type="number" id="shipWidth" value="${dims.width}" min="1" step="1"></label>
-          <label>Alto (cm)<input type="number" id="shipHeight" value="${dims.height}" min="1" step="1"></label>
-        </div>
-      </div>
       <div class="shipping-preview__actions">
-        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="prepareShippingQuote()">&#8635; Recotizar</button>
         <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}')">Confirmar y generar guía</button>
       </div>
     </div>
@@ -1725,8 +1674,11 @@ function previewShippingLabel(currier, service, price) {
 
 async function loadOrderShipment(orderId) {
   const content = document.getElementById('orderShippingContent');
+  const dimsSection = document.getElementById('orderDimsSection');
   try {
     const shipment = await api(`/shipping/order/${orderId}`);
+    // Has shipment — hide dimensions, show label
+    if (dimsSection) dimsSection.style.display = 'none';
     content.innerHTML = `
       <div class="shipping-label-result">
         <div class="shipping-label-result__info">
@@ -1737,8 +1689,9 @@ async function loadOrderShipment(orderId) {
       </div>
     `;
   } catch (e) {
-    // No shipment exists, show quote button (default state)
-    content.innerHTML = '<button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="prepareShippingQuote()">Cotizar envío</button>';
+    // No shipment — show dimensions and quote button
+    if (dimsSection) dimsSection.style.display = 'block';
+    content.innerHTML = '<button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="width:100%">Cotizar envío</button>';
   }
 }
 

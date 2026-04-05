@@ -708,17 +708,26 @@
           <span id="orderDetailTotal">&mdash;</span>
         </div>
 
+        <!-- Package dimensions — always visible -->
+        <div class="order-detail__dims" id="orderDimsSection">
+          <span class="shipping-preview__dims-title">Paquete</span>
+          <div class="shipping-preview__dims-row">
+            <label>Peso (kg)<input type="number" id="shipWeight" value="1" min="0.1" step="0.1"></label>
+            <label>Largo (cm)<input type="number" id="shipLength" value="25" min="1" step="1"></label>
+            <label>Ancho (cm)<input type="number" id="shipWidth" value="20" min="1" step="1"></label>
+            <label>Alto (cm)<input type="number" id="shipHeight" value="15" min="1" step="1"></label>
+          </div>
+        </div>
+
+        <!-- Shipping -->
+        <div id="orderShippingContent">
+          <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="width:100%">Cotizar env&iacute;o</button>
+        </div>
+
         <details class="order-detail__timeline-toggle">
           <summary>Historial</summary>
           <div class="admin-order-timeline" id="orderTimeline"></div>
         </details>
-
-        <div class="order-detail__card" id="orderShippingCard">
-          <h4 class="order-detail__card-title">Env&iacute;o</h4>
-          <div id="orderShippingContent">
-            <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="prepareShippingQuote()">Cotizar env&iacute;o</button>
-          </div>
-        </div>
       </div>
     </div>
   </div>

@@ -1796,6 +1796,13 @@ body {
   color: var(--admin-primary);
 }
 
+/* Order dimensions section */
+.order-detail__dims {
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
 /* Shipping tag in orders table */
 .shipping-tag {
   display: inline-block;
