@@ -1688,8 +1688,9 @@ function previewShippingLabel(currier, service, price, provider) {
       </div>
       <div class="shipping-preview__actions">
         <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
-        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}')">Confirmar y generar guía</button>
+        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}', '${provider || 'epack'}')">Confirmar y generar guía</button>
       </div>
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:6px;text-align:right">vía ${provider === 'envia' ? 'Envia.com' : 'Epack'}</div>
     </div>
   `;
 }
@@ -1717,7 +1718,7 @@ async function loadOrderShipment(orderId) {
   }
 }
 
-async function confirmShippingLabel(currier, service, price) {
+async function confirmShippingLabel(currier, service, price, provider) {
   // Read editable dimensions
   const editedWeight = document.getElementById('shipWeight')?.value || '1';
   const editedLength = document.getElementById('shipLength')?.value || '25';
@@ -1740,7 +1741,8 @@ async function confirmShippingLabel(currier, service, price) {
   content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Generando guía...</span>';
 
   try {
-    const res = await api('/shipping/create-label', {
+    const endpoint = provider === 'envia' ? '/shipping/create-label-envia' : '/shipping/create-label';
+    const res = await api(endpoint, {
       method: 'POST',
       body: JSON.stringify({
         order_id: orderId,

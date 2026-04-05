@@ -253,7 +253,120 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
             call.respondText(result.toString(), ContentType.Application.Json)
         }
 
-        // Create shipping label
+        // Create shipping label via Envia.com
+        post("/create-label-envia") {
+            if (!call.requireAdmin(supabase)) return@post
+
+            val request = call.receive<CreateLabelRequest>()
+
+            if (config.enviaApiKey.isEmpty()) {
+                val guia = "ENVIA-MOCK-${System.currentTimeMillis().toString().takeLast(8)}"
+                val pdf = "https://example.com/mock-envia-label.pdf"
+                shipmentRepository.create(Shipment(
+                    orderId = request.orderId,
+                    carrier = request.currier,
+                    service = request.service,
+                    trackingNumber = guia,
+                    labelUrl = pdf,
+                    cost = 0.0,
+                ))
+                val mockLabel = buildJsonObject {
+                    put("result", buildJsonObject { put("NumeroGuia", guia); put("pdf", pdf) })
+                    put("error", false)
+                    put("mock", true)
+                }
+                call.respondText(mockLabel.toString(), ContentType.Application.Json)
+                return@post
+            }
+
+            val enviaPayload = buildJsonObject {
+                put("origin", buildJsonObject {
+                    put("name", "Sexy Shop")
+                    put("phone", "+526222279504")
+                    put("street", "Centro")
+                    put("city", "Guaymas")
+                    put("state", "SON")
+                    put("country", "MX")
+                    put("postalCode", config.shipperZip)
+                })
+                put("destination", buildJsonObject {
+                    put("name", request.recipientName)
+                    put("phone", "+52${request.recipientPhone.replace(Regex("[^0-9]"), "")}")
+                    put("street", "${request.recipientStreet} ${request.recipientExtNum}".trim())
+                    put("street2", request.recipientIntNum.ifEmpty { "" })
+                    put("city", request.recipientCity)
+                    put("state", abbreviateState(request.recipientState))
+                    put("country", "MX")
+                    put("postalCode", request.recipientZip)
+                })
+                put("packages", buildJsonArray {
+                    addJsonObject {
+                        put("type", "box")
+                        put("content", "productos")
+                        put("amount", 1)
+                        put("declaredValue", 500)
+                        put("lengthUnit", "CM")
+                        put("weightUnit", "KG")
+                        put("weight", request.weight.toDoubleOrNull() ?: 1.0)
+                        put("dimensions", buildJsonObject {
+                            put("length", 25)
+                            put("width", 20)
+                            put("height", 15)
+                        })
+                    }
+                })
+                put("shipment", buildJsonObject {
+                    put("type", 1)
+                    put("carrier", request.currier)
+                    put("service", request.service)
+                })
+            }
+
+            val client = HttpClient(CIO)
+            try {
+                val response = client.post("https://api.envia.com/ship/generate/") {
+                    header("Authorization", "Bearer ${config.enviaApiKey}")
+                    contentType(ContentType.Application.Json)
+                    setBody(enviaPayload.toString())
+                }
+
+                if (response.status.isSuccess()) {
+                    val responseBody = response.bodyAsText()
+                    val responseJson = Json.parseToJsonElement(responseBody).jsonObject
+                    val data = responseJson["data"]?.jsonArray?.firstOrNull()?.jsonObject
+                    val guia = data?.get("trackingNumber")?.jsonPrimitive?.content ?: ""
+                    val pdf = data?.get("label")?.jsonPrimitive?.content ?: ""
+
+                    if (guia.isNotBlank()) {
+                        shipmentRepository.create(Shipment(
+                            orderId = request.orderId,
+                            carrier = request.currier,
+                            service = request.service,
+                            trackingNumber = guia,
+                            labelUrl = pdf,
+                            cost = data?.get("totalPrice")?.jsonPrimitive?.double ?: 0.0,
+                        ))
+                    }
+
+                    val result = buildJsonObject {
+                        put("result", buildJsonObject { put("NumeroGuia", guia); put("pdf", pdf) })
+                        put("error", false)
+                    }
+                    call.respondText(result.toString(), ContentType.Application.Json)
+                } else {
+                    val errorBody = response.bodyAsText()
+                    logger.error("Envia create label error: $errorBody")
+                    call.respondText(errorBody, ContentType.Application.Json, response.status)
+                }
+            } catch (e: Exception) {
+                logger.error("Envia create error", e)
+                call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Envia"))
+            } finally {
+                client.close()
+            }
+        }
+
+        // Create shipping label via Epack
         post("/create-label") {
             if (!call.requireAdmin(supabase)) return@post
 
