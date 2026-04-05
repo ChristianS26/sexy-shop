@@ -284,6 +284,7 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
                     put("name", "Sexy Shop")
                     put("phone", "+526222279504")
                     put("street", "Centro")
+                    put("number", "SN")
                     put("city", "Guaymas")
                     put("state", "SON")
                     put("country", "MX")
@@ -292,12 +293,18 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
                 put("destination", buildJsonObject {
                     put("name", request.recipientName)
                     put("phone", "+52${request.recipientPhone.replace(Regex("[^0-9]"), "")}")
-                    put("street", "${request.recipientStreet} ${request.recipientExtNum}".trim())
+                    put("street", request.recipientStreet)
+                    put("number", request.recipientExtNum.ifEmpty { "SN" })
                     put("street2", request.recipientIntNum.ifEmpty { "" })
                     put("city", request.recipientCity)
                     put("state", abbreviateState(request.recipientState))
                     put("country", "MX")
                     put("postalCode", request.recipientZip)
+                })
+                put("settings", buildJsonObject {
+                    put("printFormat", "PDF")
+                    put("printSize", "STOCK_4X6")
+                    put("currency", "MXN")
                 })
                 put("packages", buildJsonArray {
                     addJsonObject {
@@ -330,34 +337,50 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
                     setBody(enviaPayload.toString())
                 }
 
-                if (response.status.isSuccess()) {
-                    val responseBody = response.bodyAsText()
-                    val responseJson = Json.parseToJsonElement(responseBody).jsonObject
-                    val data = responseJson["data"]?.jsonArray?.firstOrNull()?.jsonObject
-                    val guia = data?.get("trackingNumber")?.jsonPrimitive?.content ?: ""
-                    val pdf = data?.get("label")?.jsonPrimitive?.content ?: ""
+                val responseBody = response.bodyAsText()
+                val responseJson = Json.parseToJsonElement(responseBody).jsonObject
 
-                    if (guia.isNotBlank()) {
-                        shipmentRepository.create(Shipment(
-                            orderId = request.orderId,
-                            carrier = request.currier,
-                            service = request.service,
-                            trackingNumber = guia,
-                            labelUrl = pdf,
-                            cost = data?.get("totalPrice")?.jsonPrimitive?.double ?: 0.0,
-                        ))
+                // Check for Envia error
+                val meta = responseJson["meta"]?.jsonPrimitive?.content
+                if (meta == "error") {
+                    val errorObj = responseJson["error"]?.jsonObject
+                    val errorMsg = errorObj?.get("message")?.jsonPrimitive?.content ?: "Error desconocido"
+                    logger.error("Envia create label error: $errorMsg")
+                    val errorResult = buildJsonObject {
+                        put("error", true)
+                        put("message", errorMsg)
                     }
-
-                    val result = buildJsonObject {
-                        put("result", buildJsonObject { put("NumeroGuia", guia); put("pdf", pdf) })
-                        put("error", false)
-                    }
-                    call.respondText(result.toString(), ContentType.Application.Json)
-                } else {
-                    val errorBody = response.bodyAsText()
-                    logger.error("Envia create label error: $errorBody")
-                    call.respondText(errorBody, ContentType.Application.Json, response.status)
+                    call.respondText(errorResult.toString(), ContentType.Application.Json, HttpStatusCode.BadRequest)
+                    return@post
                 }
+
+                val data = responseJson["data"]?.jsonArray?.firstOrNull()?.jsonObject
+                val guia = data?.get("trackingNumber")?.jsonPrimitive?.content ?: ""
+                val pdf = data?.get("label")?.jsonPrimitive?.content ?: ""
+
+                if (guia.isBlank()) {
+                    val errorResult = buildJsonObject {
+                        put("error", true)
+                        put("message", "No se pudo generar la guía")
+                    }
+                    call.respondText(errorResult.toString(), ContentType.Application.Json, HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                shipmentRepository.create(Shipment(
+                    orderId = request.orderId,
+                    carrier = request.currier,
+                    service = request.service,
+                    trackingNumber = guia,
+                    labelUrl = pdf,
+                    cost = data?.get("totalPrice")?.jsonPrimitive?.double ?: 0.0,
+                ))
+
+                val result = buildJsonObject {
+                    put("result", buildJsonObject { put("NumeroGuia", guia); put("pdf", pdf) })
+                    put("error", false)
+                }
+                call.respondText(result.toString(), ContentType.Application.Json)
             } catch (e: Exception) {
                 logger.error("Envia create error", e)
                 call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Envia"))

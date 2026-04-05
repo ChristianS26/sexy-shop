@@ -1778,7 +1778,22 @@ async function confirmShippingLabel(currier, service, price, provider) {
 
     showToast(`Guía generada: ${guia}`);
   } catch (e) {
-    content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al generar guía</span><br><button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:8px">Reintentar</button>';
+    const errorMsg = e.message || 'Error al generar guía';
+    // Extract readable error from API response
+    let displayMsg = 'Error al generar guía';
+    if (errorMsg.includes('Not Enough money')) displayMsg = 'Saldo insuficiente en la cuenta de envíos';
+    else if (errorMsg.includes('Invalid')) displayMsg = 'Datos de envío inválidos';
+    else if (errorMsg.includes('message')) {
+      try { displayMsg = JSON.parse(errorMsg.split(': ').slice(1).join(': ')).message || displayMsg; } catch(_) {}
+    }
+
+    content.innerHTML = `
+      <div style="padding:12px;background:#fef2f2;border-radius:8px;margin-bottom:8px">
+        <div style="color:#b91c1c;font-weight:600;font-size:0.85rem">Error al generar guía</div>
+        <div style="color:#991b1b;font-size:0.82rem;margin-top:4px">${escapeHtml(displayMsg)}</div>
+      </div>
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="width:100%">&#8635; Recotizar</button>
+    `;
     console.error(e);
   }
 }
