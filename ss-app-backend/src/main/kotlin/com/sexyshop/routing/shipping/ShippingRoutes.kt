@@ -20,6 +20,26 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("ShippingRoutes")
 
+private val stateAbbreviations = mapOf(
+    "aguascalientes" to "AG", "baja california" to "BC", "baja california sur" to "BS",
+    "campeche" to "CM", "chiapas" to "CS", "chihuahua" to "CH", "ciudad de mexico" to "CMX",
+    "cdmx" to "CMX", "coahuila" to "CO", "colima" to "CL", "durango" to "DG",
+    "guanajuato" to "GT", "guerrero" to "GR", "hidalgo" to "HG", "jalisco" to "JA",
+    "mexico" to "MX", "estado de mexico" to "MX", "michoacan" to "MI", "michoacán" to "MI",
+    "morelos" to "MO", "nayarit" to "NA", "nuevo leon" to "NL", "nuevo león" to "NL",
+    "oaxaca" to "OA", "puebla" to "PU", "queretaro" to "QT", "querétaro" to "QT",
+    "quintana roo" to "QR", "san luis potosi" to "SL", "san luis potosí" to "SL",
+    "sinaloa" to "SI", "sonora" to "SON", "tabasco" to "TB", "tamaulipas" to "TM",
+    "tlaxcala" to "TL", "veracruz" to "VE", "yucatan" to "YU", "yucatán" to "YU",
+    "zacatecas" to "ZA",
+)
+
+private fun abbreviateState(state: String): String {
+    val normalized = state.trim().lowercase()
+        .replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
+    return stateAbbreviations[normalized] ?: stateAbbreviations[state.trim().lowercase()] ?: state
+}
+
 @Serializable
 data class QuoteRequest(
     @SerialName("recipient_zip") val recipientZip: String,
@@ -180,7 +200,7 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
                             put("phone", "+520000000000")
                             put("street", "Destino")
                             put("city", request.recipientCity.ifEmpty { "Ciudad" })
-                            put("state", request.recipientState.ifEmpty { "Estado" })
+                            put("state", abbreviateState(request.recipientState.ifEmpty { "Estado" }))
                             put("country", "MX")
                             put("postalCode", request.recipientZip)
                         })
