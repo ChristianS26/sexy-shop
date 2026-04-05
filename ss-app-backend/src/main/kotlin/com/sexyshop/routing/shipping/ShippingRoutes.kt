@@ -23,6 +23,8 @@ private val logger = LoggerFactory.getLogger("ShippingRoutes")
 @Serializable
 data class QuoteRequest(
     @SerialName("recipient_zip") val recipientZip: String,
+    @SerialName("recipient_city") val recipientCity: String = "",
+    @SerialName("recipient_state") val recipientState: String = "",
     val weight: String = "1",
     val large: String = "25",
     val width: String = "20",
@@ -122,6 +124,113 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
             } finally {
                 client.close()
             }
+        }
+
+        // Quote via Envia.com
+        post("/quote-envia") {
+            if (!call.requireAdmin(supabase)) return@post
+
+            if (config.enviaApiKey.isEmpty()) {
+                val mockResponse = buildJsonObject {
+                    put("data", buildJsonArray {
+                        addJsonObject {
+                            put("carrier", "estafeta")
+                            put("service", "ground")
+                            put("serviceDescription", "Estafeta Terrestre")
+                            put("totalPrice", 156)
+                            put("deliveryEstimate", "1-2 días")
+                        }
+                        addJsonObject {
+                            put("carrier", "dhl")
+                            put("service", "ground")
+                            put("serviceDescription", "DHL Economy")
+                            put("totalPrice", 180)
+                            put("deliveryEstimate", "1-4 días")
+                        }
+                        addJsonObject {
+                            put("carrier", "fedex")
+                            put("service", "ground")
+                            put("serviceDescription", "FedEx Terrestre")
+                            put("totalPrice", 206)
+                            put("deliveryEstimate", "2-4 días")
+                        }
+                    })
+                    put("mock", true)
+                }
+                call.respondText(mockResponse.toString(), ContentType.Application.Json)
+                return@post
+            }
+
+            val request = call.receive<QuoteRequest>()
+            val carriers = listOf("estafeta", "dhl", "fedex", "ups")
+            val allQuotes = buildJsonArray {
+                for (carrier in carriers) {
+                    val payload = buildJsonObject {
+                        put("origin", buildJsonObject {
+                            put("name", "Sexy Shop")
+                            put("phone", "+526222279504")
+                            put("street", "Centro")
+                            put("city", "Guaymas")
+                            put("state", "SON")
+                            put("country", "MX")
+                            put("postalCode", config.shipperZip)
+                        })
+                        put("destination", buildJsonObject {
+                            put("name", "Cliente")
+                            put("phone", "+520000000000")
+                            put("street", "Destino")
+                            put("city", request.recipientCity.ifEmpty { "Ciudad" })
+                            put("state", request.recipientState.ifEmpty { "Estado" })
+                            put("country", "MX")
+                            put("postalCode", request.recipientZip)
+                        })
+                        put("packages", buildJsonArray {
+                            addJsonObject {
+                                put("type", "box")
+                                put("content", "productos")
+                                put("amount", 1)
+                                put("declaredValue", 500)
+                                put("lengthUnit", "CM")
+                                put("weightUnit", "KG")
+                                put("weight", request.weight.toDoubleOrNull() ?: 1.0)
+                                put("dimensions", buildJsonObject {
+                                    put("length", request.large.toIntOrNull() ?: 25)
+                                    put("width", request.width.toIntOrNull() ?: 20)
+                                    put("height", request.height.toIntOrNull() ?: 15)
+                                })
+                            }
+                        })
+                        put("shipment", buildJsonObject {
+                            put("type", 1)
+                            put("carrier", carrier)
+                        })
+                    }
+
+                    val client = HttpClient(CIO)
+                    try {
+                        val response = client.post("https://api.envia.com/ship/rate/") {
+                            header("Authorization", "Bearer ${config.enviaApiKey}")
+                            contentType(ContentType.Application.Json)
+                            setBody(payload.toString())
+                        }
+                        if (response.status.isSuccess()) {
+                            val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+                            val data = body["data"]?.jsonArray
+                            data?.forEach { add(it) }
+                        }
+                    } catch (e: Exception) {
+                        logger.error("Envia quote error for $carrier", e)
+                    } finally {
+                        client.close()
+                    }
+                }
+            }
+
+            val result = buildJsonObject {
+                put("data", allQuotes)
+                put("mock", false)
+            }
+            call.respondText(result.toString(), ContentType.Application.Json)
         }
 
         // Create shipping label

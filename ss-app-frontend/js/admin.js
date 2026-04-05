@@ -1603,43 +1603,65 @@ async function quoteShipping() {
   const content = document.getElementById('orderShippingContent');
   content.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><div style="width:16px;height:16px;border:2px solid #e5e7eb;border-top-color:#e91e63;border-radius:50%;animation:spin 0.7s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Cotizando paqueterías...</span></div>';
 
-  try {
-    const res = await api('/shipping/quote', {
-      method: 'POST',
-      body: JSON.stringify({
-        recipient_zip: zip,
-        weight: String(Math.ceil(parseFloat(qWeight))),
-        large: qLength,
-        width: qWidth,
-        height: qHeight,
-      }),
-    });
+  const quoteBody = {
+    recipient_zip: zip,
+    recipient_city: order.customer_city || '',
+    recipient_state: order.customer_state || '',
+    weight: String(Math.ceil(parseFloat(qWeight))),
+    large: qLength,
+    width: qWidth,
+    height: qHeight,
+  };
 
-    const quotes = res.result || [];
-    if (quotes.length === 0) {
-      content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Sin opciones de envío disponibles</span>';
-      return;
-    }
+  // Fetch both providers in parallel
+  const [epackRes, enviaRes] = await Promise.allSettled([
+    api('/shipping/quote', { method: 'POST', body: JSON.stringify(quoteBody) }),
+    api('/shipping/quote-envia', { method: 'POST', body: JSON.stringify(quoteBody) }),
+  ]);
 
-    content.innerHTML = `
-      <div class="shipping-quotes">
-        ${quotes.map(q => `
-          <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}')">
-            <div class="shipping-quote__carrier">${escapeHtml(q.Currier?.toUpperCase())}</div>
-            <div class="shipping-quote__service">${escapeHtml(q.Service)}</div>
-            <div class="shipping-quote__price">${formatCurrency(parseFloat(q.Total))}</div>
-          </div>
-        `).join('')}
+  const epackQuotes = epackRes.status === 'fulfilled' ? (epackRes.value.result || []) : [];
+  const enviaQuotes = enviaRes.status === 'fulfilled' ? (enviaRes.value.data || []) : [];
+
+  if (epackQuotes.length === 0 && enviaQuotes.length === 0) {
+    content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Sin opciones de envío disponibles</span>';
+    return;
+  }
+
+  const renderEpackRow = q => `
+    <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}', 'epack')">
+      <div class="shipping-quote__carrier">${escapeHtml(q.Currier?.toUpperCase())}</div>
+      <div class="shipping-quote__service">${escapeHtml(q.Service)}</div>
+      <div class="shipping-quote__price">${formatCurrency(parseFloat(q.Total))}</div>
+    </div>`;
+
+  const renderEnviaRow = q => `
+    <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.carrier)}', '${escapeHtml(q.service)}', '${q.totalPrice}', 'envia')">
+      <div class="shipping-quote__carrier">${escapeHtml(q.carrier?.toUpperCase())}</div>
+      <div class="shipping-quote__service">${escapeHtml(q.serviceDescription || q.service)} <span style="font-size:0.72rem;color:var(--text-secondary)">${escapeHtml(q.deliveryEstimate || '')}</span></div>
+      <div class="shipping-quote__price">${formatCurrency(q.totalPrice)}</div>
+    </div>`;
+
+  content.innerHTML = `
+    <div class="shipping-compare">
+      <div class="shipping-compare__col">
+        <div class="shipping-compare__title">Epack ${epackRes.value?.mock ? '<span style="font-size:0.7rem;color:#b45309">(simulación)</span>' : ''}</div>
+        <div class="shipping-quotes">${epackQuotes.length > 0 ? epackQuotes.map(renderEpackRow).join('') : '<span style="color:#999;font-size:0.82rem">Sin resultados</span>'}</div>
       </div>
-      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px">&#8635; Recotizar</button>
-    `;
-  } catch (e) {
+      <div class="shipping-compare__col">
+        <div class="shipping-compare__title">Envia.com ${enviaRes.value?.mock ? '<span style="font-size:0.7rem;color:#b45309">(simulación)</span>' : ''}</div>
+        <div class="shipping-quotes">${enviaQuotes.length > 0 ? enviaQuotes.map(renderEnviaRow).join('') : '<span style="color:#999;font-size:0.82rem">Sin resultados</span>'}</div>
+      </div>
+    </div>
+    <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px;width:100%">&#8635; Recotizar</button>
+  `;
+
+  try {} catch (e) {
     content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cotizar</span>';
     console.error(e);
   }
 }
 
-function previewShippingLabel(currier, service, price) {
+function previewShippingLabel(currier, service, price, provider) {
   const select = document.getElementById('orderStatusSelect');
   const orderId = select.dataset.orderId;
   const order = orders.find(o => o.id === orderId);

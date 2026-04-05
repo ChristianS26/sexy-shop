@@ -15,5 +15,6 @@ data class AppConfig(
     val frontendUrl: String,
     val backendUrl: String,
     val epackApiKey: String,
+    val enviaApiKey: String,
     val shipperZip: String,
 )
