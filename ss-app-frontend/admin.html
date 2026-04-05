@@ -593,6 +593,30 @@
         </div>
       </div>
 
+      <details class="admin-form-details">
+        <summary>Dimensiones y peso (opcional)</summary>
+        <div class="admin-form-row" style="margin-top:12px">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label" for="productWeight">Peso (kg)</label>
+            <input class="admin-form-group__input" type="number" id="productWeight" min="0" step="0.01" placeholder="Ej: 0.5">
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label" for="productLength">Largo (cm)</label>
+            <input class="admin-form-group__input" type="number" id="productLength" min="0" step="0.1" placeholder="Ej: 25">
+          </div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label" for="productWidth">Ancho (cm)</label>
+            <input class="admin-form-group__input" type="number" id="productWidth" min="0" step="0.1" placeholder="Ej: 20">
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label" for="productHeight">Alto (cm)</label>
+            <input class="admin-form-group__input" type="number" id="productHeight" min="0" step="0.1" placeholder="Ej: 15">
+          </div>
+        </div>
+      </details>
+
       <!-- Image upload (only when editing) -->
       <div class="admin-form-group" id="productImagesSection" style="display:none">
         <label class="admin-form-group__label">Im&aacute;genes del producto</label>

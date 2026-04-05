@@ -678,6 +678,22 @@ body {
   border-color: var(--admin-primary);
 }
 
+.admin-form-details {
+  margin-bottom: 16px;
+}
+
+.admin-form-details summary {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.admin-form-details summary:hover {
+  color: var(--admin-primary);
+}
+
 .admin-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

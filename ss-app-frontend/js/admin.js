@@ -712,6 +712,10 @@ function openProductModal(id) {
     document.getElementById('productCategorySelect').value = p.category_id;
     document.getElementById('productStock').value = p.stock;
     document.getElementById('productLowStock').value = p.low_stock_threshold ?? '';
+    document.getElementById('productWeight').value = p.weight ?? '';
+    document.getElementById('productLength').value = p.length ?? '';
+    document.getElementById('productWidth').value = p.width ?? '';
+    document.getElementById('productHeight').value = p.height ?? '';
     document.getElementById('productBadge').value = p.badge || '';
     document.getElementById('productActive').checked = p.is_active !== false;
 
@@ -762,6 +766,10 @@ async function saveProduct(e) {
     price: parseFloat(document.getElementById('productPrice').value),
     cost_price: parseFloat(document.getElementById('productCostPrice').value) || 0,
     low_stock_threshold: document.getElementById('productLowStock').value ? parseInt(document.getElementById('productLowStock').value) : null,
+    weight: document.getElementById('productWeight').value ? parseFloat(document.getElementById('productWeight').value) : null,
+    length: document.getElementById('productLength').value ? parseFloat(document.getElementById('productLength').value) : null,
+    width: document.getElementById('productWidth').value ? parseFloat(document.getElementById('productWidth').value) : null,
+    height: document.getElementById('productHeight').value ? parseFloat(document.getElementById('productHeight').value) : null,
     old_price: oldPriceVal ? parseFloat(oldPriceVal) : null,
     category_id: document.getElementById('productCategorySelect').value,
     stock: parseInt(document.getElementById('productStock').value) || 0,
@@ -1565,15 +1573,33 @@ async function quoteShipping() {
   const content = document.getElementById('orderShippingContent');
   content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Cotizando...</span>';
 
+  // Calculate weight and dimensions from order items
+  let totalWeight = 0;
+  let maxLength = 25, maxWidth = 20, maxHeight = 15;
+  try {
+    const detail = await api(`/orders/${orderId}`);
+    const items = detail.items || [];
+    items.forEach(item => {
+      const product = products.find(p => p.id === item.product_id);
+      if (product) {
+        totalWeight += (product.weight || 0.5) * item.quantity;
+        if (product.length) maxLength = Math.max(maxLength, product.length);
+        if (product.width) maxWidth = Math.max(maxWidth, product.width);
+        if (product.height) maxHeight = Math.max(maxHeight, product.height);
+      }
+    });
+  } catch (e) {}
+  if (totalWeight < 1) totalWeight = 1;
+
   try {
     const res = await api('/shipping/quote', {
       method: 'POST',
       body: JSON.stringify({
         recipient_zip: zip,
-        weight: '1',
-        large: '25',
-        width: '20',
-        height: '15',
+        weight: String(Math.ceil(totalWeight)),
+        large: String(Math.ceil(maxLength)),
+        width: String(Math.ceil(maxWidth)),
+        height: String(Math.ceil(maxHeight)),
       }),
     });
 
