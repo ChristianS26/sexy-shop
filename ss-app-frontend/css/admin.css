@@ -1856,6 +1856,51 @@ body {
   color: var(--text-primary);
 }
 
+.shipping-preview__dims {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-color);
+  background: #f9fafb;
+}
+
+.shipping-preview__dims-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.shipping-preview__dims-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.shipping-preview__dims-row label {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.shipping-preview__dims-row input {
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: var(--font);
+  text-align: center;
+}
+
+.shipping-preview__dims-row input:focus {
+  outline: none;
+  border-color: var(--admin-primary);
+}
+
 .shipping-preview__actions {
   display: flex;
   justify-content: space-between;

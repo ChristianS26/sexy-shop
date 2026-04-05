@@ -1576,6 +1576,7 @@ async function quoteShipping() {
   // Calculate weight and dimensions from order items
   let totalWeight = 0;
   let maxLength = 25, maxWidth = 20, maxHeight = 15;
+  window._shippingDims = null;
   try {
     const detail = await api(`/orders/${orderId}`);
     const items = detail.items || [];
@@ -1590,6 +1591,14 @@ async function quoteShipping() {
     });
   } catch (e) {}
   if (totalWeight < 1) totalWeight = 1;
+
+  // Save for preview
+  window._shippingDims = {
+    weight: Math.ceil(totalWeight),
+    length: Math.ceil(maxLength),
+    width: Math.ceil(maxWidth),
+    height: Math.ceil(maxHeight),
+  };
 
   try {
     const res = await api('/shipping/quote', {
@@ -1640,6 +1649,8 @@ function previewShippingLabel(currier, service, price) {
     order.customer_int_num ? `Int. ${order.customer_int_num}` : '',
   ].filter(Boolean).join(' ');
 
+  const dims = window._shippingDims || { weight: 1, length: 25, width: 20, height: 15 };
+
   content.innerHTML = `
     <div class="shipping-preview">
       <div class="shipping-preview__header">
@@ -1651,6 +1662,15 @@ function previewShippingLabel(currier, service, price) {
         <div><strong>Dirección:</strong> ${escapeHtml(addr)}, Col. ${escapeHtml(order.customer_neighborhood || '')}</div>
         <div><strong>Ciudad:</strong> ${escapeHtml(order.customer_city || '')}, ${escapeHtml(order.customer_state || '')} C.P. ${escapeHtml(order.customer_zip || '')}</div>
         <div><strong>Teléfono:</strong> ${escapeHtml(order.customer_phone)}</div>
+      </div>
+      <div class="shipping-preview__dims">
+        <span class="shipping-preview__dims-title">Paquete (editable)</span>
+        <div class="shipping-preview__dims-row">
+          <label>Peso (kg)<input type="number" id="shipWeight" value="${dims.weight}" min="0.1" step="0.1"></label>
+          <label>Largo (cm)<input type="number" id="shipLength" value="${dims.length}" min="1" step="1"></label>
+          <label>Ancho (cm)<input type="number" id="shipWidth" value="${dims.width}" min="1" step="1"></label>
+          <label>Alto (cm)<input type="number" id="shipHeight" value="${dims.height}" min="1" step="1"></label>
+        </div>
       </div>
       <div class="shipping-preview__actions">
         <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
@@ -1680,7 +1700,17 @@ async function loadOrderShipment(orderId) {
 }
 
 async function confirmShippingLabel(currier, service, price) {
-  const ok = await showConfirm('Confirmar generación', `¿Generar guía ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}? Esta acción generará un cargo.`, 'Generar guía');
+  // Read editable dimensions
+  const editedWeight = document.getElementById('shipWeight')?.value || '1';
+  const editedLength = document.getElementById('shipLength')?.value || '25';
+  const editedWidth = document.getElementById('shipWidth')?.value || '20';
+  const editedHeight = document.getElementById('shipHeight')?.value || '15';
+
+  const ok = await showConfirm(
+    'Confirmar generación',
+    `¿Generar guía ${currier.toUpperCase()} - ${service} por ${formatCurrency(parseFloat(price))}?\n\nPaquete: ${editedWeight}kg — ${editedLength}×${editedWidth}×${editedHeight} cm\n\nEsta acción generará un cargo.`,
+    'Generar guía'
+  );
   if (!ok) return;
 
   const select = document.getElementById('orderStatusSelect');
@@ -1707,7 +1737,7 @@ async function confirmShippingLabel(currier, service, price) {
         recipient_state: order.customer_state || '',
         recipient_ext_num: order.customer_ext_num || '',
         recipient_int_num: order.customer_int_num || '',
-        weight: '1',
+        weight: editedWeight,
       }),
     });
 
