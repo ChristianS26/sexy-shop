@@ -1601,7 +1601,7 @@ async function quoteShipping() {
   const qHeight = document.getElementById('shipHeight')?.value || '15';
 
   const content = document.getElementById('orderShippingContent');
-  content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Cotizando...</span>';
+  content.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><div style="width:16px;height:16px;border:2px solid #e5e7eb;border-top-color:#e91e63;border-radius:50%;animation:spin 0.7s linear infinite"></div><span style="color:var(--text-secondary);font-size:0.85rem">Cotizando paqueterías...</span></div>';
 
   try {
     const res = await api('/shipping/quote', {
@@ -1631,7 +1631,7 @@ async function quoteShipping() {
           </div>
         `).join('')}
       </div>
-      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="prepareShippingQuote()" style="margin-top:10px">&#8635; Recotizar</button>
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px">&#8635; Recotizar</button>
     `;
   } catch (e) {
     content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cotizar</span>';
@@ -1665,7 +1665,7 @@ function previewShippingLabel(currier, service, price) {
         <div><strong>Teléfono:</strong> ${escapeHtml(order.customer_phone)}</div>
       </div>
       <div class="shipping-preview__actions">
-        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="prepareShippingQuote()">&#8635; Recotizar</button>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
         <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}')">Confirmar y generar guía</button>
       </div>
     </div>

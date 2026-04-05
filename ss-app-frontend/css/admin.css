@@ -1617,6 +1617,10 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes finance-slide {
   0% { left: -40%; }
   100% { left: 100%; }
