@@ -11,4 +11,5 @@ COPY --from=build /app/build/libs/ss-app-backend.jar app.jar
 
 EXPOSE 8080
 
-CMD ["java", "-jar", "app.jar"]
+# JVM memory tuning for low-RAM containers (Render free tier = 512MB)
+CMD ["java", "-XX:MaxRAMPercentage=75", "-XX:+UseSerialGC", "-jar", "app.jar"]

@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: ss-app-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_API_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: product-images
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: MP_TEST_MODE
+        value: "false"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: NOTIFICATION_EMAIL
+        value: sexyshopguaymas@gmail.com
+      - key: FRONTEND_URL
+        value: https://christians26.github.io/sexy-shop
+      - key: BACKEND_URL
+        sync: false
+      - key: ENVIA_API_KEY
+        sync: false
+      - key: SHIPPER_ZIP
+        value: "85400"
