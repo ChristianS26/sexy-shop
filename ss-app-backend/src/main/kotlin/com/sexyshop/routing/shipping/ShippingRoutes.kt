@@ -70,84 +70,8 @@ data class CreateLabelRequest(
 
 fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRepository: ShipmentRepository) {
     route("/shipping") {
-        // Quote shipping rates
+        // Quote shipping rates via Envia.com
         post("/quote") {
-            if (!call.requireAdmin(supabase)) return@post
-
-            if (config.epackApiKey.isEmpty()) {
-                val mockResponse = buildJsonObject {
-                    put("result", buildJsonArray {
-                        addJsonObject {
-                            put("Service", "Día Siguiente")
-                            put("Currier", "estafeta")
-                            put("Total", "120.50")
-                            put("Weight", 1)
-                        }
-                        addJsonObject {
-                            put("Service", "Express")
-                            put("Currier", "fedex")
-                            put("Total", "185.00")
-                            put("Weight", 1)
-                        }
-                        addJsonObject {
-                            put("Service", "Terrestre")
-                            put("Currier", "dhl")
-                            put("Total", "95.00")
-                            put("Weight", 1)
-                        }
-                    })
-                    put("error", false)
-                    put("mock", true)
-                }
-                call.respondText(mockResponse.toString(), ContentType.Application.Json)
-                return@post
-            }
-
-            val request = call.receive<QuoteRequest>()
-
-            val epackPayload = buildJsonObject {
-                put("ltl", "0")
-                put("shipperZip", config.shipperZip)
-                put("recipientZip", request.recipientZip)
-                put("weight", request.weight)
-                put("large", request.large)
-                put("width", request.width)
-                put("height", request.height)
-                put("secure", 0)
-                put("secureValue", "0")
-                put("pickup", "0")
-                put("international", 0)
-                put("content", "productos")
-                put("shipperCountry", "MX")
-                put("shipperCity", "Guaymas")
-                put("shipperState", "Sonora")
-                put("recipientCountry", "MX")
-                put("recipientCity", "")
-                put("recipientState", "")
-                put("curriers", buildJsonArray {
-                    add("dhl"); add("fedex"); add("estafeta"); add("redpack"); add("ups")
-                })
-            }
-
-            val client = HttpClient(CIO)
-            try {
-                val response = client.post("https://api.epackenvios.com/v1/Quote") {
-                    header("x-api-key", config.epackApiKey)
-                    contentType(ContentType.Application.Json)
-                    setBody(epackPayload.toString())
-                }
-
-                call.respondText(response.bodyAsText(), ContentType.Application.Json, response.status)
-            } catch (e: Exception) {
-                logger.error("Epack quote error", e)
-                call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Epack"))
-            } finally {
-                client.close()
-            }
-        }
-
-        // Quote via Envia.com
-        post("/quote-envia") {
             if (!call.requireAdmin(supabase)) return@post
 
             if (config.enviaApiKey.isEmpty()) {
@@ -254,7 +178,7 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
         }
 
         // Create shipping label via Envia.com
-        post("/create-label-envia") {
+        post("/create-label") {
             if (!call.requireAdmin(supabase)) return@post
 
             val request = call.receive<CreateLabelRequest>()
@@ -384,126 +308,6 @@ fun Route.shippingRoutes(config: AppConfig, supabase: SupabaseClient, shipmentRe
             } catch (e: Exception) {
                 logger.error("Envia create error", e)
                 call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Envia"))
-            } finally {
-                client.close()
-            }
-        }
-
-        // Create shipping label via Epack
-        post("/create-label") {
-            if (!call.requireAdmin(supabase)) return@post
-
-            val request = call.receive<CreateLabelRequest>()
-
-            if (config.epackApiKey.isEmpty()) {
-                val guia = "MOCK-${System.currentTimeMillis().toString().takeLast(8)}"
-                val pdf = "https://example.com/mock-label.pdf"
-
-                // Save to DB
-                shipmentRepository.create(Shipment(
-                    orderId = request.orderId,
-                    carrier = request.currier,
-                    service = request.service,
-                    trackingNumber = guia,
-                    labelUrl = pdf,
-                    cost = 0.0,
-                ))
-
-                val mockLabel = buildJsonObject {
-                    put("result", buildJsonObject {
-                        put("NumeroGuia", guia)
-                        put("pdf", pdf)
-                    })
-                    put("error", false)
-                    put("mock", true)
-                }
-                call.respondText(mockLabel.toString(), ContentType.Application.Json)
-                return@post
-            }
-
-            val epackPayload = buildJsonObject {
-                put("ltl", false)
-                put("shipperZip", config.shipperZip)
-                put("recipientZip", request.recipientZip)
-                put("weight", request.weight)
-                put("large", "25")
-                put("width", "20")
-                put("height", "15")
-                put("secure", "0")
-                put("secureValue", "0")
-                put("customs", "0")
-                put("pickup", "0")
-                put("international", 0)
-                put("currier", request.currier)
-                put("service", request.service)
-                put("recipientName", request.recipientName)
-                put("recipientPhone", request.recipientPhone)
-                put("recipientStreet", request.recipientStreet)
-                put("recipientStreet2", "")
-                put("recipientStreetB1", "")
-                put("recipientStreetB2", "")
-                put("recipientSuburb", request.recipientSuburb)
-                put("recipientCity", request.recipientCity)
-                put("recipientState", request.recipientState)
-                put("recipientZip", request.recipientZip)
-                put("recipientCountry", "MX")
-                put("recipientExternalNum", request.recipientExtNum)
-                put("recipientInternalNum", request.recipientIntNum)
-                put("recipientTaxId", "XAXX010101000")
-                put("recipientCompanyName", request.recipientName)
-                put("shipperName", "Sexy Shop Guaymas")
-                put("shipperPhone", "6222279504")
-                put("shipperStreet", "Guaymas Centro")
-                put("shipperStreet2", "")
-                put("shipperStreetB1", "")
-                put("shipperStreetB2", "")
-                put("shipperSuburb", "Centro")
-                put("shipperCity", "Guaymas")
-                put("shipperState", "Sonora")
-                put("shipperCountry", "MX")
-                put("shipperExternalNum", "")
-                put("shipperInternalNum", "")
-                put("shipperTaxId", "XAXX010101000")
-                put("shipperCompanyName", "Sexy Shop")
-                put("SatProductCode", "53131600")
-                put("SatQuantity", 1)
-                put("SatUnitOfMeasure", "H87")
-                put("labelQuantity", 1)
-            }
-
-            val client = HttpClient(CIO)
-            try {
-                val response = client.post("https://api.epackenvios.com/v1/Create") {
-                    header("x-api-key", config.epackApiKey)
-                    contentType(ContentType.Application.Json)
-                    setBody(epackPayload.toString())
-                }
-
-                if (response.status.isSuccess()) {
-                    val responseBody = response.bodyAsText()
-                    val responseJson = Json.parseToJsonElement(responseBody).jsonObject
-                    val result = responseJson["result"]?.jsonObject
-                    val guia = result?.get("NumeroGuia")?.jsonPrimitive?.content ?: ""
-                    val pdf = result?.get("pdf")?.jsonPrimitive?.content ?: ""
-
-                    if (guia.isNotBlank()) {
-                        shipmentRepository.create(Shipment(
-                            orderId = request.orderId,
-                            carrier = request.currier,
-                            service = request.service,
-                            trackingNumber = guia,
-                            labelUrl = pdf,
-                            cost = 0.0,
-                        ))
-                    }
-
-                    call.respondText(responseBody, ContentType.Application.Json)
-                } else {
-                    call.respondText(response.bodyAsText(), ContentType.Application.Json, response.status)
-                }
-            } catch (e: Exception) {
-                logger.error("Epack create error", e)
-                call.respond(HttpStatusCode.BadGateway, mapOf("error" to true, "message" to "Error connecting to Epack"))
             } finally {
                 client.close()
             }

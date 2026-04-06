@@ -27,8 +27,11 @@ data class CreatePreferenceRequest(
     val items: List<PreferenceItem>,
     @SerialName("customer_name") val customerName: String,
     @SerialName("customer_phone") val customerPhone: String,
+    @SerialName("customer_email") val customerEmail: String? = null,
     @SerialName("customer_address") val customerAddress: String? = null,
     @SerialName("customer_street") val customerStreet: String? = null,
+    @SerialName("customer_ext_num") val customerExtNum: String? = null,
+    @SerialName("customer_int_num") val customerIntNum: String? = null,
     @SerialName("customer_neighborhood") val customerNeighborhood: String? = null,
     @SerialName("customer_city") val customerCity: String? = null,
     @SerialName("customer_state") val customerState: String? = null,
@@ -92,8 +95,11 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             val orderMeta = buildJsonObject {
                 put("customer_name", request.customerName)
                 put("customer_phone", request.customerPhone)
+                request.customerEmail?.let { put("customer_email", it) }
                 request.customerAddress?.let { put("customer_address", it) }
                 request.customerStreet?.let { put("customer_street", it) }
+                request.customerExtNum?.let { put("customer_ext_num", it) }
+                request.customerIntNum?.let { put("customer_int_num", it) }
                 request.customerNeighborhood?.let { put("customer_neighborhood", it) }
                 request.customerCity?.let { put("customer_city", it) }
                 request.customerState?.let { put("customer_state", it) }
@@ -110,8 +116,35 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 })
             }
 
+            // Build payer object — MP recommends sending at least email
+            val nameParts = request.customerName.trim().split(" ", limit = 2)
+            val firstName = nameParts.getOrNull(0) ?: ""
+            val lastName = nameParts.getOrNull(1) ?: ""
+            val phoneDigits = request.customerPhone.replace(Regex("[^0-9]"), "")
+            val payerObj = buildJsonObject {
+                if (!request.customerEmail.isNullOrBlank()) put("email", request.customerEmail)
+                if (firstName.isNotBlank()) put("name", firstName)
+                if (lastName.isNotBlank()) put("surname", lastName)
+                if (phoneDigits.isNotBlank()) {
+                    put("phone", buildJsonObject {
+                        put("area_code", "52")
+                        put("number", phoneDigits)
+                    })
+                }
+                if (!request.customerStreet.isNullOrBlank()) {
+                    put("address", buildJsonObject {
+                        put("street_name", request.customerStreet)
+                        if (!request.customerExtNum.isNullOrBlank()) {
+                            request.customerExtNum.toIntOrNull()?.let { put("street_number", it) }
+                        }
+                        if (!request.customerZip.isNullOrBlank()) put("zip_code", request.customerZip)
+                    })
+                }
+            }
+
             val mpPayload = buildJsonObject {
                 put("items", mpItems)
+                put("payer", payerObj)
                 put("external_reference", orderMeta.toString())
                 put("back_urls", buildJsonObject {
                     put("success", "${config.frontendUrl}/payment-success.html")
@@ -233,8 +266,11 @@ private suspend fun createOrderFromPayment(externalReference: String, orderServi
         val orderRequest = OrderRequest(
             customerName = meta["customer_name"]!!.jsonPrimitive.content,
             customerPhone = meta["customer_phone"]!!.jsonPrimitive.content,
+            customerEmail = meta["customer_email"]?.jsonPrimitive?.content,
             customerAddress = meta["customer_address"]?.jsonPrimitive?.content,
             customerStreet = meta["customer_street"]?.jsonPrimitive?.content,
+            customerExtNum = meta["customer_ext_num"]?.jsonPrimitive?.content,
+            customerIntNum = meta["customer_int_num"]?.jsonPrimitive?.content,
             customerNeighborhood = meta["customer_neighborhood"]?.jsonPrimitive?.content,
             customerCity = meta["customer_city"]?.jsonPrimitive?.content,
             customerState = meta["customer_state"]?.jsonPrimitive?.content,

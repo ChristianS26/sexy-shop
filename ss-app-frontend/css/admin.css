@@ -1834,27 +1834,6 @@ body {
 }
 
 /* Shipping compare */
-.shipping-compare {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.shipping-compare__col {
-  min-width: 0;
-}
-
-.shipping-compare__title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid var(--admin-primary);
-}
-
 /* Shipping preview */
 .shipping-preview {
   border: 1px solid var(--border-color);

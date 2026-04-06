@@ -1613,55 +1613,42 @@ async function quoteShipping() {
     height: qHeight,
   };
 
-  // Fetch both providers in parallel
-  const [epackRes, enviaRes] = await Promise.allSettled([
-    api('/shipping/quote', { method: 'POST', body: JSON.stringify(quoteBody) }),
-    api('/shipping/quote-envia', { method: 'POST', body: JSON.stringify(quoteBody) }),
-  ]);
+  try {
+    const res = await api('/shipping/quote', { method: 'POST', body: JSON.stringify(quoteBody) });
+    const quotes = res.data || [];
 
-  const epackQuotes = epackRes.status === 'fulfilled' ? (epackRes.value.result || []) : [];
-  const enviaQuotes = enviaRes.status === 'fulfilled' ? (enviaRes.value.data || []) : [];
+    if (quotes.length === 0) {
+      content.innerHTML = `
+        <span style="color:var(--text-secondary);font-size:0.85rem">Sin opciones de envío disponibles</span>
+        <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px;width:100%">&#8635; Recotizar</button>
+      `;
+      return;
+    }
 
-  if (epackQuotes.length === 0 && enviaQuotes.length === 0) {
-    content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Sin opciones de envío disponibles</span>';
-    return;
-  }
+    const renderRow = q => `
+      <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.carrier)}', '${escapeHtml(q.service)}', '${q.totalPrice}')">
+        <div class="shipping-quote__carrier">${escapeHtml(q.carrier?.toUpperCase())}</div>
+        <div class="shipping-quote__service">${escapeHtml(q.serviceDescription || q.service)} <span style="font-size:0.72rem;color:var(--text-secondary)">${escapeHtml(q.deliveryEstimate || '')}</span></div>
+        <div class="shipping-quote__price">${formatCurrency(q.totalPrice)}</div>
+      </div>`;
 
-  const renderEpackRow = q => `
-    <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.Currier)}', '${escapeHtml(q.Service)}', '${escapeHtml(q.Total)}', 'epack')">
-      <div class="shipping-quote__carrier">${escapeHtml(q.Currier?.toUpperCase())}</div>
-      <div class="shipping-quote__service">${escapeHtml(q.Service)}</div>
-      <div class="shipping-quote__price">${formatCurrency(parseFloat(q.Total))}</div>
-    </div>`;
-
-  const renderEnviaRow = q => `
-    <div class="shipping-quote" onclick="previewShippingLabel('${escapeHtml(q.carrier)}', '${escapeHtml(q.service)}', '${q.totalPrice}', 'envia')">
-      <div class="shipping-quote__carrier">${escapeHtml(q.carrier?.toUpperCase())}</div>
-      <div class="shipping-quote__service">${escapeHtml(q.serviceDescription || q.service)} <span style="font-size:0.72rem;color:var(--text-secondary)">${escapeHtml(q.deliveryEstimate || '')}</span></div>
-      <div class="shipping-quote__price">${formatCurrency(q.totalPrice)}</div>
-    </div>`;
-
-  content.innerHTML = `
-    <div class="shipping-compare">
-      <div class="shipping-compare__col">
-        <div class="shipping-compare__title">Epack ${epackRes.value?.mock ? '<span style="font-size:0.7rem;color:#b45309">(simulación)</span>' : ''}</div>
-        <div class="shipping-quotes">${epackQuotes.length > 0 ? epackQuotes.map(renderEpackRow).join('') : '<span style="color:#999;font-size:0.82rem">Sin resultados</span>'}</div>
+    content.innerHTML = `
+      ${res.mock ? '<div style="font-size:0.7rem;color:#b45309;margin-bottom:6px">⚠️ Modo simulación (API key no configurada)</div>' : ''}
+      <div class="shipping-quotes">${quotes.map(renderRow).join('')}</div>
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px;width:100%">&#8635; Recotizar</button>
+    `;
+  } catch (e) {
+    content.innerHTML = `
+      <div style="padding:12px;background:#fef2f2;border-radius:8px;margin-bottom:8px">
+        <div style="color:#b91c1c;font-weight:600;font-size:0.85rem">Error al cotizar</div>
       </div>
-      <div class="shipping-compare__col">
-        <div class="shipping-compare__title">Envia.com ${enviaRes.value?.mock ? '<span style="font-size:0.7rem;color:#b45309">(simulación)</span>' : ''}</div>
-        <div class="shipping-quotes">${enviaQuotes.length > 0 ? enviaQuotes.map(renderEnviaRow).join('') : '<span style="color:#999;font-size:0.82rem">Sin resultados</span>'}</div>
-      </div>
-    </div>
-    <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="margin-top:10px;width:100%">&#8635; Recotizar</button>
-  `;
-
-  try {} catch (e) {
-    content.innerHTML = '<span style="color:#b91c1c;font-size:0.85rem">Error al cotizar</span>';
+      <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()" style="width:100%">&#8635; Recotizar</button>
+    `;
     console.error(e);
   }
 }
 
-function previewShippingLabel(currier, service, price, provider) {
+function previewShippingLabel(currier, service, price) {
   const select = document.getElementById('orderStatusSelect');
   const orderId = select.dataset.orderId;
   const order = orders.find(o => o.id === orderId);
@@ -1688,9 +1675,9 @@ function previewShippingLabel(currier, service, price, provider) {
       </div>
       <div class="shipping-preview__actions">
         <button class="admin-btn admin-btn--sm admin-btn--secondary" onclick="quoteShipping()">&#8635; Recotizar</button>
-        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}', '${provider || 'epack'}')">Confirmar y generar guía</button>
+        <button class="admin-btn admin-btn--sm admin-btn--primary" onclick="confirmShippingLabel('${escapeHtml(currier)}', '${escapeHtml(service)}', '${escapeHtml(price)}')">Confirmar y generar guía</button>
       </div>
-      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:6px;text-align:right">vía ${provider === 'envia' ? 'Envia.com' : 'Epack'}</div>
+      <div style="font-size:0.72rem;color:var(--text-secondary);margin-top:6px;text-align:right">vía Envia.com</div>
     </div>
   `;
 }
@@ -1718,7 +1705,7 @@ async function loadOrderShipment(orderId) {
   }
 }
 
-async function confirmShippingLabel(currier, service, price, provider) {
+async function confirmShippingLabel(currier, service, price) {
   // Read editable dimensions
   const editedWeight = document.getElementById('shipWeight')?.value || '1';
   const editedLength = document.getElementById('shipLength')?.value || '25';
@@ -1741,8 +1728,7 @@ async function confirmShippingLabel(currier, service, price, provider) {
   content.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem">Generando guía...</span>';
 
   try {
-    const endpoint = provider === 'envia' ? '/shipping/create-label-envia' : '/shipping/create-label';
-    const res = await api(endpoint, {
+    const res = await api('/shipping/create-label', {
       method: 'POST',
       body: JSON.stringify({
         order_id: orderId,
