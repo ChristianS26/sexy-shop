@@ -369,6 +369,26 @@ function validatePhone(inputId) {
   return true;
 }
 
+function validateEmail(inputId) {
+  const input = document.getElementById(inputId);
+  const value = input.value.trim();
+  if (!value) {
+    input.classList.add('checkout-field--error');
+    input.placeholder = 'Email requerido';
+    input.focus();
+    showToast('El email es obligatorio');
+    return false;
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+    input.classList.add('checkout-field--error');
+    input.focus();
+    showToast('Ingresa un email válido');
+    return false;
+  }
+  input.classList.remove('checkout-field--error');
+  return true;
+}
+
 function clearCheckoutErrors() {
   document.querySelectorAll('.checkout-field--error').forEach(el => el.classList.remove('checkout-field--error'));
 }
@@ -378,6 +398,7 @@ async function processOrder() {
 
   if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
   if (!validatePhone('checkoutPhone')) return;
+  if (!validateEmail('checkoutEmail')) return;
   if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
   if (!validateCheckoutField('checkoutExtNum', 'No. exterior requerido')) return;
   if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
@@ -476,6 +497,7 @@ async function payWithMercadoPago() {
 
   if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
   if (!validatePhone('checkoutPhone')) return;
+  if (!validateEmail('checkoutEmail')) return;
   if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
   if (!validateCheckoutField('checkoutExtNum', 'No. exterior requerido')) return;
   if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
