@@ -38,10 +38,18 @@ fun Application.module() {
     configureCors()
 
     intercept(ApplicationCallPipeline.Plugins) {
-        call.response.header("X-Frame-Options", "DENY")
-        call.response.header("X-Content-Type-Options", "nosniff")
-        call.response.header("X-XSS-Protection", "1; mode=block")
-        call.response.header("Referrer-Policy", "strict-origin-when-cross-origin")
+        // Guard against responses that are already committed (e.g. error
+        // fallbacks, OPTIONS preflights handled by CORS plugin). Adding
+        // headers after the response has been written throws
+        // UnsupportedOperationException and pollutes the logs.
+        try {
+            call.response.header("X-Frame-Options", "DENY")
+            call.response.header("X-Content-Type-Options", "nosniff")
+            call.response.header("X-XSS-Protection", "1; mode=block")
+            call.response.header("Referrer-Policy", "strict-origin-when-cross-origin")
+        } catch (_: UnsupportedOperationException) {
+            // Response already committed; nothing to do.
+        }
     }
 
     configureRouting()
