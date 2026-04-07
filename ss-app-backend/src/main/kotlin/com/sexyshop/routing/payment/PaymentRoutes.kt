@@ -65,12 +65,14 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
 
     route("/payments") {
         post("/create-preference") {
+            logger.info("MP create-preference called [build: payer-fix-v2]")
             if (activeToken.isEmpty()) {
                 call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "Mercado Pago not configured"))
                 return@post
             }
 
             val request = call.receive<CreatePreferenceRequest>()
+            logger.info("MP request received: customerEmail present=${!request.customerEmail.isNullOrBlank()}, customerName=${request.customerName.isNotBlank()}")
 
             // Verify prices against database to prevent price manipulation
             val verifiedItems = request.items.map { item ->
