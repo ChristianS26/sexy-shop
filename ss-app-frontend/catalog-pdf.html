@@ -6,7 +6,9 @@
 <title>Catálogo Sexy Shop</title>
 <style>
   /* ═══════ PAGE & RESET ═══════ */
-  @page { size: A4; margin: 16mm 14mm; }
+  /* Reserve room at the bottom of every printed page so the fixed footer
+     never overlaps the content. */
+  @page { size: A4; margin: 16mm 14mm 26mm 14mm; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -413,6 +415,17 @@
     * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+    }
+    /* Repeat the footer on every printed page. Chrome/Edge repeat
+       position:fixed elements automatically when printing. */
+    .pdf-footer {
+      position: fixed;
+      bottom: 4mm;
+      left: 0;
+      right: 0;
+      margin-top: 0 !important;
+      padding-top: 8px !important;
+      background: #fff;
     }
   }
 </style>
