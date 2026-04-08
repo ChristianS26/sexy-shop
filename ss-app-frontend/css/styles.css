@@ -704,17 +704,23 @@ ul { list-style: none; }
   border-bottom: 1px solid var(--gray-200);
 }
 
-/* Category tabs */
+/* Category tabs — wrap on desktop, horizontal scroll on mobile */
 .catalog-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
   padding-bottom: 4px;
 }
 
-.catalog-tabs::-webkit-scrollbar { display: none; }
+@media (max-width: 720px) {
+  .catalog-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .catalog-tabs::-webkit-scrollbar { display: none; }
+}
 
 .catalog-tab {
   display: flex;
