@@ -416,17 +416,27 @@
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    /* Repeat the footer on every printed page. Chrome/Edge repeat
-       position:fixed elements automatically when printing. */
-    .pdf-footer {
-      position: fixed;
-      bottom: 4mm;
-      left: 0;
-      right: 0;
-      margin-top: 0 !important;
-      padding-top: 8px !important;
-      background: #fff;
-    }
+  }
+
+  /* ═══════ PRINT TABLE WRAPPER (per-page header/footer) ═══════ */
+  /* Wrapping the document in a table with a <tfoot> is the standard
+     cross-browser way to repeat content at the bottom of every printed
+     page. The tfoot row is automatically reprinted on each page. */
+  .pdf-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .pdf-print-table td {
+    padding: 0;
+    vertical-align: top;
+  }
+
+  .pdf-print-table tfoot td {
+    /* Reserve room visually so the table layout knows about the footer.
+       The fixed-row repeat happens automatically at print time. */
+    padding-top: 14px;
   }
 </style>
 </head>
@@ -440,11 +450,32 @@
   </div>
 </div>
 
-<div class="pdf-document" id="pdfDocument">
-  <div class="pdf-loading">
-    <div class="pdf-loading__spinner"></div>
-    <div>Cargando catálogo...</div>
-  </div>
+<div class="pdf-document">
+  <table class="pdf-print-table">
+    <tbody>
+      <tr>
+        <td>
+          <div id="pdfContent">
+            <div class="pdf-loading">
+              <div class="pdf-loading__spinner"></div>
+              <div>Cargando catálogo...</div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>
+          <div class="pdf-footer">
+            <img src="img/logo.png" alt="Sexy Shop Guaymas" class="pdf-footer__logo">
+            <div class="pdf-footer__url" id="pdfFooterUrl"></div>
+            <div class="pdf-footer__spacer"></div>
+          </div>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
 </div>
 
 <script src="js/config.js"></script>
@@ -503,7 +534,7 @@
       // Wait for all images to load before auto-printing
       await waitForImages();
     } catch (err) {
-      document.getElementById('pdfDocument').innerHTML = `
+      document.getElementById('pdfContent').innerHTML = `
         <div class="pdf-loading">
           <div style="color:#b91c1c;font-weight:600;margin-bottom:8px">Error al cargar el catálogo</div>
           <div style="font-size:0.85rem">${escape(err.message || 'Sin detalles')}</div>
@@ -552,20 +583,15 @@
     // Info page (purchase info + care)
     html += renderInfoPage();
 
-    // Footer — logo left, URL centered. Build the storefront URL from
-    // the current location so it stays correct if we ever move domains.
+    document.getElementById('pdfContent').innerHTML = html;
+  }
+
+  function setFooterUrl() {
+    // Strip protocol and trailing slash for cleaner display
     const storeUrl = (window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/'))
       .replace(/^https?:\/\//, '')
       .replace(/\/$/, '');
-    html += `
-      <div class="pdf-footer">
-        <img src="img/logo.png" alt="Sexy Shop Guaymas" class="pdf-footer__logo">
-        <div class="pdf-footer__url">${escape(storeUrl)}</div>
-        <div class="pdf-footer__spacer"></div>
-      </div>
-    `;
-
-    document.getElementById('pdfDocument').innerHTML = html;
+    document.getElementById('pdfFooterUrl').textContent = storeUrl;
   }
 
   function renderProduct(p) {
@@ -645,9 +671,10 @@
   }
 
   // Auth guard — same as admin
+  setFooterUrl();
   const session = getSession();
   if (!session || session.role !== 'admin' || isSessionExpired(session)) {
-    document.getElementById('pdfDocument').innerHTML = `
+    document.getElementById('pdfContent').innerHTML = `
       <div class="pdf-loading">
         <div style="color:#b91c1c;font-weight:600">Sesión expirada</div>
         <div style="font-size:0.85rem;margin-top:8px">Vuelve al admin e inicia sesión.</div>
