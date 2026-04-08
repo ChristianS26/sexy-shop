@@ -380,12 +380,12 @@ function updateMethodSelectorHints() {
   const badge = document.getElementById('localFreeShippingBadge');
   if (!badge) return;
   if (subtotal >= APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD) {
-    badge.textContent = '\u2728 \u00a1Env\u00edo GRATIS por tu compra!';
+    badge.textContent = '\u2728 \u00a1Tu env\u00edo es GRATIS!';
     badge.style.background = '#d1fae5';
     badge.style.color = '#065f46';
   } else {
     const remaining = (APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD - subtotal).toFixed(2);
-    badge.textContent = `\u2728 GRATIS al sumar $${remaining} m\u00e1s`;
+    badge.textContent = `\u2728 Te faltan $${remaining} para env\u00edo GRATIS`;
     badge.style.background = '#fef3c7';
     badge.style.color = '#b45309';
   }
@@ -406,7 +406,7 @@ function updateLocalSummary() {
     hint.style.display = 'block';
   } else {
     const remaining = (APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD - subtotal).toFixed(2);
-    hint.textContent = `\u{1F3AF} Agrega $${remaining} m\u00e1s y tu env\u00edo es GRATIS`;
+    hint.textContent = `\u{1F3AF} Te faltan $${remaining} para env\u00edo GRATIS`;
     hint.className = 'checkout-summary__hint checkout-summary__hint--unlock';
     hint.style.display = 'block';
   }
