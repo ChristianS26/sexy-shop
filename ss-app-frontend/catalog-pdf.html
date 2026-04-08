@@ -93,15 +93,13 @@
     page-break-after: always;
   }
 
-  .pdf-cover__brand {
-    font-size: 3.2rem;
-    font-weight: 800;
-    letter-spacing: -1px;
-    color: var(--gray-900);
-    margin-bottom: 4px;
+  .pdf-cover__logo {
+    max-width: 360px;
+    width: 80%;
+    height: auto;
+    margin: 0 auto 24px auto;
+    display: block;
   }
-
-  .pdf-cover__brand span { color: var(--pink); }
 
   .pdf-cover__tagline {
     font-size: 1.05rem;
@@ -397,6 +395,11 @@
     .pdf-product { break-inside: avoid; }
     .pdf-info-card { break-inside: avoid; }
     .pdf-care-list li { break-inside: avoid; }
+    /* Force browsers to print exact colors (logo, brand pink, etc.) */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
   }
 </style>
 </head>
@@ -488,7 +491,7 @@
     let html = `
       <!-- COVER -->
       <section class="pdf-cover">
-        <div class="pdf-cover__brand">Sexy<span>Shop</span></div>
+        <img src="img/logo.png" alt="Sexy Shop Guaymas" class="pdf-cover__logo">
         <div class="pdf-cover__tagline">Tu tienda de confianza</div>
 
         <div class="pdf-cover__title">Catálogo de productos</div>
