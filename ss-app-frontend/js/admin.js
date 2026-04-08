@@ -2150,4 +2150,253 @@ async function init() {
   document.querySelector('.admin-content').classList.add('ready');
 }
 
+// ═══════════════════════════════════════════
+// CREATE ORDER MODAL (manual order creation)
+// ═══════════════════════════════════════════
+let createOrderItems = [];
+
+function openCreateOrderModal() {
+  // Reset state
+  createOrderItems = [];
+  document.getElementById('createOrderName').value = '';
+  document.getElementById('createOrderPhone').value = '';
+  document.getElementById('createOrderEmail').value = '';
+  document.getElementById('createOrderProductSearch').value = '';
+  document.getElementById('createOrderProductResults').classList.remove('open');
+  document.getElementById('createOrderLocalStreet').value = '';
+  document.getElementById('createOrderLocalNeighborhood').value = '';
+  document.getElementById('createOrderLocalReferences').value = '';
+  document.getElementById('createOrderNatStreet').value = '';
+  document.getElementById('createOrderNatExtNum').value = '';
+  document.getElementById('createOrderNatIntNum').value = '';
+  document.getElementById('createOrderNatNeighborhood').value = '';
+  document.getElementById('createOrderNatCity').value = '';
+  document.getElementById('createOrderNatZip').value = '';
+  document.getElementById('createOrderNatState').value = '';
+  document.getElementById('createOrderNotes').value = '';
+  document.getElementById('createOrderStatus').value = 'pending';
+  document.querySelector('input[name="createOrderDelivery"][value="local"]').checked = true;
+  document.querySelector('input[name="createOrderPayment"][value="cash"]').checked = true;
+  onCreateOrderDeliveryChange();
+  renderCreateOrderItems();
+  openModal(document.getElementById('createOrderModal'));
+}
+
+function filterCreateOrderProducts(query) {
+  const results = document.getElementById('createOrderProductResults');
+  const q = (query || '').trim().toLowerCase();
+  if (!q) {
+    results.classList.remove('open');
+    results.innerHTML = '';
+    return;
+  }
+  const matches = products.filter(p => p.is_active && p.stock > 0 && p.name.toLowerCase().includes(q)).slice(0, 8);
+  if (matches.length === 0) {
+    results.innerHTML = '<div class="create-order__product-result"><span class="create-order__product-result__name" style="color:#999">Sin resultados</span></div>';
+    results.classList.add('open');
+    return;
+  }
+  results.innerHTML = matches.map(p => `
+    <div class="create-order__product-result" onclick="addItemToCreateOrder('${p.id}')">
+      <span class="create-order__product-result__name">${escapeHtml(p.name)}</span>
+      <span class="create-order__product-result__stock">Stock: ${p.stock}</span>
+      <span class="create-order__product-result__price">${formatCurrency(p.price)}</span>
+    </div>
+  `).join('');
+  results.classList.add('open');
+}
+
+function addItemToCreateOrder(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+  const existing = createOrderItems.find(i => i.product_id === productId);
+  if (existing) {
+    if (existing.quantity < product.stock) existing.quantity++;
+    else { showToast('Stock máximo alcanzado', true); return; }
+  } else {
+    createOrderItems.push({
+      product_id: productId,
+      name: product.name,
+      price: product.price,
+      stock: product.stock,
+      quantity: 1,
+    });
+  }
+  document.getElementById('createOrderProductSearch').value = '';
+  document.getElementById('createOrderProductResults').classList.remove('open');
+  renderCreateOrderItems();
+}
+
+function changeCreateOrderItemQty(productId, delta) {
+  const item = createOrderItems.find(i => i.product_id === productId);
+  if (!item) return;
+  const newQty = item.quantity + delta;
+  if (newQty < 1) {
+    removeCreateOrderItem(productId);
+    return;
+  }
+  if (newQty > item.stock) {
+    showToast(`Stock máximo: ${item.stock}`, true);
+    return;
+  }
+  item.quantity = newQty;
+  renderCreateOrderItems();
+}
+
+function removeCreateOrderItem(productId) {
+  createOrderItems = createOrderItems.filter(i => i.product_id !== productId);
+  renderCreateOrderItems();
+}
+
+function renderCreateOrderItems() {
+  const container = document.getElementById('createOrderItems');
+  if (createOrderItems.length === 0) {
+    container.innerHTML = '<p class="create-order__items-empty">Aún no has agregado productos</p>';
+  } else {
+    container.innerHTML = createOrderItems.map(item => `
+      <div class="create-order__item">
+        <div class="create-order__item__name">${escapeHtml(item.name)}</div>
+        <div class="create-order__item__qty">
+          <button type="button" onclick="changeCreateOrderItemQty('${item.product_id}', -1)">−</button>
+          <span>${item.quantity}</span>
+          <button type="button" onclick="changeCreateOrderItemQty('${item.product_id}', 1)">+</button>
+        </div>
+        <div class="create-order__item__subtotal">${formatCurrency(item.price * item.quantity)}</div>
+        <button type="button" class="create-order__item__remove" onclick="removeCreateOrderItem('${item.product_id}')" title="Quitar">✕</button>
+      </div>
+    `).join('');
+  }
+  updateCreateOrderTotals();
+}
+
+function onCreateOrderDeliveryChange() {
+  const method = document.querySelector('input[name="createOrderDelivery"]:checked').value;
+  document.getElementById('createOrderLocalFields').style.display = method === 'local' ? 'block' : 'none';
+  document.getElementById('createOrderNationalFields').style.display = method === 'national' ? 'block' : 'none';
+
+  // National delivery only allows MP payment
+  const cashRadio = document.querySelector('input[name="createOrderPayment"][value="cash"]');
+  const transferRadio = document.querySelector('input[name="createOrderPayment"][value="transfer"]');
+  if (method === 'national') {
+    cashRadio.disabled = true;
+    transferRadio.disabled = true;
+    document.querySelector('input[name="createOrderPayment"][value="mp"]').checked = true;
+  } else {
+    cashRadio.disabled = false;
+    transferRadio.disabled = false;
+  }
+  updateCreateOrderTotals();
+}
+
+function updateCreateOrderTotals() {
+  const subtotal = createOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const method = document.querySelector('input[name="createOrderDelivery"]:checked').value;
+  const shipping = calculateShipping(method, subtotal);
+  const total = subtotal + shipping;
+
+  document.getElementById('createOrderSubtotal').textContent = formatCurrency(subtotal);
+  document.getElementById('createOrderShippingLabel').textContent = method === 'local' ? 'Envío local (Guaymas)' : 'Envío nacional';
+  const shippingEl = document.getElementById('createOrderShipping');
+  if (shipping === 0 && method === 'local') {
+    shippingEl.innerHTML = '<span style="color:#065f46;font-weight:700">GRATIS</span>';
+  } else {
+    shippingEl.textContent = formatCurrency(shipping);
+  }
+  document.getElementById('createOrderTotal').textContent = formatCurrency(total);
+}
+
+async function submitCreateOrder() {
+  const name = document.getElementById('createOrderName').value.trim();
+  const phone = document.getElementById('createOrderPhone').value.trim();
+  const email = document.getElementById('createOrderEmail').value.trim();
+  const deliveryMethod = document.querySelector('input[name="createOrderDelivery"]:checked').value;
+  const paymentMethod = document.querySelector('input[name="createOrderPayment"]:checked').value;
+  const initialStatus = document.getElementById('createOrderStatus').value;
+  const notes = document.getElementById('createOrderNotes').value.trim();
+
+  if (createOrderItems.length === 0) { showToast('Agrega al menos un producto', true); return; }
+  if (!name) { showToast('Nombre del cliente requerido', true); return; }
+  if (!phone) { showToast('Teléfono requerido', true); return; }
+
+  const orderData = {
+    customer_name: name,
+    customer_phone: phone,
+    customer_email: email || null,
+    delivery_method: deliveryMethod,
+    payment_method: paymentMethod,
+    notes: ((notes ? notes + ' | ' : '') + '[Pedido manual desde admin]').trim(),
+    items: createOrderItems.map(i => ({ product_id: i.product_id, quantity: i.quantity })),
+  };
+
+  if (deliveryMethod === 'local') {
+    const street = document.getElementById('createOrderLocalStreet').value.trim();
+    const neighborhood = document.getElementById('createOrderLocalNeighborhood').value.trim();
+    const references = document.getElementById('createOrderLocalReferences').value.trim();
+    if (!street || !neighborhood) { showToast('Calle y colonia requeridas', true); return; }
+    orderData.customer_street = street;
+    orderData.customer_neighborhood = neighborhood;
+    orderData.customer_city = 'Guaymas';
+    orderData.customer_state = 'Sonora';
+    orderData.customer_address = `${street}, Col. ${neighborhood}, Guaymas, Sonora`;
+    if (references) orderData.customer_references = references;
+  } else {
+    const street = document.getElementById('createOrderNatStreet').value.trim();
+    const extNum = document.getElementById('createOrderNatExtNum').value.trim();
+    const intNum = document.getElementById('createOrderNatIntNum').value.trim();
+    const neighborhood = document.getElementById('createOrderNatNeighborhood').value.trim();
+    const city = document.getElementById('createOrderNatCity').value.trim();
+    const zip = document.getElementById('createOrderNatZip').value.trim();
+    const state = document.getElementById('createOrderNatState').value.trim();
+    if (!street || !extNum || !neighborhood || !city || !zip || !state) {
+      showToast('Completa la dirección de envío', true);
+      return;
+    }
+    orderData.customer_street = street;
+    orderData.customer_ext_num = extNum;
+    if (intNum) orderData.customer_int_num = intNum;
+    orderData.customer_neighborhood = neighborhood;
+    orderData.customer_city = city;
+    orderData.customer_state = state;
+    orderData.customer_zip = zip;
+    orderData.customer_address = `${street} #${extNum}${intNum ? ' Int. ' + intNum : ''}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
+  }
+
+  const btn = document.getElementById('createOrderSubmitBtn');
+  setButtonLoading(btn, true, 'Crear pedido');
+
+  try {
+    // POST /orders is unauthenticated (used by storefront), so use a plain fetch
+    const res = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Error al crear el pedido');
+    }
+    const order = await res.json();
+
+    // If admin chose a non-pending initial status, update it via the admin endpoint
+    if (initialStatus !== 'pending') {
+      try {
+        await api(`/orders/${order.id}/status`, {
+          method: 'PUT',
+          body: JSON.stringify({ status: initialStatus }),
+        });
+      } catch (_) { /* non-fatal */ }
+    }
+
+    showToast(`Pedido #${order.id.slice(0, 8)} creado`);
+    closeModals();
+    await loadOrders();
+    await loadProducts(); // refresh stock
+    renderOrders();
+  } catch (e) {
+    showToast(e.message || 'Error al crear el pedido', true);
+  } finally {
+    setButtonLoading(btn, false, 'Crear pedido');
+  }
+}
+
 init();

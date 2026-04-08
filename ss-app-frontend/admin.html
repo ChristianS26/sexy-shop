@@ -303,6 +303,7 @@
           </select>
         </div>
         <div class="admin-toolbar__actions">
+          <button class="admin-btn admin-btn--primary" onclick="openCreateOrderModal()">&#10010; Nuevo pedido</button>
           <button class="admin-btn admin-btn--secondary" onclick="exportOrdersCSV()">&#128190; CSV</button>
         </div>
       </div>
@@ -742,6 +743,172 @@
           <div class="admin-order-timeline" id="orderTimeline"></div>
         </details>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE ORDER MODAL ===== -->
+  <div class="admin-modal admin-modal--wide" id="createOrderModal">
+    <div class="admin-modal__header">
+      <h3 class="admin-modal__title">Nuevo pedido manual</h3>
+      <button class="admin-modal__close" onclick="closeModals()">&times;</button>
+    </div>
+    <div class="admin-modal__body create-order-body">
+
+      <!-- Products section -->
+      <div class="create-order__section">
+        <h4 class="create-order__section-title">Productos</h4>
+        <div class="create-order__product-search">
+          <input type="text" id="createOrderProductSearch" placeholder="&#128269; Buscar producto..." oninput="filterCreateOrderProducts(this.value)">
+          <div class="create-order__product-results" id="createOrderProductResults"></div>
+        </div>
+        <div class="create-order__items" id="createOrderItems">
+          <p class="create-order__items-empty">Aún no has agregado productos</p>
+        </div>
+      </div>
+
+      <!-- Customer section -->
+      <div class="create-order__section">
+        <h4 class="create-order__section-title">Datos del cliente</h4>
+        <div class="admin-form-group">
+          <label class="admin-form-group__label">Nombre completo *</label>
+          <input type="text" class="admin-form-group__input" id="createOrderName" placeholder="Nombre del cliente">
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">WhatsApp *</label>
+            <input type="tel" class="admin-form-group__input" id="createOrderPhone" placeholder="6221234567">
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Email</label>
+            <input type="email" class="admin-form-group__input" id="createOrderEmail" placeholder="opcional">
+          </div>
+        </div>
+      </div>
+
+      <!-- Delivery method section -->
+      <div class="create-order__section">
+        <h4 class="create-order__section-title">M&eacute;todo de entrega</h4>
+        <div class="create-order__radio-group">
+          <label class="create-order__radio">
+            <input type="radio" name="createOrderDelivery" value="local" checked onchange="onCreateOrderDeliveryChange()">
+            <span>&#x1F6F5; Local (Guaymas)</span>
+          </label>
+          <label class="create-order__radio">
+            <input type="radio" name="createOrderDelivery" value="national" onchange="onCreateOrderDeliveryChange()">
+            <span>&#x1F4E6; Nacional</span>
+          </label>
+        </div>
+
+        <!-- Local address fields -->
+        <div id="createOrderLocalFields">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Calle y n&uacute;mero</label>
+            <input type="text" class="admin-form-group__input" id="createOrderLocalStreet" placeholder="Av. Serdán 123">
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Colonia</label>
+            <input type="text" class="admin-form-group__input" id="createOrderLocalNeighborhood" placeholder="Centro">
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Referencias</label>
+            <input type="text" class="admin-form-group__input" id="createOrderLocalReferences" placeholder="opcional">
+          </div>
+        </div>
+
+        <!-- National address fields -->
+        <div id="createOrderNationalFields" style="display:none">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Calle</label>
+            <input type="text" class="admin-form-group__input" id="createOrderNatStreet">
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label class="admin-form-group__label">No. Exterior</label>
+              <input type="text" class="admin-form-group__input" id="createOrderNatExtNum">
+            </div>
+            <div class="admin-form-group">
+              <label class="admin-form-group__label">No. Interior</label>
+              <input type="text" class="admin-form-group__input" id="createOrderNatIntNum" placeholder="opcional">
+            </div>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Colonia</label>
+            <input type="text" class="admin-form-group__input" id="createOrderNatNeighborhood">
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label class="admin-form-group__label">Ciudad</label>
+              <input type="text" class="admin-form-group__input" id="createOrderNatCity">
+            </div>
+            <div class="admin-form-group">
+              <label class="admin-form-group__label">C.P.</label>
+              <input type="text" class="admin-form-group__input" id="createOrderNatZip" maxlength="5">
+            </div>
+          </div>
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Estado</label>
+            <input type="text" class="admin-form-group__input" id="createOrderNatState">
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment method section -->
+      <div class="create-order__section">
+        <h4 class="create-order__section-title">M&eacute;todo de pago</h4>
+        <div class="create-order__radio-group">
+          <label class="create-order__radio">
+            <input type="radio" name="createOrderPayment" value="cash" checked>
+            <span>&#x1F4B5; Efectivo</span>
+          </label>
+          <label class="create-order__radio">
+            <input type="radio" name="createOrderPayment" value="transfer">
+            <span>&#x1F3E6; Transferencia</span>
+          </label>
+          <label class="create-order__radio" id="createOrderMpRadio">
+            <input type="radio" name="createOrderPayment" value="mp">
+            <span>&#x1F4B3; Mercado Pago</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Status + notes -->
+      <div class="create-order__section">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label class="admin-form-group__label">Estado inicial</label>
+            <select class="admin-form-group__input" id="createOrderStatus">
+              <option value="pending">Pendiente</option>
+              <option value="confirmed">Confirmado</option>
+              <option value="delivered">Entregado</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-form-group">
+          <label class="admin-form-group__label">Notas internas</label>
+          <textarea class="admin-form-group__input" id="createOrderNotes" rows="2" placeholder="Pedido por teléfono, venta en mostrador, etc."></textarea>
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="create-order__totals" id="createOrderTotals">
+        <div class="create-order__totals-row">
+          <span>Subtotal</span>
+          <span id="createOrderSubtotal">$0.00</span>
+        </div>
+        <div class="create-order__totals-row">
+          <span id="createOrderShippingLabel">Envío local</span>
+          <span id="createOrderShipping">$0.00</span>
+        </div>
+        <div class="create-order__totals-row create-order__totals-row--total">
+          <span>Total</span>
+          <span id="createOrderTotal">$0.00</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="admin-modal__footer">
+      <button class="admin-btn admin-btn--secondary" onclick="closeModals()">Cancelar</button>
+      <button class="admin-btn admin-btn--primary" id="createOrderSubmitBtn" onclick="submitCreateOrder()">Crear pedido</button>
     </div>
   </div>
 
