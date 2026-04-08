@@ -69,4 +69,22 @@ class ImageService(
             imageRepository.updateDisplayOrder(img.id, index)
         }
     }
+
+    /**
+     * Delete every storage file belonging to a product. The DB rows in
+     * product_images are removed automatically by ON DELETE CASCADE when the
+     * product itself is deleted, so we only handle the storage side here.
+     */
+    suspend fun deleteAllStorageFilesForProduct(productId: String) {
+        val images = imageRepository.getByProductId(productId)
+        if (images.isEmpty()) return
+        val bucket = supabase.storage.from(config.storageBucket)
+        images.forEach { img ->
+            try {
+                bucket.delete(img.storagePath)
+            } catch (_: Exception) {
+                // Best-effort cleanup; one bad path shouldn't block the delete.
+            }
+        }
+    }
 }

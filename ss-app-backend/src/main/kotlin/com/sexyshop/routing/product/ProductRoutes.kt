@@ -61,7 +61,7 @@ fun Route.productRoutes(service: ProductService, imageService: ImageService, sup
         delete("/{id}") {
             if (!call.requireAdmin(supabase)) return@delete
             val id = call.parameters["id"]!!
-            service.deactivate(id)
+            service.delete(id)
             call.respond(HttpStatusCode.NoContent)
         }
 

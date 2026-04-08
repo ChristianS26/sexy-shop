@@ -5,10 +5,12 @@ import com.sexyshop.models.product.ProductRequest
 import com.sexyshop.models.product.ProductWithImages
 import com.sexyshop.repositories.image.ImageRepository
 import com.sexyshop.repositories.product.ProductRepository
+import com.sexyshop.services.image.ImageService
 
 class ProductService(
     private val productRepository: ProductRepository,
     private val imageRepository: ImageRepository,
+    private val imageService: ImageService,
 ) {
     suspend fun getAll(categoryId: String? = null, activeOnly: Boolean = true): List<Product> =
         productRepository.getAll(categoryId, activeOnly)
@@ -52,6 +54,18 @@ class ProductService(
     }
 
     suspend fun deactivate(id: String) = productRepository.deactivate(id)
+
+    /**
+     * Hard delete a product. Removes its storage files first (best-effort),
+     * then drops the row. Cascading FKs handle product_images automatically;
+     * order_items keep the snapshotted product_name/price but lose the FK.
+     */
+    suspend fun delete(id: String) {
+        // Verify it exists; throw NoSuchElementException if not so the route returns 404
+        productRepository.getById(id) ?: throw NoSuchElementException("Product not found: $id")
+        imageService.deleteAllStorageFilesForProduct(id)
+        productRepository.delete(id)
+    }
 
     suspend fun reorder(productIds: List<String>) {
         productIds.forEachIndexed { index, id ->

@@ -7,5 +7,5 @@ import org.koin.dsl.module
 
 val productModule = module {
     single<ProductRepository> { ProductRepositoryImpl(get()) }
-    single { ProductService(get(), get()) }
+    single { ProductService(get(), get(), get()) }
 }

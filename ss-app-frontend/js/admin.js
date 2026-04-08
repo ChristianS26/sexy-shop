@@ -1867,7 +1867,12 @@ async function bulkProductAction(action) {
   if (count === 0) return;
 
   const labels = { activate: 'activar', deactivate: 'desactivar', delete: 'eliminar' };
-  const ok = await showConfirm('Acción masiva', `¿${labels[action]} ${count} producto${count !== 1 ? 's' : ''}?`, labels[action]);
+  const verb = labels[action];
+  let confirmMsg = `¿${verb} ${count} producto${count !== 1 ? 's' : ''}?`;
+  if (action === 'delete') {
+    confirmMsg = `¿Eliminar permanentemente ${count} producto${count !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`;
+  }
+  const ok = await showConfirm('Acción masiva', confirmMsg, verb);
   if (!ok) return;
 
   showToast(`Procesando ${count} productos...`);
@@ -1875,11 +1880,18 @@ async function bulkProductAction(action) {
 
   for (const id of selectedProducts) {
     try {
-      if (action === 'delete' || action === 'deactivate') {
+      if (action === 'delete') {
         await api(`/products/${id}`, { method: 'DELETE' });
+      } else if (action === 'deactivate') {
+        const p = products.find(pr => pr.id === id);
+        if (p && p.is_active === true) {
+          await api(`/products/${id}/toggle-active`, { method: 'PUT' });
+        }
       } else if (action === 'activate') {
         const p = products.find(pr => pr.id === id);
-        if (p) await api(`/products/${id}`, { method: 'PUT', body: JSON.stringify({ ...p, is_active: true }) });
+        if (p && p.is_active !== true) {
+          await api(`/products/${id}/toggle-active`, { method: 'PUT' });
+        }
       }
       success++;
     } catch (e) { console.error(e); }

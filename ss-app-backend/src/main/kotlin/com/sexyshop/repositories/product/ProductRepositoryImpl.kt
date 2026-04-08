@@ -105,6 +105,16 @@ class ProductRepositoryImpl(
             }
     }
 
+    override suspend fun delete(id: String) {
+        // Hard delete. Foreign keys are configured so this is safe:
+        // - product_images: ON DELETE CASCADE (image rows are removed)
+        // - order_items: ON DELETE SET NULL (order history preserved with the
+        //   product_name/quantity/price snapshot already stored on the row)
+        supabase.from("products").delete {
+            filter { eq("id", id) }
+        }
+    }
+
     override suspend fun updateStock(id: String, newStock: Int) {
         supabase.from("products")
             .update(StockUpdate(newStock)) {
