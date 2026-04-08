@@ -7,6 +7,10 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class ProductRepositoryImpl(
     private val supabase: SupabaseClient,
@@ -53,8 +57,31 @@ class ProductRepositoryImpl(
     }
 
     override suspend fun update(id: String, request: ProductRequest): Product {
+        // Build the payload manually with JsonObject so nullable fields are sent
+        // explicitly as `null` instead of being omitted by supabase-kt's default
+        // serializer (which uses explicitNulls = false). Without this, clearing
+        // a field like `badge` from a value to "Ninguno" wouldn't actually update
+        // the column — Supabase would treat the missing key as "leave unchanged".
+        val payload = buildJsonObject {
+            put("name", request.name)
+            put("slug", request.slug)
+            put("description", request.description?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("price", request.price)
+            put("old_price", request.oldPrice?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("category_id", request.categoryId)
+            put("stock", request.stock)
+            put("cost_price", request.costPrice)
+            put("low_stock_threshold", request.lowStockThreshold?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("weight", request.weight?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("length", request.length?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("width", request.width?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("height", request.height?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("badge", request.badge?.let { JsonPrimitive(it) } ?: JsonNull)
+            put("is_active", request.isActive)
+            put("display_order", request.displayOrder)
+        }
         supabase.from("products")
-            .update(request) {
+            .update(payload) {
                 filter { eq("id", id) }
             }
         return supabase.from("products")
