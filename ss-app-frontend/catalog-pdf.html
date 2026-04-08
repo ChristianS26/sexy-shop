@@ -50,9 +50,28 @@
     font-weight: 600;
   }
 
+  .pdf-toolbar__hint {
+    flex: 1;
+    margin: 0 24px;
+    background: #fef3c7;
+    color: #78350f;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    max-width: 540px;
+  }
+
+  .pdf-toolbar__hint strong { color: #422006; }
+
   .pdf-toolbar__actions {
     display: flex;
     gap: 10px;
+  }
+
+  @media (max-width: 800px) {
+    .pdf-toolbar { flex-wrap: wrap; }
+    .pdf-toolbar__hint { margin: 8px 0 0 0; max-width: none; flex-basis: 100%; }
   }
 
   .pdf-toolbar button {
@@ -444,6 +463,10 @@
 
 <div class="pdf-toolbar no-print">
   <div class="pdf-toolbar__title">Vista previa del catálogo</div>
+  <div class="pdf-toolbar__hint">
+    💡 En el diálogo de impresión, en <strong>Más configuraciones</strong>, desactiva
+    <strong>"Encabezados y pies de página"</strong> para evitar duplicados.
+  </div>
   <div class="pdf-toolbar__actions">
     <button class="pdf-toolbar__secondary" onclick="window.close()">Cerrar</button>
     <button class="pdf-toolbar__primary" onclick="window.print()">📄 Guardar como PDF</button>
