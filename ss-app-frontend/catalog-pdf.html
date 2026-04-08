@@ -352,17 +352,38 @@
     font-weight: 700;
   }
 
-  /* ═══════ FOOTER (every page) ═══════ */
+  /* ═══════ FOOTER ═══════ */
   .pdf-footer {
     margin-top: 40px;
-    padding-top: 16px;
+    padding-top: 14px;
     border-top: 1px solid var(--gray-300);
-    text-align: center;
-    font-size: 0.72rem;
-    color: var(--gray-600);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    gap: 16px;
   }
 
-  .pdf-footer strong { color: var(--pink); }
+  .pdf-footer__logo {
+    height: 42px;
+    width: auto;
+    justify-self: start;
+  }
+
+  .pdf-footer__url {
+    justify-self: center;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--gray-700);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .pdf-footer__url a {
+    color: var(--pink);
+    text-decoration: none;
+  }
+
+  .pdf-footer__spacer { justify-self: end; }
 
   /* ═══════ LOADING & EMPTY STATES ═══════ */
   .pdf-loading {
@@ -525,10 +546,16 @@
     // Info page (purchase info + care)
     html += renderInfoPage();
 
-    // Footer
+    // Footer — logo left, URL centered. Build the storefront URL from
+    // the current location so it stays correct if we ever move domains.
+    const storeUrl = (window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/'))
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '');
     html += `
       <div class="pdf-footer">
-        <strong>Sexy Shop Guaymas</strong> · WhatsApp 622 227 9504 · @guaymassexyshop
+        <img src="img/logo.png" alt="Sexy Shop Guaymas" class="pdf-footer__logo">
+        <div class="pdf-footer__url">${escape(storeUrl)}</div>
+        <div class="pdf-footer__spacer"></div>
       </div>
     `;
 
