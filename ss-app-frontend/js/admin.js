@@ -1975,6 +1975,11 @@ function downloadCSV(content, filename) {
   URL.revokeObjectURL(url);
 }
 
+function openCatalogPdf() {
+  // Standalone page handles auth via localStorage and triggers print() once data + images load
+  window.open('catalog-pdf.html', '_blank');
+}
+
 function exportProductsCSV() {
   const filtered = getFilteredProducts();
   const headers = ['Nombre', 'Slug', 'Categoría', 'Precio', 'Precio anterior', 'Stock', 'Badge', 'Activo', 'Orden'];
