@@ -319,27 +319,144 @@
 <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
 <aside class="cart-sidebar" id="cartSidebar">
   <div class="cart-header">
-    <h3 class="cart-title">Tu carrito</h3>
+    <h3 class="cart-title" id="cartTitle">Tu carrito</h3>
     <button class="cart-close" onclick="toggleCart()">&times;</button>
   </div>
   <div class="cart-items" id="cartItems"></div>
   <div class="cart-footer" id="cartFooter" style="display:none">
     <div class="cart-total">
-      <span class="cart-total-label">Total</span>
+      <span class="cart-total-label">Subtotal</span>
       <span class="cart-total-amount" id="cartTotal">$0.00</span>
     </div>
-    <button class="cart-checkout" id="checkoutToggleBtn" onclick="showCheckoutForm()">
-      Completar pedido
+    <button class="cart-checkout" id="checkoutToggleBtn" onclick="showMethodSelector()">
+      Continuar
     </button>
   </div>
 
-  <!-- Checkout form (hidden by default) -->
-  <div class="cart-checkout-form" id="checkoutForm" style="display:none">
+  <!-- ═══════ STATE 2: Delivery method selector ═══════ -->
+  <div class="checkout-method-selector" id="methodSelector" style="display:none">
     <div class="checkout-form__header">
-      <h4>Datos de entrega</h4>
-      <button class="checkout-form__back" onclick="hideCheckoutForm()">&larr; Volver</button>
+      <h4>&iquest;C&oacute;mo lo recibes?</h4>
+      <button class="checkout-form__back" onclick="backToCart()">&larr; Volver al carrito</button>
+    </div>
+
+    <div class="method-cards">
+      <div class="method-card" onclick="selectDeliveryMethod('local')">
+        <div class="method-card__icon">&#x1F6F5;</div>
+        <div class="method-card__title">Entrega local</div>
+        <div class="method-card__subtitle">Guaymas, Sonora</div>
+        <div class="method-card__price">
+          <span class="method-card__price-amount">$60</span>
+          <span class="method-card__price-label">MXN</span>
+        </div>
+        <div class="method-card__highlight" id="localFreeShippingBadge">
+          &#x2728; GRATIS en pedidos de $400 o m&aacute;s
+        </div>
+        <ul class="method-card__features">
+          <li>&#x1F4B5; Efectivo contra entrega</li>
+          <li>&#x1F4B3; Tarjeta o transferencia</li>
+          <li>&#x1F4F1; Coordinaci&oacute;n por WhatsApp</li>
+        </ul>
+        <button class="method-card__btn">Elegir esta opci&oacute;n</button>
+      </div>
+
+      <div class="method-card" onclick="selectDeliveryMethod('national')">
+        <div class="method-card__icon">&#x1F4E6;</div>
+        <div class="method-card__title">Env&iacute;o nacional</div>
+        <div class="method-card__subtitle">Todo M&eacute;xico</div>
+        <div class="method-card__price">
+          <span class="method-card__price-amount">$99</span>
+          <span class="method-card__price-label">MXN</span>
+        </div>
+        <ul class="method-card__features">
+          <li>&#x1F512; Pago seguro con Mercado Pago</li>
+          <li>&#x1F4B3; Tarjetas, OXXO, transferencia</li>
+          <li>&#x1F69A; Paqueter&iacute;a a domicilio</li>
+        </ul>
+        <button class="method-card__btn">Elegir esta opci&oacute;n</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ STATE 3A: Local checkout form ═══════ -->
+  <div class="cart-checkout-form" id="localForm" style="display:none">
+    <div class="checkout-form__header">
+      <h4>&#x1F6F5; Entrega en Guaymas</h4>
+      <button class="checkout-form__back" onclick="backToMethodSelector()">&larr; Cambiar m&eacute;todo</button>
     </div>
     <div class="checkout-form__fields">
+      <div class="checkout-form__divider">Tus datos</div>
+      <div class="checkout-field">
+        <label for="localName">Nombre completo *</label>
+        <input type="text" id="localName" placeholder="Nombre de quien recibe" required>
+      </div>
+      <div class="checkout-field">
+        <label for="localPhone">WhatsApp *</label>
+        <input type="tel" id="localPhone" placeholder="622 123 4567" required>
+      </div>
+      <div class="checkout-field">
+        <label for="localEmail">Email (opcional)</label>
+        <input type="email" id="localEmail" placeholder="tu@email.com">
+      </div>
+
+      <div class="checkout-form__divider">Tu direcci&oacute;n en Guaymas</div>
+      <div class="checkout-field">
+        <label for="localStreet">Calle y n&uacute;mero *</label>
+        <input type="text" id="localStreet" placeholder="Av. Serd&aacute;n 123" required>
+      </div>
+      <div class="checkout-field">
+        <label for="localNeighborhood">Colonia *</label>
+        <input type="text" id="localNeighborhood" placeholder="Centro" required>
+      </div>
+      <div class="checkout-field">
+        <label for="localReferences">Referencias</label>
+        <input type="text" id="localReferences" placeholder="Casa azul, frente al parque (opcional)">
+      </div>
+      <div class="checkout-field">
+        <label for="localNotes">Notas adicionales</label>
+        <textarea id="localNotes" rows="2" placeholder="Llamar al llegar, etc. (opcional)"></textarea>
+      </div>
+    </div>
+
+    <div class="checkout-form__summary">
+      <div class="checkout-summary__row">
+        <span>Subtotal</span>
+        <span id="localSubtotal">$0.00</span>
+      </div>
+      <div class="checkout-summary__row">
+        <span>Env&iacute;o local</span>
+        <span id="localShipping">$60.00</span>
+      </div>
+      <div class="checkout-summary__row checkout-summary__row--total">
+        <span>Total</span>
+        <span id="localTotal">$0.00</span>
+      </div>
+      <div class="checkout-summary__hint" id="localFreeHint" style="display:none"></div>
+    </div>
+
+    <div class="checkout-form__divider">&iquest;C&oacute;mo prefieres pagar?</div>
+    <div class="checkout-payment-methods checkout-payment-methods--local">
+      <button class="checkout-pay-btn checkout-pay-btn--cash" onclick="processLocalOrder('cash')">
+        &#x1F4B5; Efectivo contra entrega
+      </button>
+      <button class="checkout-pay-btn checkout-pay-btn--transfer" onclick="processLocalOrder('transfer')">
+        &#x1F3E6; Transferencia bancaria
+      </button>
+      <button class="checkout-pay-btn checkout-pay-btn--mp" onclick="processLocalOrder('mp')">
+        &#x1F4B3; Tarjeta (Mercado Pago)
+      </button>
+    </div>
+    <p class="checkout-form__note">Te contactaremos por WhatsApp para coordinar la entrega y el pago.</p>
+  </div>
+
+  <!-- ═══════ STATE 3B: National checkout form (Mercado Pago only) ═══════ -->
+  <div class="cart-checkout-form" id="nationalForm" style="display:none">
+    <div class="checkout-form__header">
+      <h4>&#x1F4E6; Env&iacute;o nacional</h4>
+      <button class="checkout-form__back" onclick="backToMethodSelector()">&larr; Cambiar m&eacute;todo</button>
+    </div>
+    <div class="checkout-form__fields">
+      <div class="checkout-form__divider">Tus datos</div>
       <div class="checkout-field">
         <label for="checkoutName">Nombre completo *</label>
         <input type="text" id="checkoutName" placeholder="Nombre de quien recibe" required>
@@ -349,9 +466,10 @@
         <input type="tel" id="checkoutPhone" placeholder="622 123 4567" required>
       </div>
       <div class="checkout-field">
-        <label for="checkoutEmail">Email *</label>
+        <label for="checkoutEmail">Email * <span class="checkout-field__hint">&#x1F512; Requerido por Mercado Pago</span></label>
         <input type="email" id="checkoutEmail" placeholder="tu@email.com" required>
       </div>
+
       <div class="checkout-form__divider">Direcci&oacute;n de env&iacute;o</div>
       <div class="checkout-field">
         <label for="checkoutStreet">Calle *</label>
@@ -364,7 +482,7 @@
         </div>
         <div class="checkout-field">
           <label for="checkoutIntNum">No. Interior</label>
-          <input type="text" id="checkoutIntNum" placeholder="Depto 4 (opcional)">
+          <input type="text" id="checkoutIntNum" placeholder="Depto 4">
         </div>
       </div>
       <div class="checkout-field">
@@ -374,11 +492,11 @@
       <div class="checkout-row">
         <div class="checkout-field">
           <label for="checkoutCity">Ciudad *</label>
-          <input type="text" id="checkoutCity" placeholder="Guaymas" required>
+          <input type="text" id="checkoutCity" placeholder="Hermosillo" required>
         </div>
         <div class="checkout-field">
           <label for="checkoutZip">C.P. *</label>
-          <input type="text" id="checkoutZip" placeholder="85400" maxlength="5" required>
+          <input type="text" id="checkoutZip" placeholder="83000" maxlength="5" required>
         </div>
       </div>
       <div class="checkout-field">
@@ -387,20 +505,21 @@
       </div>
       <div class="checkout-field">
         <label for="checkoutReferences">Referencias</label>
-        <input type="text" id="checkoutReferences" placeholder="Entre calles, color de casa, etc. (opcional)">
+        <input type="text" id="checkoutReferences" placeholder="Entre calles, color de casa (opcional)">
       </div>
       <div class="checkout-field">
-        <label for="checkoutNotes">Notas</label>
+        <label for="checkoutNotes">Notas adicionales</label>
         <textarea id="checkoutNotes" rows="2" placeholder="Instrucciones especiales (opcional)"></textarea>
       </div>
     </div>
+
     <div class="checkout-form__summary">
       <div class="checkout-summary__row">
         <span>Subtotal</span>
         <span id="checkoutSubtotal">$0.00</span>
       </div>
       <div class="checkout-summary__row">
-        <span>Env&iacute;o</span>
+        <span>Env&iacute;o nacional</span>
         <span>$99.00</span>
       </div>
       <div class="checkout-summary__row checkout-summary__row--total">
@@ -408,13 +527,13 @@
         <span id="checkoutTotal">$0.00</span>
       </div>
     </div>
+
     <div class="checkout-payment-methods">
-      <button class="checkout-pay-btn checkout-pay-btn--mp" id="payMpBtn" onclick="payWithMercadoPago()">Pagar con Mercado Pago</button>
-      <button class="checkout-pay-btn checkout-pay-btn--wa" id="payWaBtn" onclick="processOrder()">
-        Completar pedido
+      <button class="checkout-pay-btn checkout-pay-btn--mp" id="payMpBtn" onclick="payWithMercadoPago()">
+        &#x1F512; Pagar con Mercado Pago
       </button>
     </div>
-    <p class="checkout-form__note">Te contactaremos por WhatsApp para coordinar el pago y la entrega.</p>
+    <p class="checkout-form__note">&#x2705; Pago seguro &middot; Tarjetas, OXXO, transferencia y m&aacute;s</p>
   </div>
 </aside>
 

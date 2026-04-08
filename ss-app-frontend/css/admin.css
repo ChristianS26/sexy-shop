@@ -860,6 +860,77 @@ body {
   font-size: 0.95rem;
 }
 
+.order-detail__totals {
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.order-detail__totals-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  background: #fff;
+}
+
+.order-detail__totals-row + .order-detail__totals-row {
+  border-top: 1px solid var(--border-color);
+}
+
+.order-detail__totals-row--total {
+  background: var(--sidebar-bg);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.order-detail__delivery-info {
+  margin-top: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.order-detail__delivery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+}
+
+.order-detail__delivery-icon {
+  font-size: 1.1rem;
+}
+
+/* Delivery badge in orders table */
+.delivery-badge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.delivery-badge span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.delivery-badge small {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .order-detail__timeline-toggle {
   margin-top: 12px;
 }

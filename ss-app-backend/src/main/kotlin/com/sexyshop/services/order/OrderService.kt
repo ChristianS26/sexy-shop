@@ -11,6 +11,24 @@ class OrderService(
     private val orderRepository: OrderRepository,
     private val productRepository: ProductRepository,
 ) {
+    companion object {
+        const val LOCAL_SHIPPING_COST = 60.0
+        const val LOCAL_FREE_THRESHOLD = 400.0
+        const val NATIONAL_SHIPPING_COST = 99.0
+
+        /**
+         * Server-side shipping calculation. Single source of truth — never trust
+         * a shipping cost sent from the client. Rules:
+         *  - local: 0 if subtotal >= 400, else 60
+         *  - national: 99 (flat)
+         */
+        fun calculateShipping(deliveryMethod: String, subtotal: Double): Double = when (deliveryMethod) {
+            "local" -> if (subtotal >= LOCAL_FREE_THRESHOLD) 0.0 else LOCAL_SHIPPING_COST
+            "national" -> NATIONAL_SHIPPING_COST
+            else -> NATIONAL_SHIPPING_COST
+        }
+    }
+
     suspend fun getAll(status: String? = null): List<Order> = orderRepository.getAll(status)
 
     suspend fun getById(id: String): Pair<Order, List<OrderItem>> {
@@ -27,6 +45,18 @@ class OrderService(
         require(request.items.isNotEmpty()) { "At least one item required" }
         if (!request.customerEmail.isNullOrBlank()) {
             require(request.customerEmail.matches(Regex("^[^@\\s]{1,64}@[^@\\s]{1,255}$"))) { "Invalid email format" }
+        }
+        require(request.deliveryMethod in setOf("local", "national")) {
+            "Invalid delivery_method: ${request.deliveryMethod}"
+        }
+        require(request.paymentMethod in setOf("cash", "transfer", "mp")) {
+            "Invalid payment_method: ${request.paymentMethod}"
+        }
+        // Cash and transfer are only allowed for local deliveries
+        if (request.paymentMethod in setOf("cash", "transfer")) {
+            require(request.deliveryMethod == "local") {
+                "Cash/transfer payment is only available for local deliveries"
+            }
         }
         request.items.forEach { item ->
             require(item.quantity > 0) { "Quantity must be positive" }
@@ -53,7 +83,10 @@ class OrderService(
             )
         }
 
-        val total = orderItems.sumOf { it.subtotal }
+        val itemsSubtotal = orderItems.sumOf { it.subtotal }
+        // Server-side calculation — never trust client values
+        val shippingCost = calculateShipping(request.deliveryMethod, itemsSubtotal)
+        val total = itemsSubtotal + shippingCost
 
         // Deduct stock
         products.forEach { (product, qty) ->
@@ -64,8 +97,20 @@ class OrderService(
             Order(
                 customerName = request.customerName,
                 customerPhone = request.customerPhone,
+                customerEmail = request.customerEmail,
                 customerAddress = request.customerAddress,
+                customerStreet = request.customerStreet,
+                customerExtNum = request.customerExtNum,
+                customerIntNum = request.customerIntNum,
+                customerNeighborhood = request.customerNeighborhood,
+                customerCity = request.customerCity,
+                customerState = request.customerState,
+                customerZip = request.customerZip,
+                customerReferences = request.customerReferences,
                 total = total,
+                shippingCost = shippingCost,
+                deliveryMethod = request.deliveryMethod,
+                paymentMethod = request.paymentMethod,
                 notes = request.notes,
             )
         )

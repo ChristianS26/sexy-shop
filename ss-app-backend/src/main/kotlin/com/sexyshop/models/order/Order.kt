@@ -20,6 +20,9 @@ data class Order(
     @SerialName("customer_email") val customerEmail: String? = null,
     val status: String = "pending",
     val total: Double,
+    @SerialName("shipping_cost") val shippingCost: Double = 0.0,
+    @SerialName("delivery_method") val deliveryMethod: String = "national",
+    @SerialName("payment_method") val paymentMethod: String = "cash",
     val notes: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
@@ -50,6 +53,8 @@ data class OrderRequest(
     @SerialName("customer_ext_num") val customerExtNum: String? = null,
     @SerialName("customer_int_num") val customerIntNum: String? = null,
     @SerialName("customer_references") val customerReferences: String? = null,
+    @SerialName("delivery_method") val deliveryMethod: String = "national",
+    @SerialName("payment_method") val paymentMethod: String = "cash",
     val notes: String? = null,
     val items: List<OrderItemRequest>,
 )

@@ -1062,7 +1062,7 @@ function renderOrders() {
       <td><code>${order.id.slice(0, 8)}</code></td>
       <td>${escapeHtml(order.customer_name)}</td>
       <td>${escapeHtml(order.customer_phone)}</td>
-      <td>${escapeHtml(order.customer_city || order.customer_address || '—')}</td>
+      <td>${deliveryBadge(order)}</td>
       <td>${formatCurrency(order.total)}</td>
       <td>${statusBadge(order.status)}</td>
       <td>${formatDate(order.created_at)}</td>
@@ -1076,6 +1076,16 @@ function renderOrders() {
       </td>
     </tr>
   `).join('');
+}
+
+function deliveryBadge(order) {
+  const method = order.delivery_method || 'national';
+  const payment = order.payment_method || 'cash';
+  const methodIcon = method === 'local' ? '\u{1F6F5}' : '\u{1F4E6}';
+  const methodLabel = method === 'local' ? 'Local' : 'Nacional';
+  const paymentLabels = { cash: 'Efectivo', transfer: 'Transfer.', mp: 'MP' };
+  const paymentLabel = paymentLabels[payment] || payment;
+  return `<div class="delivery-badge"><span title="${methodLabel}">${methodIcon} ${methodLabel}</span><small>${paymentLabel}</small></div>`;
 }
 
 function filterOrders() {
@@ -1136,8 +1146,45 @@ async function viewOrder(id) {
     document.getElementById('orderDetailAddress').textContent = addrParts.length > 0 ? addrParts.join('\n') : (order.customer_address || '—');
 
     document.getElementById('orderDetailNotes').value = order.notes || '';
-    document.getElementById('orderDetailTotal').textContent = formatCurrency(order.total);
     document.getElementById('orderDetailDate').textContent = formatDate(order.created_at);
+
+    // Totals breakdown
+    const shippingCost = parseFloat(order.shipping_cost) || 0;
+    const totalAmt = parseFloat(order.total) || 0;
+    const subtotalAmt = totalAmt - shippingCost;
+    const deliveryMethod = order.delivery_method || 'national';
+    const paymentMethod = order.payment_method || 'cash';
+
+    document.getElementById('orderDetailSubtotal').textContent = formatCurrency(subtotalAmt);
+    document.getElementById('orderDetailTotal').textContent = formatCurrency(totalAmt);
+    const shipLabel = document.getElementById('orderDetailShippingLabel');
+    const shipValue = document.getElementById('orderDetailShipping');
+    shipLabel.textContent = deliveryMethod === 'local' ? 'Envío local (Guaymas)' : 'Envío nacional';
+    if (shippingCost === 0 && deliveryMethod === 'local') {
+      shipValue.innerHTML = '<span style="color:#065f46;font-weight:700">GRATIS</span>';
+    } else {
+      shipValue.textContent = formatCurrency(shippingCost);
+    }
+
+    // Delivery + payment method info card
+    const methodIcon = deliveryMethod === 'local' ? '\u{1F6F5}' : '\u{1F4E6}';
+    const methodLabel = deliveryMethod === 'local' ? 'Entrega local en Guaymas' : 'Envío nacional';
+    const paymentLabels = {
+      cash: { icon: '\u{1F4B5}', label: 'Efectivo contra entrega' },
+      transfer: { icon: '\u{1F3E6}', label: 'Transferencia bancaria' },
+      mp: { icon: '\u{1F4B3}', label: 'Mercado Pago' },
+    };
+    const pInfo = paymentLabels[paymentMethod] || { icon: '?', label: paymentMethod };
+    document.getElementById('orderDetailDeliveryInfo').innerHTML = `
+      <div class="order-detail__delivery-row">
+        <span class="order-detail__delivery-icon">${methodIcon}</span>
+        <span>${methodLabel}</span>
+      </div>
+      <div class="order-detail__delivery-row">
+        <span class="order-detail__delivery-icon">${pInfo.icon}</span>
+        <span>${pInfo.label}</span>
+      </div>
+    `;
 
     const select = document.getElementById('orderStatusSelect');
     select.value = order.status;

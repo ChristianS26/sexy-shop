@@ -37,6 +37,7 @@ data class CreatePreferenceRequest(
     @SerialName("customer_state") val customerState: String? = null,
     @SerialName("customer_zip") val customerZip: String? = null,
     @SerialName("customer_references") val customerReferences: String? = null,
+    @SerialName("delivery_method") val deliveryMethod: String = "national",
     val notes: String? = null,
 )
 
@@ -72,7 +73,11 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             }
 
             val request = call.receive<CreatePreferenceRequest>()
-            logger.info("MP request received: customerEmail present=${!request.customerEmail.isNullOrBlank()}, customerName=${request.customerName.isNotBlank()}")
+            logger.info("MP request received: customerEmail present=${!request.customerEmail.isNullOrBlank()}, customerName=${request.customerName.isNotBlank()}, deliveryMethod=${request.deliveryMethod}")
+
+            require(request.deliveryMethod in setOf("local", "national")) {
+                "Invalid delivery_method: ${request.deliveryMethod}"
+            }
 
             // Verify prices against database to prevent price manipulation
             val verifiedItems = request.items.map { item ->
@@ -83,12 +88,27 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 item.copy(unitPrice = product.price, title = product.name)
             }
 
+            // Server-side shipping calculation — never trust client values
+            val itemsSubtotal = verifiedItems.sumOf { it.unitPrice * it.quantity }
+            val shippingCost = OrderService.calculateShipping(request.deliveryMethod, itemsSubtotal)
+            logger.info("MP shipping calculated: deliveryMethod=${request.deliveryMethod}, subtotal=$itemsSubtotal, shipping=$shippingCost")
+
             val mpItems = buildJsonArray {
                 verifiedItems.forEach { item ->
                     addJsonObject {
                         put("title", item.title)
                         put("quantity", item.quantity)
                         put("unit_price", item.unitPrice)
+                        put("currency_id", "MXN")
+                    }
+                }
+                // Add shipping as a separate line item so the customer sees
+                // the breakdown in MP's checkout and the total matches the cart.
+                if (shippingCost > 0) {
+                    addJsonObject {
+                        put("title", if (request.deliveryMethod == "local") "Envío local (Guaymas)" else "Envío nacional")
+                        put("quantity", 1)
+                        put("unit_price", shippingCost)
                         put("currency_id", "MXN")
                     }
                 }
@@ -107,6 +127,8 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 request.customerState?.let { put("customer_state", it) }
                 request.customerZip?.let { put("customer_zip", it) }
                 request.customerReferences?.let { put("customer_references", it) }
+                put("delivery_method", request.deliveryMethod)
+                put("payment_method", "mp")
                 request.notes?.let { put("notes", it) }
                 put("items", buildJsonArray {
                     verifiedItems.forEach { item ->
@@ -278,6 +300,8 @@ private suspend fun createOrderFromPayment(externalReference: String, orderServi
             customerState = meta["customer_state"]?.jsonPrimitive?.content,
             customerZip = meta["customer_zip"]?.jsonPrimitive?.content,
             customerReferences = meta["customer_references"]?.jsonPrimitive?.content,
+            deliveryMethod = meta["delivery_method"]?.jsonPrimitive?.content ?: "national",
+            paymentMethod = "mp",
             notes = ((meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]").trim(),
             items = items,
         )

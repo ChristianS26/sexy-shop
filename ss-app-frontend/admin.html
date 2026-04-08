@@ -329,7 +329,7 @@
                 <th>ID</th>
                 <th>Cliente</th>
                 <th>Tel&eacute;fono</th>
-                <th>Ciudad</th>
+                <th>Entrega</th>
                 <th>Total</th>
                 <th>Estado</th>
                 <th>Fecha</th>
@@ -703,9 +703,22 @@
             <tbody id="orderDetailItems"></tbody>
           </table>
         </div>
-        <div class="order-detail__total">
-          <span>Total</span>
-          <span id="orderDetailTotal">&mdash;</span>
+        <div class="order-detail__totals">
+          <div class="order-detail__totals-row">
+            <span>Subtotal productos</span>
+            <span id="orderDetailSubtotal">&mdash;</span>
+          </div>
+          <div class="order-detail__totals-row" id="orderDetailShippingRow">
+            <span id="orderDetailShippingLabel">Env&iacute;o</span>
+            <span id="orderDetailShipping">&mdash;</span>
+          </div>
+          <div class="order-detail__totals-row order-detail__totals-row--total">
+            <span>Total</span>
+            <span id="orderDetailTotal">&mdash;</span>
+          </div>
+        </div>
+        <div class="order-detail__delivery-info" id="orderDetailDeliveryInfo">
+          <!-- Filled by admin.js -->
         </div>
 
         <!-- Package dimensions — always visible -->

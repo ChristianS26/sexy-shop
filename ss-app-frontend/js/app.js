@@ -322,19 +322,101 @@ function toggleCart() {
   document.body.classList.toggle('no-scroll', !isOpen);
 }
 
-function showCheckoutForm() {
-  document.getElementById('cartItems').style.display = 'none';
-  document.getElementById('cartFooter').style.display = 'none';
-  document.getElementById('checkoutForm').style.display = 'flex';
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  document.getElementById('checkoutSubtotal').textContent = `$${subtotal.toFixed(2)}`;
-  document.getElementById('checkoutTotal').textContent = `$${(subtotal + APP_CONFIG.SHIPPING_COST).toFixed(2)}`;
+// ═══════════════════════════════════════════
+// CHECKOUT STATE MACHINE
+// States: 'cart' → 'method' → 'local' or 'national'
+// ═══════════════════════════════════════════
+function setCheckoutState(state) {
+  const cartItems = document.getElementById('cartItems');
+  const cartFooter = document.getElementById('cartFooter');
+  const methodSelector = document.getElementById('methodSelector');
+  const localForm = document.getElementById('localForm');
+  const nationalForm = document.getElementById('nationalForm');
+  const cartTitle = document.getElementById('cartTitle');
+
+  cartItems.style.display = 'none';
+  cartFooter.style.display = 'none';
+  methodSelector.style.display = 'none';
+  localForm.style.display = 'none';
+  nationalForm.style.display = 'none';
+
+  if (state === 'cart') {
+    cartItems.style.display = 'block';
+    cartFooter.style.display = 'flex';
+    cartTitle.textContent = 'Tu carrito';
+  } else if (state === 'method') {
+    methodSelector.style.display = 'flex';
+    cartTitle.textContent = 'M&eacute;todo de entrega';
+    updateMethodSelectorHints();
+  } else if (state === 'local') {
+    localForm.style.display = 'flex';
+    cartTitle.textContent = 'Entrega local';
+    updateLocalSummary();
+  } else if (state === 'national') {
+    nationalForm.style.display = 'flex';
+    cartTitle.textContent = 'Env&iacute;o nacional';
+    updateNationalSummary();
+  }
 }
 
-function hideCheckoutForm() {
-  document.getElementById('checkoutForm').style.display = 'none';
-  document.getElementById('cartItems').style.display = 'block';
-  document.getElementById('cartFooter').style.display = 'block';
+function showMethodSelector() {
+  setCheckoutState('method');
+}
+
+function backToCart() {
+  setCheckoutState('cart');
+}
+
+function backToMethodSelector() {
+  setCheckoutState('method');
+}
+
+function selectDeliveryMethod(method) {
+  setCheckoutState(method);
+}
+
+function updateMethodSelectorHints() {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const badge = document.getElementById('localFreeShippingBadge');
+  if (!badge) return;
+  if (subtotal >= APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD) {
+    badge.textContent = '\u2728 \u00a1Env\u00edo GRATIS por tu compra!';
+    badge.style.background = '#d1fae5';
+    badge.style.color = '#065f46';
+  } else {
+    const remaining = (APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD - subtotal).toFixed(2);
+    badge.textContent = `\u2728 GRATIS al sumar $${remaining} m\u00e1s`;
+    badge.style.background = '#fef3c7';
+    badge.style.color = '#b45309';
+  }
+}
+
+function updateLocalSummary() {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const shipping = calculateShipping('local', subtotal);
+  const total = subtotal + shipping;
+  document.getElementById('localSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('localShipping').textContent = shipping === 0 ? 'GRATIS' : `$${shipping.toFixed(2)}`;
+  document.getElementById('localTotal').textContent = `$${total.toFixed(2)}`;
+
+  const hint = document.getElementById('localFreeHint');
+  if (shipping === 0) {
+    hint.textContent = '\u2705 \u00a1Tu env\u00edo es GRATIS!';
+    hint.className = 'checkout-summary__hint checkout-summary__hint--unlocked';
+    hint.style.display = 'block';
+  } else {
+    const remaining = (APP_CONFIG.SHIPPING_LOCAL_FREE_THRESHOLD - subtotal).toFixed(2);
+    hint.textContent = `\u{1F3AF} Agrega $${remaining} m\u00e1s y tu env\u00edo es GRATIS`;
+    hint.className = 'checkout-summary__hint checkout-summary__hint--unlock';
+    hint.style.display = 'block';
+  }
+}
+
+function updateNationalSummary() {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const shipping = calculateShipping('national', subtotal);
+  document.getElementById('checkoutSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('checkoutTotal').textContent = `$${(subtotal + shipping).toFixed(2)}`;
 }
 
 function validateCheckoutField(inputId, message) {
@@ -393,53 +475,59 @@ function clearCheckoutErrors() {
   document.querySelectorAll('.checkout-field--error').forEach(el => el.classList.remove('checkout-field--error'));
 }
 
-async function processOrder() {
+// ═══════════════════════════════════════════
+// LOCAL ORDER FLOW (Guaymas)
+// Handles cash, transfer, and MP payment methods
+// ═══════════════════════════════════════════
+async function processLocalOrder(paymentMethod) {
   clearCheckoutErrors();
 
-  if (!validateCheckoutField('checkoutName', 'Nombre requerido')) return;
-  if (!validatePhone('checkoutPhone')) return;
-  if (!validateEmail('checkoutEmail')) return;
-  if (!validateCheckoutField('checkoutStreet', 'Calle requerida')) return;
-  if (!validateCheckoutField('checkoutExtNum', 'No. exterior requerido')) return;
-  if (!validateCheckoutField('checkoutNeighborhood', 'Colonia requerida')) return;
-  if (!validateCheckoutField('checkoutCity', 'Ciudad requerida')) return;
-  if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
-  if (!validateCheckoutField('checkoutState', 'Estado requerido')) return;
+  if (!validateCheckoutField('localName', 'Nombre requerido')) return;
+  if (!validatePhone('localPhone')) return;
+  // Email is optional in local flow EXCEPT when paying with MP (MP requires it)
+  if (paymentMethod === 'mp') {
+    if (!validateEmail('localEmail')) return;
+  }
+  if (!validateCheckoutField('localStreet', 'Calle requerida')) return;
+  if (!validateCheckoutField('localNeighborhood', 'Colonia requerida')) return;
 
-  const name = document.getElementById('checkoutName').value.trim();
-  const phone = document.getElementById('checkoutPhone').value.trim();
-  const street = document.getElementById('checkoutStreet').value.trim();
-  const extNum = document.getElementById('checkoutExtNum').value.trim();
-  const intNum = document.getElementById('checkoutIntNum').value.trim();
-  const neighborhood = document.getElementById('checkoutNeighborhood').value.trim();
-  const city = document.getElementById('checkoutCity').value.trim();
-  const zip = document.getElementById('checkoutZip').value.trim();
-  const state = document.getElementById('checkoutState').value.trim();
-  const references = document.getElementById('checkoutReferences').value.trim();
-  const notes = document.getElementById('checkoutNotes').value.trim();
-  const fullAddress = `${street} #${extNum}${intNum ? ' Int. ' + intNum : ''}, Col. ${neighborhood}, ${city}, ${state}, C.P. ${zip}`;
+  const name = document.getElementById('localName').value.trim();
+  const phone = document.getElementById('localPhone').value.trim();
+  const email = document.getElementById('localEmail').value.trim();
+  const street = document.getElementById('localStreet').value.trim();
+  const neighborhood = document.getElementById('localNeighborhood').value.trim();
+  const references = document.getElementById('localReferences').value.trim();
+  const notes = document.getElementById('localNotes').value.trim();
+  const fullAddress = `${street}, Col. ${neighborhood}, Guaymas, Sonora`;
 
-  const payBtn = document.getElementById('payWaBtn');
-  payBtn.disabled = true;
-  payBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando...';
+  // For MP payment, branch into the MP flow with delivery_method='local'
+  if (paymentMethod === 'mp') {
+    return payWithMercadoPagoLocal({
+      name, phone, email, street, neighborhood, references, notes,
+    });
+  }
+
+  // For cash/transfer: create order directly
+  const buttons = document.querySelectorAll('.checkout-payment-methods--local button');
+  buttons.forEach(b => b.disabled = true);
+  const targetBtn = document.querySelector(`.checkout-pay-btn--${paymentMethod === 'cash' ? 'cash' : 'transfer'}`);
+  const originalText = targetBtn.innerHTML;
+  targetBtn.innerHTML = '<span class="checkout-spinner"></span> Procesando...';
 
   try {
-    const email = document.getElementById('checkoutEmail').value.trim();
-
     const orderData = {
       customer_name: name,
       customer_phone: phone,
       customer_email: email || null,
       customer_address: fullAddress,
       customer_street: street,
-      customer_ext_num: extNum,
-      customer_int_num: intNum || null,
       customer_neighborhood: neighborhood,
-      customer_city: city,
-      customer_state: state,
-      customer_zip: zip,
+      customer_city: 'Guaymas',
+      customer_state: 'Sonora',
       customer_references: references || null,
-      notes: ((notes ? notes + ' | ' : '') + 'Envío: $99').trim(),
+      delivery_method: 'local',
+      payment_method: paymentMethod,
+      notes: notes || null,
       items: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
@@ -458,38 +546,99 @@ async function processOrder() {
     }
 
     const order = await res.json();
-
-    // Show success screen
-    document.getElementById('checkoutForm').innerHTML = `
-      <div class="checkout-success">
-        <div class="checkout-success__icon">&#10004;</div>
-        <h3 class="checkout-success__title">¡Pedido creado!</h3>
-        <p class="checkout-success__id">Pedido #${escapeHtml(order.id.slice(0, 8))}</p>
-        <p class="checkout-success__msg">Te contactaremos por WhatsApp para coordinar el pago y la entrega.</p>
-        <a href="https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola, acabo de hacer el pedido #${escapeHtml(order.id.slice(0, 8))}. ¿Me pueden confirmar?`)}" target="_blank" class="checkout-success__wa-btn">
-          Confirmar por WhatsApp
-        </a>
-        <button class="checkout-success__close" onclick="closeAfterOrder()">Seguir comprando</button>
-      </div>
-    `;
+    showOrderSuccess('localForm', order, paymentMethod);
 
     cart = [];
     saveCart();
     updateCart();
     await fetchProducts();
     renderProducts();
-
   } catch (err) {
-    // Show error screen
-    document.getElementById('checkoutForm').innerHTML = `
-      <div class="checkout-success">
-        <div class="checkout-success__icon" style="background:#fef2f2;color:#b91c1c">&#10008;</div>
-        <h3 class="checkout-success__title">Error al procesar</h3>
-        <p class="checkout-success__msg">${escapeHtml(err.message || 'No se pudo crear el pedido. Intenta de nuevo.')}</p>
-        <button class="checkout-success__close" onclick="location.reload()">Intentar de nuevo</button>
-      </div>
-    `;
+    buttons.forEach(b => b.disabled = false);
+    targetBtn.innerHTML = originalText;
+    showOrderError('localForm', err.message);
   }
+}
+
+async function payWithMercadoPagoLocal(data) {
+  const btn = document.querySelector('#localForm .checkout-pay-btn--mp');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="checkout-spinner"></span> Conectando con MP...';
+
+  try {
+    const items = cart.map(item => ({
+      product_id: item.id,
+      title: item.name,
+      quantity: item.qty,
+      unit_price: item.price,
+    }));
+
+    const res = await fetch(`${API_URL}/payments/create-preference`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items,
+        customer_name: data.name,
+        customer_phone: data.phone,
+        customer_email: data.email,
+        customer_address: `${data.street}, Col. ${data.neighborhood}, Guaymas, Sonora`,
+        customer_street: data.street,
+        customer_neighborhood: data.neighborhood,
+        customer_city: 'Guaymas',
+        customer_state: 'Sonora',
+        customer_references: data.references || null,
+        delivery_method: 'local',
+        notes: data.notes || null,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Error al crear preferencia de pago');
+    }
+
+    const preference = await res.json();
+    window.location.href = preference.init_point;
+  } catch (err) {
+    showToast(err.message || 'Error al conectar con Mercado Pago');
+    btn.disabled = false;
+    btn.innerHTML = '\uD83D\uDCB3 Tarjeta (Mercado Pago)';
+  }
+}
+
+function showOrderSuccess(containerId, order, paymentMethod) {
+  const container = document.getElementById(containerId);
+  let methodMsg = 'Te contactaremos por WhatsApp para coordinar la entrega y el pago.';
+  if (paymentMethod === 'transfer') {
+    methodMsg = 'Te enviaremos los datos bancarios por WhatsApp para que realices la transferencia.';
+  } else if (paymentMethod === 'cash') {
+    methodMsg = 'Te contactaremos por WhatsApp para coordinar la entrega. Pagas en efectivo al recibir.';
+  }
+  const waMsg = encodeURIComponent(`Hola, acabo de hacer el pedido #${order.id.slice(0, 8)}. ¿Me pueden confirmar?`);
+  container.innerHTML = `
+    <div class="checkout-success">
+      <div class="checkout-success__icon">&#10004;</div>
+      <h3 class="checkout-success__title">¡Pedido creado!</h3>
+      <p class="checkout-success__id">Pedido #${escapeHtml(order.id.slice(0, 8))}</p>
+      <p class="checkout-success__msg">${methodMsg}</p>
+      <a href="https://wa.me/${APP_CONFIG.WHATSAPP_NUMBER}?text=${waMsg}" target="_blank" class="checkout-success__wa-btn">
+        Confirmar por WhatsApp
+      </a>
+      <button class="checkout-success__close" onclick="location.reload()">Seguir comprando</button>
+    </div>
+  `;
+}
+
+function showOrderError(containerId, message) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = `
+    <div class="checkout-success">
+      <div class="checkout-success__icon" style="background:#fef2f2;color:#b91c1c">&#10008;</div>
+      <h3 class="checkout-success__title">Error al procesar</h3>
+      <p class="checkout-success__msg">${escapeHtml(message || 'No se pudo crear el pedido. Intenta de nuevo.')}</p>
+      <button class="checkout-success__close" onclick="location.reload()">Intentar de nuevo</button>
+    </div>
+  `;
 }
 
 async function payWithMercadoPago() {
@@ -534,6 +683,7 @@ async function payWithMercadoPago() {
         customer_state: document.getElementById('checkoutState').value.trim(),
         customer_zip: document.getElementById('checkoutZip').value.trim(),
         customer_references: document.getElementById('checkoutReferences').value.trim() || null,
+        delivery_method: 'national',
         notes: document.getElementById('checkoutNotes').value.trim() || null,
       }),
     });
@@ -574,13 +724,8 @@ async function payWithMercadoPago() {
 }
 
 function closeAfterOrder() {
-  hideCheckoutForm();
   toggleCart();
-  // Reset checkout form for next order
-  const form = document.getElementById('checkoutForm');
-  if (form.querySelector('.checkout-success')) {
-    location.reload();
-  }
+  location.reload();
 }
 
 // ═══════════════════════════════════════════
