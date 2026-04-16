@@ -248,10 +248,7 @@
     color: var(--gray-600);
     line-height: 1.4;
     margin-bottom: 8px;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    overflow-wrap: break-word;
   }
 
   .pdf-product__price-row {
@@ -271,20 +268,6 @@
     font-size: 0.78rem;
     color: var(--gray-600);
     text-decoration: line-through;
-  }
-
-  .pdf-product__badge {
-    display: inline-block;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: #fff;
-    background: var(--pink);
-    padding: 2px 8px;
-    border-radius: 100px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 6px;
-    align-self: flex-start;
   }
 
   /* ═══════ INFO PAGE (purchase + care) ═══════ */
@@ -621,8 +604,6 @@
     const img = p.primaryImage
       ? `<img src="${escape(p.primaryImage)}" alt="${escape(p.name)}">`
       : `<span class="pdf-product__image-placeholder">🛍</span>`;
-    const badgeLabels = { popular: 'Popular', nuevo: 'Nuevo', oferta: 'Oferta', destacado: 'Destacado' };
-    const badge = p.badge ? `<span class="pdf-product__badge">${escape(badgeLabels[p.badge] || p.badge)}</span>` : '';
     const desc = p.description ? `<div class="pdf-product__desc">${escape(p.description)}</div>` : '';
     const oldPrice = p.old_price ? `<span class="pdf-product__old-price">${formatPrice(p.old_price)}</span>` : '';
 
@@ -630,7 +611,6 @@
       <div class="pdf-product">
         <div class="pdf-product__image">${img}</div>
         <div class="pdf-product__info">
-          ${badge}
           <div class="pdf-product__name">${escape(p.name)}</div>
           ${desc}
           <div class="pdf-product__price-row">

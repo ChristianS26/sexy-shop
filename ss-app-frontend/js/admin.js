@@ -368,10 +368,41 @@ async function saveCategory(e) {
 
   try {
     if (editingCategoryId) {
+      const oldCat = categories.find(c => c.id === editingCategoryId);
+      const oldOrder = oldCat ? oldCat.display_order : null;
+      const newOrder = data.display_order;
+
       await api(`/categories/${editingCategoryId}`, { method: 'PUT', body: JSON.stringify(data) });
+
+      if (oldOrder !== null && oldOrder !== newOrder) {
+        for (const cat of categories) {
+          if (cat.id === editingCategoryId) continue;
+          let adjusted = cat.display_order;
+          if (newOrder < oldOrder) {
+            if (cat.display_order >= newOrder && cat.display_order < oldOrder) adjusted = cat.display_order + 1;
+          } else {
+            if (cat.display_order > oldOrder && cat.display_order <= newOrder) adjusted = cat.display_order - 1;
+          }
+          if (adjusted !== cat.display_order) {
+            await api(`/categories/${cat.id}`, {
+              method: 'PUT',
+              body: JSON.stringify({ name: cat.name, slug: cat.slug, icon: cat.icon, display_order: adjusted }),
+            });
+          }
+        }
+      }
       showToast('Categoría actualizada');
     } else {
+      const newOrder = data.display_order;
       await api('/categories', { method: 'POST', body: JSON.stringify(data) });
+      for (const cat of categories) {
+        if (cat.display_order >= newOrder) {
+          await api(`/categories/${cat.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: cat.name, slug: cat.slug, icon: cat.icon, display_order: cat.display_order + 1 }),
+          });
+        }
+      }
       showToast('Categoría creada');
     }
     closeModals();
