@@ -7,6 +7,8 @@ import io.ktor.server.plugins.cors.routing.*
 fun Application.configureCors() {
     install(CORS) {
         allowHost("christians26.github.io", schemes = listOf("https"))
+        allowHost("sexyshoptoys.com.mx", schemes = listOf("https"))
+        allowHost("www.sexyshoptoys.com.mx", schemes = listOf("https"))
         allowHost("localhost:8080", schemes = listOf("http"))
         allowHost("127.0.0.1:8080", schemes = listOf("http"))
         allowHeader(HttpHeaders.ContentType)
