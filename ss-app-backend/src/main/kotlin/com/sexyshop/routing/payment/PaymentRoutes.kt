@@ -55,6 +55,12 @@ data class PreferenceResponse(
     @SerialName("init_point") val initPoint: String,
 )
 
+@Serializable
+data class PaymentConfigResponse(
+    @SerialName("public_key") val publicKey: String,
+    @SerialName("test_mode") val testMode: Boolean,
+)
+
 fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailService: EmailService, productService: ProductService) {
     // Select credentials based on test mode
     val activeToken = if (config.mpTestMode && config.mpTestAccessToken.isNotEmpty()) config.mpTestAccessToken else config.mpAccessToken
@@ -301,7 +307,9 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
         }
 
         get("/config") {
-            call.respond(mapOf("public_key" to activePublicKey, "test_mode" to config.mpTestMode))
+            // A mapOf with mixed value types (String + Boolean) is Map<String, Any>,
+            // which kotlinx.serialization cannot serialize — it 500'd in production.
+            call.respond(PaymentConfigResponse(publicKey = activePublicKey, testMode = config.mpTestMode))
         }
     }
 }
