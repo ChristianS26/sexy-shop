@@ -2544,6 +2544,20 @@ body[data-view="tienda"] .catalog-back {
 }
 body[data-view="tienda"] .catalog-back:hover { color: #E91E8C; }
 
+/* ═══════ Inicio vs. tienda ═══════
+   El inicio asoma una selección de productos y manda al catálogo; la barra de
+   categorías, el buscador y el orden pertenecen sólo a la tienda. */
+.solo-tienda { display: none; }
+body[data-view="tienda"] .solo-tienda { display: block; }
+body[data-view="tienda"] .solo-inicio { display: none; }
+
+body:not([data-view="tienda"]) .catalog-toolbar { display: none; }
+
+.catalog-vertodo {
+  text-align: center;
+  margin-top: 38px;
+}
+
 /* Buscador del catálogo */
 .catalog-search {
   font-family: 'Outfit', system-ui, sans-serif;

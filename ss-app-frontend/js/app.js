@@ -171,6 +171,7 @@ function sincronizarHashTienda() {
 
 function irAlHome() {
   document.body.dataset.view = 'home';
+  renderProducts(); // el inicio vuelve a mostrar sólo la selección
   revelarLoVisible();
 }
 
@@ -250,8 +251,25 @@ function limpiarBusqueda() {
   if (campo) campo.focus();
 }
 
+// Cuántos productos se asoman en el inicio. El resto vive en /#tienda: la
+// portada tiene que convencer (discreción, envíos, cómo se compra) y llevar
+// al catálogo, no obligar a recorrerlo entero para llegar a esa información.
+const DESTACADOS_EN_INICIO = 8;
+
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
+  const enTienda = document.body.dataset.view === 'tienda';
+
+  // En el inicio se muestra sólo una selección, en el orden que la tienda
+  // definió desde el admin, sin filtros ni búsqueda.
+  if (!enTienda) {
+    const destacados = [...products]
+      .sort((a, b) => a.display_order - b.display_order)
+      .slice(0, DESTACADOS_EN_INICIO);
+    grid.innerHTML = destacados.map(tarjetaDeProducto).join('');
+    return;
+  }
+
   // Al buscar se recorre todo el catálogo: filtrar además por la categoría
   // activa dejaría "sin resultados" un producto que sí existe en otra.
   const consulta = normalizarTexto(storeQuery).trim();
@@ -295,7 +313,11 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map(product => {
+  grid.innerHTML = filtered.map(tarjetaDeProducto).join('');
+}
+
+/** El HTML de una tarjeta. Vive aparte porque lo usan el inicio y la tienda. */
+function tarjetaDeProducto(product) {
     const visuals = getProductVisuals(product);
     const cat = getCategoryByProduct(product);
     const isDark = visuals.bg.includes('#1a1a2e');
@@ -327,7 +349,6 @@ function renderProducts() {
       </div>
     </div>
   `;
-  }).join('');
 }
 
 // ═══════════════════════════════════════════
