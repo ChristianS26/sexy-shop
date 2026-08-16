@@ -135,6 +135,9 @@
         <!-- Rendered by JS -->
       </div>
       <div class="catalog-controls">
+        <input type="search" id="storeSearch" class="catalog-search" autocomplete="off"
+               placeholder="Buscar producto&hellip;" aria-label="Buscar en el cat&aacute;logo"
+               oninput="buscarEnTienda(this.value)">
         <select class="catalog-sort" id="storeSortSelect" onchange="changeStoreSort(this.value)">
           <option value="default">Orden de tienda</option>
           <option value="price-asc">Menor precio</option>

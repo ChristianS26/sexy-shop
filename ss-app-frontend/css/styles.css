@@ -2543,3 +2543,58 @@ body[data-view="tienda"] .catalog-back {
   transition: color 0.2s;
 }
 body[data-view="tienda"] .catalog-back:hover { color: #E91E8C; }
+
+/* Buscador del catálogo */
+.catalog-search {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 10px 16px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 50px;
+  background: #fff;
+  color: #1a1a2e;
+  min-width: 210px;
+  transition: border-color 0.2s;
+}
+.catalog-search::placeholder { color: #9ca3af; }
+.catalog-search:focus { outline: none; border-color: #E91E8C; }
+
+/* Mientras hay búsqueda las categorías no aplican: se atenúan para que se note */
+.catalog-tabs--inactivas { opacity: 0.45; pointer-events: none; }
+
+/* Sin resultados */
+.catalog-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 56px 24px;
+}
+.catalog-empty__title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+.catalog-empty__hint {
+  font-size: 0.92rem;
+  color: #6b7280;
+  max-width: 46ch;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+.catalog-empty__btn {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 12px 26px;
+  border-radius: 50px;
+  border: none;
+  background: #E91E8C;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.catalog-empty__btn:hover { background: #c2185b; }
+
+@media (max-width: 640px) {
+  .catalog-search { min-width: 0; width: 100%; }
+}

@@ -106,6 +106,7 @@ function toggleMenu() {
 // STATE — STORE SORT
 // ═══════════════════════════════════════════
 let storeSort = 'default';
+let storeQuery = '';
 
 // ═══════════════════════════════════════════
 // RENDER CATEGORY TABS
@@ -126,6 +127,12 @@ function renderCategories() {
 }
 
 function filterCategory(catId) {
+  // Elegir categoría cancela la búsqueda: si no, el clic no cambiaría nada
+  // porque mientras se busca se recorre todo el catálogo.
+  storeQuery = '';
+  const campo = document.getElementById('storeSearch');
+  if (campo) campo.value = '';
+
   activeCategory = catId;
   renderCategories();
   renderProducts();
@@ -217,11 +224,49 @@ function changeStoreSort(value) {
 // ═══════════════════════════════════════════
 // RENDER PRODUCTS
 // ═══════════════════════════════════════════
+/**
+ * Compara sin acentos ni mayúsculas: quien busca "lenceria" o "vibrador
+ * recargable" tiene que encontrar "Lencería" y "Vibrador Recargable".
+ */
+function normalizarTexto(t) {
+  // NFD separa la letra de su acento y \p{Diacritic} quita el acento suelto.
+  // Se usa la clase Unicode y no un rango escrito a mano porque ese rango son
+  // caracteres invisibles en el código, fáciles de romper al reeditar.
+  return String(t || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+}
+
+function buscarEnTienda(valor) {
+  storeQuery = valor;
+  renderProducts();
+}
+
+function limpiarBusqueda() {
+  const campo = document.getElementById('storeSearch');
+  if (campo) campo.value = '';
+  buscarEnTienda('');
+  if (campo) campo.focus();
+}
+
 function renderProducts() {
   const grid = document.getElementById('productsGrid');
-  let filtered = activeCategory === 'todos'
-    ? [...products]
-    : products.filter(p => p.category_id === activeCategory);
+  // Al buscar se recorre todo el catálogo: filtrar además por la categoría
+  // activa dejaría "sin resultados" un producto que sí existe en otra.
+  const consulta = normalizarTexto(storeQuery).trim();
+  let filtered;
+  if (consulta) {
+    const terminos = consulta.split(/\s+/);
+    filtered = products.filter(p => {
+      const texto = normalizarTexto(`${p.name} ${p.description || ''} ${getCategoryByProduct(p)?.name || ''}`);
+      return terminos.every(t => texto.includes(t));
+    });
+  } else {
+    filtered = activeCategory === 'todos'
+      ? [...products]
+      : products.filter(p => p.category_id === activeCategory);
+  }
 
   // Sort
   switch (storeSort) {
@@ -235,6 +280,20 @@ function renderProducts() {
   // Update count
   const countEl = document.getElementById('productCount');
   if (countEl) countEl.textContent = `${filtered.length} producto${filtered.length !== 1 ? 's' : ''}`;
+
+  // Las categorías no aplican mientras se busca: se atenúan para que se note.
+  const tabs = document.getElementById('categoriesGrid');
+  if (tabs) tabs.classList.toggle('catalog-tabs--inactivas', Boolean(consulta));
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="catalog-empty">
+        <p class="catalog-empty__title">Sin resultados para &laquo;${escapeHtml(storeQuery.trim())}&raquo;</p>
+        <p class="catalog-empty__hint">Prueba con una palabra m&aacute;s corta, o escr&iacute;benos por WhatsApp y te decimos si lo conseguimos.</p>
+        <button type="button" class="catalog-empty__btn" onclick="limpiarBusqueda()">Ver todo el cat&aacute;logo</button>
+      </div>`;
+    return;
+  }
 
   grid.innerHTML = filtered.map(product => {
     const visuals = getProductVisuals(product);
