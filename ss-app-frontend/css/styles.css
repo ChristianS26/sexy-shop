@@ -700,10 +700,26 @@ ul { list-style: none; }
 
 @media (max-width: 768px) {
   .hero { padding: 120px 0 60px; min-height: auto; }
-  .hero-inner { grid-template-columns: 1fr; gap: 40px; }
-  .hero-visual { order: -1; }
-  .hero-visual-card { max-width: 320px; aspect-ratio: 1/1; }
-  .hero-float { display: none; }
+  .hero-inner { grid-template-columns: 1fr; gap: 28px; }
+
+  /* En móvil el mensaje y el botón van primero. El recuadro decorativo se
+     ocultaba los sellos de confianza y se llevaba la pantalla completa antes
+     de que apareciera nada útil, así que aquí se invierte: fuera la
+     decoración, y los sellos —que sí resuelven la duda de quien compra— pasan
+     a ser una lista normal debajo de los botones. */
+  .hero-visual { order: 0; flex-direction: column; gap: 10px; }
+  .hero-visual-card { display: none; }
+
+  .hero-float {
+    display: flex;
+    position: static;
+    width: 100%;
+    animation: none;
+    padding: 12px 14px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--gray-100);
+  }
+
   .hero-actions { flex-direction: column; align-items: stretch; }
 }
 
