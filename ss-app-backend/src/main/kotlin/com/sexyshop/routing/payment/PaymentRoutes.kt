@@ -92,6 +92,10 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 "Invalid delivery_method: ${request.deliveryMethod}"
             }
 
+            // Sin esto, un carrito vacío generaba una preferencia de $0 en MP.
+            require(request.items.isNotEmpty() && request.items.size <= 50) { "Carrito inválido" }
+            request.items.forEach { require(it.quantity > 0) { "Cantidad inválida" } }
+
             // Correo obligatorio: sin él no hay a dónde mandar el comprobante ni
             // el aviso de confirmación, y ante un contracargo no habría manera
             // de probar que al comprador se le informó de nada.
