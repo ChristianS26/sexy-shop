@@ -897,7 +897,33 @@ function openPdp(productId) {
   document.getElementById('pdpOverlay').classList.add('open');
   document.getElementById('pdpModal').classList.add('open');
   document.body.classList.add('no-scroll');
+
+  // La ficha toma la dirección del producto, la misma que sirve la página
+  // estática: así se puede copiar del navegador, compartir y recargar, y el
+  // botón "atrás" la cierra en vez de sacar al visitante de la tienda.
+  const ruta = `/producto/${product.slug}/`;
+  if (location.pathname !== ruta) {
+    history.pushState({ pdp: product.slug }, '', ruta);
+  }
 }
+
+/** Cierra el modal sin tocar el historial. */
+function ocultarPdp() {
+  document.getElementById('pdpOverlay').classList.remove('open');
+  document.getElementById('pdpModal').classList.remove('open');
+  document.body.classList.remove('no-scroll');
+  pdpProductId = null;
+}
+
+// Atrás/adelante del navegador: fuera de una ficha, el modal se cierra.
+window.addEventListener('popstate', (e) => {
+  const slug = e.state && e.state.pdp;
+  if (slug) {
+    const product = products.find(p => p.slug === slug);
+    if (product) { openPdp(product.id); return; }
+  }
+  if (pdpProductId) ocultarPdp();
+});
 
 function renderPdpGallery(product, images) {
   const mainEl = document.getElementById('pdpMainImage');
@@ -953,10 +979,13 @@ function pdpAddToCart() {
 }
 
 function closePdp() {
-  document.getElementById('pdpOverlay').classList.remove('open');
-  document.getElementById('pdpModal').classList.remove('open');
-  document.body.classList.remove('no-scroll');
-  pdpProductId = null;
+  // Si la ficha empujó su dirección, cerrarla es volver atrás: así el
+  // historial no se llena de entradas y la dirección regresa a la tienda.
+  if (history.state && history.state.pdp) {
+    history.back();
+    return;
+  }
+  ocultarPdp();
 }
 
 // Close PDP with Escape
