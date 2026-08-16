@@ -923,11 +923,24 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+// Las fichas estáticas de /producto/{slug} mandan aquí con ?producto={slug}:
+// abre ese producto directo en vez de dejar al visitante buscándolo en el grid.
+function abrirProductoDeLaUrl() {
+  const slug = new URLSearchParams(location.search).get('producto');
+  if (!slug) return;
+  const product = products.find(p => p.slug === slug);
+  if (!product) return;
+  openPdp(product.id);
+  // Se limpia el parámetro para que recargar no vuelva a abrir la ficha.
+  history.replaceState({}, '', location.pathname + location.hash);
+}
+
 async function init() {
   await Promise.all([fetchCategories(), fetchProducts()]);
   renderCategories();
   renderProducts();
   updateCart();
+  abrirProductoDeLaUrl();
 }
 
 init();

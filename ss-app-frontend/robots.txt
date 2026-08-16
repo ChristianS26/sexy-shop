@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# El panel y el catálogo para imprimir no son para buscadores
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /login.html
+Disallow: /catalog-pdf.html
+
+Sitemap: https://sexyshoptoys.com.mx/sitemap.xml

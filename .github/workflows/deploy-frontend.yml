@@ -28,6 +28,11 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
+      # Una página real por producto (/producto/{slug}/) y el sitemap. Se
+      # generan aquí y no se versionan: dependen del catálogo vivo, no del repo.
+      - name: Generar fichas de producto y sitemap
+        run: node ss-app-frontend/herramientas/generar-fichas.js
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ss-app-frontend
