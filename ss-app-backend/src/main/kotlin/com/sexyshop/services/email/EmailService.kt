@@ -201,8 +201,10 @@ class EmailService(private val config: AppConfig) {
             logger.warn("RESEND_API_KEY vacía: no se envió el aviso de venta al admin")
             return
         }
-        // Sin destinatario, Resend rechaza el envío y el error se perdía en el log
-        if (config.notificationEmail.isBlank()) {
+        // NOTIFICATION_EMAIL admite varios destinatarios separados por coma, para
+        // que el aviso de venta le llegue a la tienda y a quien más lo necesite.
+        val destinatarios = config.notificationEmail.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        if (destinatarios.isEmpty()) {
             logger.error("NOTIFICATION_EMAIL vacío: nadie recibirá el aviso de la venta #${order.id.take(8)}")
             return
         }
@@ -239,7 +241,7 @@ class EmailService(private val config: AppConfig) {
 
         // Responder al aviso de venta escribe directo al comprador
         sendEmail(
-            config.notificationEmail,
+            destinatarios,
             "🛒 Nueva venta #${order.id.take(8)} — \$${String.format("%.2f", order.total)}",
             html,
             order.customerEmail,
@@ -252,12 +254,15 @@ class EmailService(private val config: AppConfig) {
      * del cliente caería en el vacío. En el aviso al admin se manda el correo
      * del comprador, para poder contestarle directo desde la bandeja.
      */
-    private suspend fun sendEmail(to: String, subject: String, html: String, replyTo: String? = null) {
+    private suspend fun sendEmail(to: String, subject: String, html: String, replyTo: String? = null) =
+        sendEmail(listOf(to), subject, html, replyTo)
+
+    private suspend fun sendEmail(to: List<String>, subject: String, html: String, replyTo: String? = null) {
         val client = HttpClient(CIO)
         try {
             val payload = buildJsonObject {
                 put("from", "$fromName <$fromEmail>")
-                put("to", buildJsonArray { add(to) })
+                put("to", buildJsonArray { to.forEach { add(it) } })
                 replyTo?.takeIf { it.isNotBlank() }?.let { put("reply_to", it) }
                 put("subject", subject)
                 put("html", html)
