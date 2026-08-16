@@ -18,6 +18,7 @@ val supabaseModule = module {
             mpTestPublicKey = System.getenv("MP_TEST_PUBLIC_KEY") ?: "",
             mpTestMode = System.getenv("MP_TEST_MODE")?.toBooleanStrictOrNull() ?: false,
             resendApiKey = System.getenv("RESEND_API_KEY") ?: "",
+            resendFromEmail = System.getenv("RESEND_FROM_EMAIL")?.takeIf { it.isNotBlank() } ?: "onboarding@resend.dev",
             notificationEmail = System.getenv("NOTIFICATION_EMAIL") ?: "sexyshopguaymas@gmail.com",
             frontendUrl = System.getenv("FRONTEND_URL") ?: "https://christians26.github.io/sexy-shop",
             backendUrl = System.getenv("BACKEND_URL") ?: "https://ss-app-backend-production.up.railway.app",

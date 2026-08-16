@@ -6,6 +6,7 @@ import com.sexyshop.models.order.OrderItem
 import com.sexyshop.models.order.OrderRequest
 import com.sexyshop.repositories.order.OrderRepository
 import com.sexyshop.repositories.product.ProductRepository
+import com.sexyshop.repositories.product.StockInsuficienteException
 
 class OrderService(
     private val orderRepository: OrderRepository,
@@ -30,6 +31,10 @@ class OrderService(
     }
 
     suspend fun getAll(status: String? = null): List<Order> = orderRepository.getAll(status)
+
+    /** ¿Ese pago de Mercado Pago ya generó un pedido? */
+    suspend fun existePorPagoMp(mpPaymentId: String): Boolean =
+        orderRepository.getByMpPaymentId(mpPaymentId) != null
 
     suspend fun getById(id: String): Pair<Order, List<OrderItem>> {
         val order = orderRepository.getById(id)
@@ -62,13 +67,19 @@ class OrderService(
             require(item.quantity > 0) { "Quantity must be positive" }
         }
 
-        // Look up products, validate stock, and calculate totals
+        // Look up products, validate stock, and calculate totals.
+        // El stock se valida contra el total pedido del producto y no renglón
+        // por renglón, por si el mismo producto llega repetido en el carrito.
+        val pedidoPorProducto = request.items.groupBy { it.productId }
+            .mapValues { (_, items) -> items.sumOf { it.quantity } }
+
         val products = request.items.map { itemReq ->
             val product = productRepository.getById(itemReq.productId)
                 ?: throw NoSuchElementException("Producto no encontrado: ${itemReq.productId}")
             require(product.isActive) { "Producto no disponible: ${product.name}" }
-            require(product.stock >= itemReq.quantity) {
-                "Stock insuficiente para ${product.name}. Disponible: ${product.stock}, solicitado: ${itemReq.quantity}"
+            val totalPedido = pedidoPorProducto[product.id] ?: itemReq.quantity
+            require(product.stock >= totalPedido) {
+                "Stock insuficiente para ${product.name}. Disponible: ${product.stock}, solicitado: $totalPedido"
             }
             product to itemReq.quantity
         }
@@ -88,9 +99,24 @@ class OrderService(
         val shippingCost = calculateShipping(request.deliveryMethod, itemsSubtotal)
         val total = itemsSubtotal + shippingCost
 
-        // Deduct stock
-        products.forEach { (product, qty) ->
-            productRepository.updateStock(product.id, product.stock - qty)
+        // Descuento atómico. Si a mitad del carrito ya no alcanza (otra compra
+        // se adelantó entre la validación y esto), se devuelve lo ya descontado
+        // y se aborta: peor sería dejar medio pedido cobrado.
+        val porProducto = pedidoPorProducto.map { (productId, qty) ->
+            products.first { it.first.id == productId }.first to qty
+        }
+        val descontados = mutableListOf<Pair<String, Int>>()
+        try {
+            porProducto.forEach { (product, qty) ->
+                productRepository.descontarStock(product.id, qty)
+                descontados.add(product.id to qty)
+            }
+        } catch (e: StockInsuficienteException) {
+            descontados.forEach { (id, qty) ->
+                runCatching { productRepository.devolverStock(id, qty) }
+            }
+            val agotado = porProducto.firstOrNull { it.first.id == e.productId }?.first?.name ?: "un producto"
+            throw IllegalArgumentException("Se acabó el inventario de $agotado mientras completabas la compra")
         }
 
         val order = orderRepository.create(
@@ -111,6 +137,12 @@ class OrderService(
                 shippingCost = shippingCost,
                 deliveryMethod = request.deliveryMethod,
                 paymentMethod = request.paymentMethod,
+                // Conciliación con MP (los manda el webhook de pagos)
+                mpPaymentId = request.mpPaymentId,
+                mpFee = request.mpFee,
+                mpNet = request.mpNet,
+                mpInstallments = request.mpInstallments,
+                mpMethod = request.mpMethod,
                 notes = request.notes,
             )
         )
@@ -135,14 +167,11 @@ class OrderService(
 
         val (currentOrder, items) = getById(id)
 
-        // Restore stock when cancelling
+        // Restore stock when cancelling — reposición atómica, sin leer-y-escribir
         if (status == "cancelled" && currentOrder.status != "cancelled") {
             items.forEach { item ->
                 if (item.productId != null) {
-                    val product = productRepository.getById(item.productId)
-                    if (product != null) {
-                        productRepository.updateStock(product.id, product.stock + item.quantity)
-                    }
+                    runCatching { productRepository.devolverStock(item.productId, item.quantity) }
                 }
             }
         }
@@ -159,6 +188,32 @@ class OrderService(
         ))
 
         return updatedOrder
+    }
+
+    /**
+     * Marca el pedido como entregado dejando constancia de quién lo recibió.
+     * Es la prueba que pide Mercado Pago si el comprador desconoce el cargo:
+     * sin ella, un "nunca me llegó" no se puede contradecir.
+     */
+    suspend fun registrarEntrega(id: String, receivedBy: String, proofUrl: String?): Order {
+        val quienRecibio = receivedBy.trim()
+        require(quienRecibio.isNotEmpty()) { "Falta quién recibió el pedido" }
+
+        val (actual, _) = getById(id)
+        require(actual.status != "cancelled") { "Un pedido cancelado no se puede marcar como entregado" }
+
+        val entregadoEn = java.time.Instant.now().toString()
+        val actualizado = orderRepository.marcarEntregado(id, quienRecibio, proofUrl?.takeIf { it.isNotBlank() }, entregadoEn)
+
+        orderRepository.createEvent(OrderEvent(
+            orderId = id,
+            eventType = "status_change",
+            oldValue = actual.status,
+            newValue = "delivered",
+            description = "Entregado — recibió: $quienRecibio" + if (proofUrl.isNullOrBlank()) "" else " (con comprobante)",
+        ))
+
+        return actualizado
     }
 
     suspend fun updateNotes(id: String, notes: String): Order {

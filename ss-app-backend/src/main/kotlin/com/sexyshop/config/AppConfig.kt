@@ -11,6 +11,7 @@ data class AppConfig(
     val mpTestPublicKey: String,
     val mpTestMode: Boolean,
     val resendApiKey: String,
+    val resendFromEmail: String,
     val notificationEmail: String,
     val frontendUrl: String,
     val backendUrl: String,

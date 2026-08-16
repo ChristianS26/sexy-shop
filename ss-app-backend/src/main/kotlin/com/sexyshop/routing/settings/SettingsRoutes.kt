@@ -7,6 +7,7 @@ import io.ktor.http.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,6 +15,13 @@ data class Setting(val key: String, val value: String)
 
 @Serializable
 data class SettingUpdate(val value: String)
+
+@Serializable
+private data class SettingRow(
+    val key: String,
+    val value: String,
+    @SerialName("updated_at") val updatedAt: String,
+)
 
 fun Route.settingsRoutes(supabase: SupabaseClient) {
     route("/settings") {
@@ -36,10 +44,12 @@ fun Route.settingsRoutes(supabase: SupabaseClient) {
             val key = call.parameters["key"]!!
             val update = call.receive<SettingUpdate>()
 
-            supabase.from("settings")
-                .update(mapOf("value" to update.value)) {
-                    filter { eq("key", key) }
-                }
+            // UPSERT, no update: la tabla arranca vacía, así que un update
+            // filtrado no tocaba ninguna fila... y aun así respondíamos 200.
+            // El admin decía "actualizado" y no guardaba nada.
+            supabase.from("settings").upsert(
+                SettingRow(key = key, value = update.value, updatedAt = java.time.Instant.now().toString())
+            )
 
             call.respond(Setting(key = key, value = update.value))
         }

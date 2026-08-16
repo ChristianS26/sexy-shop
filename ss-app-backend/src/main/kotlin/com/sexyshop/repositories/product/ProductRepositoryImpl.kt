@@ -4,6 +4,7 @@ import com.sexyshop.models.product.Product
 import com.sexyshop.models.product.ProductRequest
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -113,6 +114,33 @@ class ProductRepositoryImpl(
         supabase.from("products").delete {
             filter { eq("id", id) }
         }
+    }
+
+    /**
+     * Descuento en una sola sentencia SQL (función descontar_stock). Antes se
+     * leía el stock y luego se escribía la resta; entre las dos cabía otra
+     * compra, así que dos pedidos simultáneos por la última pieza pasaban los
+     * dos y el inventario quedaba en negativo.
+     */
+    override suspend fun descontarStock(id: String, cantidad: Int): Int {
+        try {
+            return supabase.postgrest.rpc("descontar_stock", buildJsonObject {
+                put("p_producto", id)
+                put("p_cantidad", cantidad)
+            }).decodeAs<Int>()
+        } catch (e: Exception) {
+            if (e.message?.contains("STOCK_INSUFICIENTE") == true) {
+                throw StockInsuficienteException(id)
+            }
+            throw e
+        }
+    }
+
+    override suspend fun devolverStock(id: String, cantidad: Int): Int {
+        return supabase.postgrest.rpc("devolver_stock", buildJsonObject {
+            put("p_producto", id)
+            put("p_cantidad", cantidad)
+        }).decodeAs<Int>()
     }
 
     override suspend fun updateStock(id: String, newStock: Int) {

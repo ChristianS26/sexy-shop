@@ -25,6 +25,19 @@ class ImageRepositoryImpl(
             .decodeList<ProductImage>()
     }
 
+    /**
+     * Todas las imágenes de un jalón. La tienda y el admin necesitaban la
+     * miniatura de cada producto y hacían una petición por producto (N+1);
+     * con esto son dos.
+     */
+    override suspend fun getAll(): List<ProductImage> {
+        return supabase.from("product_images")
+            .select {
+                order("display_order", Order.ASCENDING)
+            }
+            .decodeList<ProductImage>()
+    }
+
     override suspend fun getById(id: String): ProductImage? {
         return supabase.from("product_images")
             .select {

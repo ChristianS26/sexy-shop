@@ -86,15 +86,12 @@ async function loadCategories() {
 
 async function loadProducts() {
   try {
-    products = await api('/products?active=false');
-    // Load primary image for each product
-    await Promise.all(products.map(async (p) => {
-      try {
-        const images = await api(`/products/${p.id}/images`);
-        p.primaryImage = images[0] || null;
-      } catch (e) {
-        p.primaryImage = null;
-      }
+    // ?images=true trae cada producto con sus imágenes en una sola petición,
+    // en vez de un viaje al servidor por producto para la miniatura.
+    const data = await api('/products?active=false&images=true');
+    products = data.map(({ product, images }) => ({
+      ...product,
+      primaryImage: (images && images[0]) || null,
     }));
   } catch (e) {
     console.error('Error loading products:', e);

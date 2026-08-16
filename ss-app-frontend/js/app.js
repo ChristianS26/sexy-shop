@@ -39,20 +39,14 @@ async function fetchCategories() {
 
 async function fetchProducts() {
   try {
-    const res = await fetch(`${API_URL}/products`);
-    products = await res.json();
-
-    // Load images for each product
-    await Promise.all(products.map(async (p) => {
-      try {
-        const imgRes = await fetch(`${API_URL}/products/${p.id}/images`);
-        const images = await imgRes.json();
-        p.images = images;
-        p.primaryImage = images[0] || null;
-      } catch (e) {
-        p.images = [];
-        p.primaryImage = null;
-      }
+    // ?images=true trae cada producto con sus imágenes en una sola petición,
+    // en vez de un viaje al servidor por producto para la miniatura.
+    const res = await fetch(`${API_URL}/products?images=true`);
+    const data = await res.json();
+    products = data.map(({ product, images }) => ({
+      ...product,
+      images: images || [],
+      primaryImage: (images && images[0]) || null,
     }));
   } catch (e) {
     console.error('Error fetching products:', e);
@@ -499,6 +493,9 @@ async function processLocalOrder(paymentMethod) {
   const references = document.getElementById('localReferences').value.trim();
   const notes = document.getElementById('localNotes').value.trim();
   const fullAddress = `${street}, Col. ${neighborhood}, Guaymas, Sonora`;
+
+  // Mercado Pago requiere correo: ahí llega el comprobante y los avisos
+  if (paymentMethod === 'mp' && !validateEmail('localEmail')) return;
 
   // For MP payment, branch into the MP flow with delivery_method='local'
   if (paymentMethod === 'mp') {

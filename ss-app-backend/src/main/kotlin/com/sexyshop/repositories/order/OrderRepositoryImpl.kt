@@ -3,6 +3,7 @@ package com.sexyshop.repositories.order
 import com.sexyshop.models.order.Order
 import com.sexyshop.models.order.OrderEvent
 import com.sexyshop.models.order.OrderItem
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -10,6 +11,14 @@ import io.github.jan.supabase.postgrest.query.Order as QueryOrder
 
 @Serializable
 private data class NotesUpdate(val notes: String)
+
+@Serializable
+private data class EntregaUpdate(
+    val status: String,
+    @SerialName("delivered_at") val deliveredAt: String,
+    @SerialName("received_by") val receivedBy: String,
+    @SerialName("delivery_proof_url") val deliveryProofUrl: String?,
+)
 
 class OrderRepositoryImpl(
     private val supabase: SupabaseClient,
@@ -30,6 +39,15 @@ class OrderRepositoryImpl(
         return supabase.from("orders")
             .select {
                 filter { eq("id", id) }
+            }
+            .decodeSingleOrNull<Order>()
+    }
+
+    override suspend fun getByMpPaymentId(mpPaymentId: String): Order? {
+        return supabase.from("orders")
+            .select {
+                filter { eq("mp_payment_id", mpPaymentId) }
+                limit(1)
             }
             .decodeSingleOrNull<Order>()
     }
@@ -67,6 +85,23 @@ class OrderRepositoryImpl(
                 filter { eq("order_id", orderId) }
             }
             .decodeList<OrderItem>()
+    }
+
+    override suspend fun marcarEntregado(
+        id: String,
+        receivedBy: String,
+        proofUrl: String?,
+        deliveredAt: String,
+    ): Order {
+        supabase.from("orders")
+            .update(EntregaUpdate("delivered", deliveredAt, receivedBy, proofUrl)) {
+                filter { eq("id", id) }
+            }
+        return supabase.from("orders")
+            .select {
+                filter { eq("id", id) }
+            }
+            .decodeSingle<Order>()
     }
 
     override suspend fun updateNotes(id: String, notes: String) {

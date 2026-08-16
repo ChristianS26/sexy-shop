@@ -18,6 +18,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
+import java.security.MessageDigest
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 private val logger = LoggerFactory.getLogger("PaymentRoutes")
 private val processedPayments = java.util.Collections.synchronizedSet(mutableSetOf<String>())
@@ -85,6 +88,14 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 "Invalid delivery_method: ${request.deliveryMethod}"
             }
 
+            // Correo obligatorio: sin él no hay a dónde mandar el comprobante ni
+            // el aviso de confirmación, y ante un contracargo no habría manera
+            // de probar que al comprador se le informó de nada.
+            val correo = request.customerEmail?.trim().orEmpty()
+            require(correo.matches(Regex("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$"))) {
+                "Correo electrónico requerido"
+            }
+
             // Verify prices against database to prevent price manipulation
             val verifiedItems = request.items.map { item ->
                 val productWithImages = productService.getById(item.productId)
@@ -119,6 +130,24 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                     }
                 }
             }
+
+            // El comprador debe volver al MISMO dominio desde el que compró
+            // (sexyshoptoys.com.mx o la página de GitHub). Se toma del Origin,
+            // con Referer de respaldo, y SOLO si está en la lista blanca:
+            // reflejar cualquier origen convertiría el checkout de MP en un
+            // redirector hacia sitios ajenos.
+            val requestOrigin = call.request.headers[HttpHeaders.Origin]
+                ?: call.request.headers[HttpHeaders.Referrer]?.let { ref ->
+                    runCatching { java.net.URI(ref) }.getOrNull()
+                        ?.takeIf { it.scheme != null && it.authority != null }
+                        ?.let { "${it.scheme}://${it.authority}" }
+                }
+            val returnBase = if (com.sexyshop.config.FrontendOrigins.isValidReturnOrigin(requestOrigin)) {
+                com.sexyshop.config.FrontendOrigins.returnBaseFor(requestOrigin!!)
+            } else {
+                config.frontendUrl
+            }
+            logger.info("MP preferencia: back_urls=$returnBase (origin: ${requestOrigin ?: "ninguno"})")
 
             val orderMeta = buildJsonObject {
                 put("customer_name", request.customerName)
@@ -184,11 +213,26 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 put("external_reference", orderRef)
                 put("metadata", buildJsonObject { put("order", orderMeta.toString()) })
                 put("back_urls", buildJsonObject {
-                    put("success", "${config.frontendUrl}/payment-success.html")
-                    put("failure", "${config.frontendUrl}/payment-failure.html")
-                    put("pending", "${config.frontendUrl}/payment-pending.html")
+                    put("success", "$returnBase/payment-success.html")
+                    put("failure", "$returnBase/payment-failure.html")
+                    put("pending", "$returnBase/payment-pending.html")
                 })
                 put("auto_return", "approved")
+                // Sólo tarjeta. OXXO, PayCash y SPEI nacen en "pending" y se
+                // acreditan hasta 48 h después, y el flujo de acá no lo soporta:
+                // no se aparta inventario durante la espera ni se congela el
+                // precio, así que un pago en efectivo podía quedar cobrado sin
+                // generar pedido. Para encenderlos hay que resolver eso primero.
+                put("payment_methods", buildJsonObject {
+                    put("excluded_payment_types", buildJsonArray {
+                        addJsonObject { put("id", "ticket") }        // OXXO, PayCash
+                        addJsonObject { put("id", "atm") }           // depósito en cajero
+                        addJsonObject { put("id", "bank_transfer") } // SPEI / CLABE
+                    })
+                })
+                // Aprobado o rechazado en el momento: sin pagos "en revisión"
+                // que se resuelvan horas después, que caen en el mismo hueco.
+                put("binary_mode", true)
                 put("statement_descriptor", "SEXY SHOP")
                 put("notification_url", "${config.backendUrl}/api/payments/webhook")
             }
@@ -226,14 +270,29 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             val body = call.receiveText()
             logger.info("MP webhook received: $body")
 
-            // Verify webhook authenticity: we log signature headers for debugging,
-            // but the real verification happens below when we call MP's API to GET
-            // the payment and check status=approved. We never trust webhook data
-            // directly — we always verify with Mercado Pago's API first.
+            // Verify webhook authenticity via HMAC-SHA256 of the x-signature header
+            // (Mercado Pago's documented scheme). This is defense-in-depth: even a
+            // valid signature still passes through the API GET payment verification
+            // below before any order is created. When MP_WEBHOOK_SECRET is empty we
+            // skip validation — that also acts as a kill-switch (clear the env var in
+            // Railway to disable signature checks without a redeploy of code).
             if (config.mpWebhookSecret.isNotEmpty()) {
                 val xSignature = call.request.headers["x-signature"]
                 val xRequestId = call.request.headers["x-request-id"]
-                logger.info("Webhook headers: x-signature=$xSignature, x-request-id=$xRequestId")
+                // MP signs over data.id from the query string; fall back to the body.
+                val dataId = call.request.queryParameters["data.id"]
+                    ?: call.request.queryParameters["id"]
+                    ?: runCatching {
+                        Json.parseToJsonElement(body).jsonObject["data"]
+                            ?.jsonObject?.get("id")?.jsonPrimitive?.content
+                    }.getOrNull()
+
+                if (!verifyMpWebhookSignature(config.mpWebhookSecret, xSignature, xRequestId, dataId)) {
+                    logger.warn("MP webhook signature INVALID — rejecting (x-request-id=$xRequestId, data.id=$dataId)")
+                    call.respond(HttpStatusCode.Unauthorized)
+                    return@post
+                }
+                logger.info("MP webhook signature verified OK")
             }
 
             // Respond 200 immediately (MP requires fast response)
@@ -272,6 +331,15 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
 
                             when (status) {
                                 "approved" -> {
+                                    // El candado en memoria se vacía con cada reinicio de
+                                    // Railway; la garantía real contra duplicados es el
+                                    // índice único de orders.mp_payment_id.
+                                    val yaExiste = orderService.existePorPagoMp(paymentId)
+                                    if (yaExiste) {
+                                        logger.info("Pago $paymentId ya tenía pedido en la base, se omite")
+                                        processedPayments.add(paymentId)
+                                        return@post
+                                    }
                                     // New preferences carry the order JSON in metadata.order
                                     // (external_reference is capped at 256 chars). Old in-flight
                                     // preferences still have the JSON in external_reference.
@@ -279,7 +347,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                                     val orderMetaJson = fetchOrderMeta(payment, client, activeToken)
                                         ?: externalRef?.takeIf { it.trim().startsWith("{") }
                                     if (orderMetaJson != null) {
-                                        createOrderFromPayment(orderMetaJson, orderService, emailService)
+                                        createOrderFromPayment(orderMetaJson, payment, orderService, emailService)
                                         processedPayments.add(paymentId)
                                     } else {
                                         // Left unmarked: if the metadata lookup failed
@@ -315,6 +383,57 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
 }
 
 /**
+ * Verifies a Mercado Pago webhook signature.
+ *
+ * MP sends an `x-signature` header shaped like `ts=<unix>,v1=<hmac-hex>`. The HMAC is
+ * HMAC-SHA256, keyed by the webhook secret, over the manifest:
+ *   id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+ * Segments are included only when their value is present; an alphanumeric data.id is
+ * lowercased. Comparison is constant-time.
+ * Ref: https://www.mercadopago.com.mx/developers/es/docs/your-integrations/notifications/webhooks
+ */
+private fun verifyMpWebhookSignature(
+    secret: String,
+    xSignature: String?,
+    xRequestId: String?,
+    dataId: String?,
+): Boolean {
+    if (xSignature.isNullOrBlank()) return false
+
+    var ts: String? = null
+    var v1: String? = null
+    xSignature.split(",").forEach { part ->
+        val kv = part.split("=", limit = 2)
+        if (kv.size == 2) {
+            when (kv[0].trim()) {
+                "ts" -> ts = kv[1].trim()
+                "v1" -> v1 = kv[1].trim()
+            }
+        }
+    }
+    val tsVal = ts
+    val v1Val = v1
+    if (tsVal.isNullOrBlank() || v1Val.isNullOrBlank()) return false
+
+    val manifest = buildString {
+        if (!dataId.isNullOrBlank()) append("id:${dataId.lowercase()};")
+        if (!xRequestId.isNullOrBlank()) append("request-id:$xRequestId;")
+        append("ts:$tsVal;")
+    }
+
+    return try {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+        val computed = mac.doFinal(manifest.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        MessageDigest.isEqual(computed.toByteArray(Charsets.UTF_8), v1Val.toByteArray(Charsets.UTF_8))
+    } catch (e: Exception) {
+        logger.error("Error verifying MP webhook signature", e)
+        false
+    }
+}
+
+/**
  * Retrieves the order metadata JSON for an approved payment. It lives in the
  * preference's metadata.order (external_reference is capped at 256 chars and cannot
  * hold the full order). We try the payment's own metadata first (if MP propagated it),
@@ -343,9 +462,27 @@ private suspend fun fetchOrderMeta(payment: JsonObject, client: HttpClient, acce
     return (prefMeta?.get("order") as? JsonPrimitive)?.content
 }
 
-private suspend fun createOrderFromPayment(externalReference: String, orderService: OrderService, emailService: EmailService) {
+private suspend fun createOrderFromPayment(
+    externalReference: String,
+    payment: JsonObject,
+    orderService: OrderService,
+    emailService: EmailService,
+) {
     try {
         val meta = Json.parseToJsonElement(externalReference).jsonObject
+
+        // Lo que MP cobró de comisión y lo que quedó neto. Sale del pago mismo,
+        // así el admin muestra números reales en vez de estimar el 4-5%.
+        val fee = payment["fee_details"]?.jsonArray
+            ?.sumOf { it.jsonObject["amount"]?.jsonPrimitive?.doubleOrNull ?: 0.0 }
+        val net = payment["transaction_details"]?.jsonObject
+            ?.get("net_received_amount")?.jsonPrimitive?.doubleOrNull
+        val mpMethod = listOfNotNull(
+            payment["payment_method_id"]?.jsonPrimitive?.contentOrNull,
+            payment["payment_type_id"]?.jsonPrimitive?.contentOrNull,
+        ).joinToString("/").ifBlank { null }
+        logger.info("MP pago ${payment["id"]?.jsonPrimitive?.contentOrNull}: comisión=$fee neto=$net método=$mpMethod")
+
         val items = meta["items"]?.jsonArray?.map { item ->
             val obj = item.jsonObject
             OrderItemRequest(
@@ -369,17 +506,35 @@ private suspend fun createOrderFromPayment(externalReference: String, orderServi
             customerReferences = meta["customer_references"]?.jsonPrimitive?.content,
             deliveryMethod = meta["delivery_method"]?.jsonPrimitive?.content ?: "national",
             paymentMethod = "mp",
+            mpPaymentId = payment["id"]?.jsonPrimitive?.contentOrNull,
+            mpFee = fee,
+            mpNet = net,
+            mpInstallments = payment["installments"]?.jsonPrimitive?.intOrNull,
+            mpMethod = mpMethod,
             notes = ((meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]").trim(),
             items = items,
         )
 
+        // El pedido entra como PENDIENTE, no confirmado. La tienda revisa
+        // existencia y precio antes de aceptarlo; hasta entonces la compra no
+        // queda cerrada. Confirmarlo automáticamente nos obligaría a surtir
+        // aunque el precio publicado estuviera mal o no hubiera existencia.
         val order = orderService.create(orderRequest)
-        orderService.updateStatus(order.id, "confirmed")
-        logger.info("Order created from MP payment: ${order.id}")
+        logger.info("Pedido creado desde pago MP (queda pendiente de confirmar): ${order.id}")
 
-        // Send notification email
-        val (_, orderItems) = orderService.getById(order.id)
-        emailService.sendNewOrderNotificationToAdmin(order, orderItems)
+        // Avisos por correo. El de la tienda ya estaba; faltaba el comprobante
+        // al comprador: en el flujo de MP nunca se enviaba, así que quien pagaba
+        // se quedaba sin ningún correo de su compra.
+        val (fullOrder, orderItems) = orderService.getById(order.id)
+        emailService.sendNewOrderNotificationToAdmin(fullOrder, orderItems)
+        val email = fullOrder.customerEmail
+        if (!email.isNullOrBlank()) {
+            // Acuse de recibo, NO confirmación: el de confirmación sale cuando
+            // la tienda acepta el pedido desde el admin.
+            emailService.sendOrderReceivedToCustomer(fullOrder, orderItems, email)
+        } else {
+            logger.info("Pedido ${order.id.take(8)} sin email del cliente: no se envía comprobante")
+        }
     } catch (e: Exception) {
         logger.error("Failed to create order from MP payment", e)
     }

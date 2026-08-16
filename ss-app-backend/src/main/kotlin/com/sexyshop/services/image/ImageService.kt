@@ -16,6 +16,29 @@ class ImageService(
     suspend fun getByProductId(productId: String): List<ProductImage> =
         imageRepository.getByProductId(productId)
 
+    /** Imágenes agrupadas por producto, ya ordenadas: la primera es la principal. */
+    suspend fun getAllGroupedByProduct(): Map<String, List<ProductImage>> =
+        imageRepository.getAll()
+            .groupBy { it.productId }
+            .mapValues { (_, imgs) -> imgs.sortedBy { it.displayOrder } }
+
+    /**
+     * Comprobante de entrega de un pedido. Va al mismo bucket público que las
+     * fotos de producto pero en su propia carpeta: es evidencia de una venta,
+     * no catálogo, y no se toca desde la pantalla de imágenes.
+     */
+    suspend fun subirComprobanteEntrega(
+        orderId: String,
+        fileName: String,
+        fileBytes: ByteArray,
+    ): String {
+        val extension = fileName.substringAfterLast('.', "jpg")
+        val storagePath = "comprobantes-entrega/$orderId/${UUID.randomUUID()}.$extension"
+        val bucket = supabase.storage.from(config.storageBucket)
+        bucket.upload(storagePath, fileBytes)
+        return bucket.publicUrl(storagePath)
+    }
+
     suspend fun upload(
         productId: String,
         fileName: String,

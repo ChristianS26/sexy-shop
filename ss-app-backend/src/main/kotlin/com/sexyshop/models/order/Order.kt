@@ -23,6 +23,17 @@ data class Order(
     @SerialName("shipping_cost") val shippingCost: Double = 0.0,
     @SerialName("delivery_method") val deliveryMethod: String = "national",
     @SerialName("payment_method") val paymentMethod: String = "cash",
+    // Conciliación con Mercado Pago: lo que cobró MP y lo que quedó neto
+    @SerialName("mp_payment_id") val mpPaymentId: String? = null,
+    @SerialName("mp_fee") val mpFee: Double? = null,
+    @SerialName("mp_net") val mpNet: Double? = null,
+    @SerialName("mp_installments") val mpInstallments: Int? = null,
+    @SerialName("mp_method") val mpMethod: String? = null,
+    // Evidencia para una disputa o contracargo: constancia de que el pedido
+    // llegó y quién lo recibió.
+    @SerialName("delivered_at") val deliveredAt: String? = null,
+    @SerialName("received_by") val receivedBy: String? = null,
+    @SerialName("delivery_proof_url") val deliveryProofUrl: String? = null,
     val notes: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
@@ -55,8 +66,22 @@ data class OrderRequest(
     @SerialName("customer_references") val customerReferences: String? = null,
     @SerialName("delivery_method") val deliveryMethod: String = "national",
     @SerialName("payment_method") val paymentMethod: String = "cash",
+    // Conciliación con MP — solo los llena el webhook de pagos, nunca el
+    // público (OrderRoutes los limpia antes de crear el pedido).
+    @SerialName("mp_payment_id") val mpPaymentId: String? = null,
+    @SerialName("mp_fee") val mpFee: Double? = null,
+    @SerialName("mp_net") val mpNet: Double? = null,
+    @SerialName("mp_installments") val mpInstallments: Int? = null,
+    @SerialName("mp_method") val mpMethod: String? = null,
     val notes: String? = null,
     val items: List<OrderItemRequest>,
+)
+
+/** Constancia de entrega: lo que se enseña si el comprador desconoce el cargo. */
+@Serializable
+data class DeliveryProofUpdate(
+    @SerialName("received_by") val receivedBy: String,
+    @SerialName("delivery_proof_url") val deliveryProofUrl: String? = null,
 )
 
 @Serializable

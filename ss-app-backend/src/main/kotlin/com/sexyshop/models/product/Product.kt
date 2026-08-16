@@ -77,3 +77,14 @@ data class ProductWithImages(
     val product: Product,
     val images: List<com.sexyshop.models.image.ProductImage> = emptyList(),
 )
+
+/**
+ * Lo mismo pero sin los datos internos (costo, umbral de stock, medidas): es
+ * lo que consume la tienda. Antes pedía la lista y luego una petición por
+ * producto para su miniatura — un viaje al servidor por producto en cada visita.
+ */
+@Serializable
+data class ProductPublicWithImages(
+    val product: ProductPublic,
+    val images: List<com.sexyshop.models.image.ProductImage> = emptyList(),
+)

@@ -11,6 +11,9 @@ interface ProductRepository {
     suspend fun activate(id: String)
     suspend fun deactivate(id: String)
     suspend fun delete(id: String)
+    /** Descuento atómico. Truena con StockInsuficienteException si no alcanza. */
+    suspend fun descontarStock(id: String, cantidad: Int): Int
+    suspend fun devolverStock(id: String, cantidad: Int): Int
     suspend fun updateStock(id: String, newStock: Int)
     suspend fun updateDisplayOrder(id: String, displayOrder: Int)
 }

@@ -1,7 +1,9 @@
 package com.sexyshop.routing.product
 
+import com.sexyshop.models.product.ProductPublicWithImages
 import com.sexyshop.models.product.ProductReorderRequest
 import com.sexyshop.models.product.ProductRequest
+import com.sexyshop.models.product.ProductWithImages
 import com.sexyshop.models.product.toPublic
 import com.sexyshop.plugins.requireAdmin
 import com.sexyshop.services.image.ImageService
@@ -17,8 +19,33 @@ fun Route.productRoutes(service: ProductService, imageService: ImageService, sup
         get {
             val categoryId = call.parameters["category"]
             val activeOnly = call.parameters["active"]?.toBooleanStrictOrNull() ?: true
-            val products = service.getAll(categoryId, activeOnly)
+            val withImages = call.parameters["images"]?.toBooleanStrictOrNull() ?: false
             val hasAuth = call.request.headers["Authorization"]?.startsWith("Bearer ") == true
+
+            // ?images=true devuelve cada producto con sus imágenes ya adjuntas,
+            // en vez de obligar a una petición por producto para la miniatura.
+            // Sin credenciales responde la versión pública (sin costo, umbral
+            // de stock ni medidas); con credenciales de admin, la completa.
+            if (withImages && !hasAuth) {
+                val products = service.getAll(categoryId, activeOnly)
+                val porProducto = imageService.getAllGroupedByProduct()
+                call.respond(products.map {
+                    ProductPublicWithImages(it.toPublic(), porProducto[it.id] ?: emptyList())
+                })
+                return@get
+            }
+
+            if (withImages) {
+                if (!call.requireAdmin(supabase)) return@get
+                val products = service.getAll(categoryId, activeOnly)
+                val porProducto = imageService.getAllGroupedByProduct()
+                call.respond(products.map {
+                    ProductWithImages(it, porProducto[it.id] ?: emptyList())
+                })
+                return@get
+            }
+
+            val products = service.getAll(categoryId, activeOnly)
             if (hasAuth) {
                 call.respond(products)
             } else {
