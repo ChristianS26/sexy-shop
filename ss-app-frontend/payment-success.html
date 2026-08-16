@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pago exitoso — Sexy Shop</title>
+<title>Pago recibido — Sexy Shop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -22,9 +22,9 @@
     background: #fff;
     border-radius: 20px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-    padding: 48px 36px;
+    padding: 44px 36px;
     text-align: center;
-    max-width: 440px;
+    max-width: 470px;
     width: 100%;
   }
   .result-icon {
@@ -35,20 +35,94 @@
     justify-content: center;
     margin: 0 auto 24px;
     font-size: 2rem;
+    background: #ecfdf5;
+    color: #047857;
   }
-  .result-icon--success { background: #ecfdf5; color: #047857; }
   .result-title {
     font-family: 'Cormorant Garamond', serif;
     font-size: 1.8rem;
     font-weight: 600;
     color: #1a1a2e;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   .result-msg {
     font-size: 0.95rem;
     color: #6b7280;
     line-height: 1.6;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
+  }
+  /* Folio del pago: es la referencia que el comprador debe citar si escribe */
+  .folio {
+    background: #f9fafb;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    text-align: left;
+  }
+  .folio__label {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-bottom: 4px;
+  }
+  .folio__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .folio__value {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.95rem;
+    color: #1a1a2e;
+    word-break: break-all;
+  }
+  .folio__copy {
+    flex: none;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #6b7280;
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .folio__copy:hover { border-color: #E91E8C; color: #E91E8C; }
+  /* Qué sigue: el pedido NO queda cerrado hasta que la tienda lo confirma */
+  .pasos { text-align: left; margin-bottom: 24px; }
+  .pasos__title {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-bottom: 10px;
+  }
+  .paso { display: flex; gap: 10px; margin-bottom: 10px; font-size: 0.88rem; line-height: 1.55; color: #6b7280; }
+  .paso__n {
+    flex: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fce7f3;
+    color: #E91E8C;
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .paso strong { color: #1a1a2e; font-weight: 600; }
+  .aviso {
+    background: #fff8e1;
+    border: 1px solid #f2b707;
+    border-radius: 12px;
+    padding: 13px 16px;
+    font-size: 0.83rem;
+    line-height: 1.55;
+    color: #6b5200;
+    text-align: left;
+    margin-bottom: 24px;
   }
   .result-btn {
     display: inline-block;
@@ -67,7 +141,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-top: 16px;
+    margin-top: 14px;
     padding: 12px 24px;
     border: 1.5px solid #e5e7eb;
     border-radius: 50px;
@@ -86,14 +160,81 @@
     localStorage.removeItem('pending_mp_order');
   </script>
   <div class="result-card">
-    <div class="result-icon result-icon--success">&#10004;</div>
-    <h1 class="result-title">Pago exitoso</h1>
-    <p class="result-msg">Tu pedido ha sido confirmado y pagado. Te contactaremos para coordinar la entrega.</p>
+    <div class="result-icon">&#10004;</div>
+    <h1 class="result-title">Recibimos tu pago</h1>
+    <p class="result-msg">
+      Gracias por tu compra. Tu pago se proces&oacute; correctamente y tu pedido ya est&aacute; registrado.
+    </p>
+
+    <!-- Folio: se llena con el payment_id que Mercado Pago devuelve en la URL -->
+    <div class="folio" id="folioBox" style="display:none">
+      <div class="folio__label">Folio de tu pago</div>
+      <div class="folio__row">
+        <span class="folio__value" id="folioValue">&mdash;</span>
+        <button type="button" class="folio__copy" id="folioCopy">Copiar</button>
+      </div>
+    </div>
+
+    <div class="pasos">
+      <div class="pasos__title">Qu&eacute; sigue</div>
+      <div class="paso">
+        <span class="paso__n">1</span>
+        <span><strong>Mercado Pago</strong> te env&iacute;a su comprobante de pago por correo. Ese es tu recibo del cargo.</span>
+      </div>
+      <div class="paso">
+        <span class="paso__n">2</span>
+        <span>Nosotros te mandamos un correo de <strong>&laquo;Recibimos tu pedido&raquo;</strong> con el detalle de lo que compraste. Revisa tambi&eacute;n la carpeta de spam.</span>
+      </div>
+      <div class="paso">
+        <span class="paso__n">3</span>
+        <span>Verificamos existencia y tus datos de entrega, normalmente <strong>el mismo d&iacute;a h&aacute;bil</strong>.</span>
+      </div>
+      <div class="paso">
+        <span class="paso__n">4</span>
+        <span>Te llega el correo de <strong>confirmaci&oacute;n</strong> y preparamos tu env&iacute;o en empaque discreto.</span>
+      </div>
+    </div>
+
+    <div class="aviso">
+      Tu pedido queda <strong>en revisi&oacute;n</strong> hasta ese correo de confirmaci&oacute;n. Si no pudi&eacute;ramos surtirlo,
+      te avisamos y <strong>te devolvemos el 100% de tu dinero</strong> por el mismo medio de pago.
+    </div>
+
     <a href="index.html" class="result-btn">Volver a la tienda</a>
     <br>
-    <a href="https://wa.me/5216222279504?text=Hola%2C%20acabo%20de%20realizar%20un%20pago%20por%20mi%20pedido.%20%C2%BFMe%20pueden%20confirmar%3F" target="_blank" class="result-wa">
-      Confirmar por WhatsApp
+    <a href="#" id="waLink" target="_blank" rel="noopener" class="result-wa">
+      Escribirnos por WhatsApp
     </a>
   </div>
+
+  <script>
+    // Mercado Pago regresa el folio en la URL. Se muestra para que el comprador
+    // tenga una referencia que citar, y se precarga en el mensaje de WhatsApp
+    // para no pedirle que lo escriba a mano.
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var folio = params.get('payment_id') || params.get('collection_id') || '';
+      var texto = 'Hola, acabo de hacer un pedido en la tienda.';
+
+      if (folio && folio !== 'null') {
+        document.getElementById('folioValue').textContent = folio;
+        document.getElementById('folioBox').style.display = 'block';
+        texto = 'Hola, acabo de hacer un pedido. Mi folio de pago es ' + folio + '.';
+
+        document.getElementById('folioCopy').addEventListener('click', function () {
+          var boton = this;
+          navigator.clipboard.writeText(folio).then(function () {
+            boton.textContent = 'Copiado';
+            setTimeout(function () { boton.textContent = 'Copiar'; }, 1800);
+          }).catch(function () {
+            boton.textContent = 'Copia manual';
+          });
+        });
+      }
+
+      document.getElementById('waLink').href =
+        'https://wa.me/5216222279504?text=' + encodeURIComponent(texto);
+    })();
+  </script>
 </body>
 </html>

@@ -63,14 +63,39 @@
     transition: background 0.2s;
   }
   .result-btn:hover { background: #c2185b; }
+  .result-wa {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 12px 24px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 50px;
+    font-size: 0.88rem;
+    color: #6b7280;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .result-wa:hover { border-color: #25d366; color: #25d366; }
 </style>
 </head>
 <body>
   <div class="result-card">
     <div class="result-icon result-icon--pending">&#9201;</div>
-    <h1 class="result-title">Pago pendiente</h1>
-    <p class="result-msg">Tu pago está siendo procesado. Te notificaremos cuando se confirme. Si pagaste en OXXO, puede tomar hasta 24 horas.</p>
+    <h1 class="result-title">Pago en proceso</h1>
+    <p class="result-msg">
+      Tu banco todav&iacute;a no nos confirma el cargo. <strong>Tu pedido se registra hasta que el pago quede aprobado</strong>,
+      y en cuanto eso pase te llega un correo con el detalle de tu compra.
+    </p>
+    <p class="result-msg">
+      Si en un par de horas no recibes nada, escr&iacute;benos por WhatsApp antes de volver a pagar, para revisarlo
+      juntos y evitar que se te haga un cargo doble.
+    </p>
     <a href="index.html" class="result-btn">Volver a la tienda</a>
+    <br>
+    <a href="https://wa.me/5216222279504?text=Hola%2C%20mi%20pago%20qued%C3%B3%20en%20proceso%20y%20quiero%20saber%20si%20se%20confirm%C3%B3." target="_blank" rel="noopener" class="result-wa">
+      Escribirnos por WhatsApp
+    </a>
   </div>
 </body>
 </html>
