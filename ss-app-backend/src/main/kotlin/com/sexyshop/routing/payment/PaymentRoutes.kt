@@ -166,10 +166,17 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 }
             }
 
+            // external_reference maxes out at 256 chars in MP; the full order JSON is
+            // ~500+ and silently breaks payment processing if placed there. Carry a
+            // short reference here and stash the order payload in metadata.order, which
+            // we read back in the webhook (payment -> merchant_order -> preference).
+            val orderRef = java.util.UUID.randomUUID().toString()
+
             val mpPayload = buildJsonObject {
                 put("items", mpItems)
                 put("payer", payerObj)
-                put("external_reference", orderMeta.toString())
+                put("external_reference", orderRef)
+                put("metadata", buildJsonObject { put("order", orderMeta.toString()) })
                 put("back_urls", buildJsonObject {
                     put("success", "${config.frontendUrl}/payment-success.html")
                     put("failure", "${config.frontendUrl}/payment-failure.html")
@@ -191,11 +198,12 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 if (response.status.isSuccess()) {
                     val body = Json.parseToJsonElement(response.bodyAsText()).jsonObject
                     val prefId = body["id"]?.jsonPrimitive?.content ?: ""
-                    val initPoint = if (config.mpTestMode) {
-                        body["sandbox_init_point"]?.jsonPrimitive?.content ?: ""
-                    } else {
-                        body["init_point"]?.jsonPrimitive?.content ?: ""
-                    }
+                    // Always use init_point. With TEST credentials the checkout is
+                    // already in test mode, and the legacy sandbox.mercadopago.com.mx
+                    // domain (sandbox_init_point) triggers ERR_TOO_MANY_REDIRECTS.
+                    // Pay with a MP TEST USER + test cards — never a real account.
+                    val initPoint = body["init_point"]?.jsonPrimitive?.content
+                        ?: body["sandbox_init_point"]?.jsonPrimitive?.content ?: ""
                     call.respond(PreferenceResponse(id = prefId, initPoint = initPoint))
                 } else {
                     val errorBody = response.bodyAsText()
@@ -235,12 +243,14 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                     val paymentId = json["data"]?.jsonObject?.get("id")?.jsonPrimitive?.content
                         ?: return@post
 
-                    // Prevent duplicate processing
+                    // Prevent duplicate processing. Marked AFTER handling, not here:
+                    // marking on first sight burned the initial "pending" notification
+                    // and the later "approved" one was skipped, leaving a charged
+                    // payment with no order.
                     if (paymentId in processedPayments) {
                         logger.info("Payment $paymentId already processed, skipping")
                         return@post
                     }
-                    processedPayments.add(paymentId)
 
                     val client = HttpClient(CIO)
                     try {
@@ -254,10 +264,30 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
 
                             logger.info("MP payment $paymentId status: $status")
 
-                            if (status == "approved") {
-                                val externalRef = payment["external_reference"]?.jsonPrimitive?.content
-                                if (externalRef != null) {
-                                    createOrderFromPayment(externalRef, orderService, emailService)
+                            when (status) {
+                                "approved" -> {
+                                    // New preferences carry the order JSON in metadata.order
+                                    // (external_reference is capped at 256 chars). Old in-flight
+                                    // preferences still have the JSON in external_reference.
+                                    val externalRef = payment["external_reference"]?.jsonPrimitive?.content
+                                    val orderMetaJson = fetchOrderMeta(payment, client, activeToken)
+                                        ?: externalRef?.takeIf { it.trim().startsWith("{") }
+                                    if (orderMetaJson != null) {
+                                        createOrderFromPayment(orderMetaJson, orderService, emailService)
+                                        processedPayments.add(paymentId)
+                                    } else {
+                                        // Left unmarked: if the metadata lookup failed
+                                        // transiently, MP's retry must be able to come back.
+                                        logger.error("Payment $paymentId approved but order metadata not found")
+                                    }
+                                }
+                                // A payment not yet accredited can be approved later:
+                                // leave it unmarked so the next notification gets through.
+                                "pending", "in_process", "authorized" ->
+                                    logger.info("Payment $paymentId still $status, waiting for approval notification")
+                                else -> {
+                                    logger.info("Payment $paymentId in status $status, no order created")
+                                    processedPayments.add(paymentId)
                                 }
                             }
                         }
@@ -274,6 +304,35 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             call.respond(mapOf("public_key" to activePublicKey, "test_mode" to config.mpTestMode))
         }
     }
+}
+
+/**
+ * Retrieves the order metadata JSON for an approved payment. It lives in the
+ * preference's metadata.order (external_reference is capped at 256 chars and cannot
+ * hold the full order). We try the payment's own metadata first (if MP propagated it),
+ * then fall back to payment -> merchant_order -> preference -> metadata.order.
+ */
+private suspend fun fetchOrderMeta(payment: JsonObject, client: HttpClient, accessToken: String): String? {
+    (payment["metadata"] as? JsonObject)?.get("order")?.let { el ->
+        (el as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }?.let { return it }
+    }
+
+    val merchantOrderId = (payment["order"] as? JsonObject)?.get("id")
+        ?.let { (it as? JsonPrimitive)?.content } ?: return null
+
+    val moResp = client.get("https://api.mercadopago.com/merchant_orders/$merchantOrderId") {
+        header("Authorization", "Bearer $accessToken")
+    }
+    if (!moResp.status.isSuccess()) return null
+    val preferenceId = (Json.parseToJsonElement(moResp.bodyAsText()) as? JsonObject)
+        ?.get("preference_id")?.let { (it as? JsonPrimitive)?.content } ?: return null
+
+    val prefResp = client.get("https://api.mercadopago.com/checkout/preferences/$preferenceId") {
+        header("Authorization", "Bearer $accessToken")
+    }
+    if (!prefResp.status.isSuccess()) return null
+    val prefMeta = (Json.parseToJsonElement(prefResp.bodyAsText()) as? JsonObject)?.get("metadata") as? JsonObject
+    return (prefMeta?.get("order") as? JsonPrimitive)?.content
 }
 
 private suspend fun createOrderFromPayment(externalReference: String, orderService: OrderService, emailService: EmailService) {
