@@ -107,18 +107,27 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             require(request.termsAccepted) { "Debes aceptar los términos y condiciones" }
             val aceptadosEn = java.time.Instant.now().toString()
 
-            // Verify prices against database to prevent price manipulation
+            // Verify prices against database to prevent price manipulation.
+            // El stock se compara contra el total pedido del producto, no
+            // renglón por renglón, por si el mismo artículo llega repetido.
+            val pedidoPorProducto = request.items.groupBy { it.productId }
+                .mapValues { (_, i) -> i.sumOf { it.quantity } }
+
+            val verifiedSlugs = mutableListOf<String>()
             val verifiedItems = request.items.map { item ->
                 val productWithImages = productService.getById(item.productId)
                 val product = productWithImages.product
                 require(product.isActive) { "Product ${product.name} is not available" }
-                require(product.stock >= item.quantity) { "Insufficient stock for ${product.name}" }
+                val totalPedido = pedidoPorProducto[product.id] ?: item.quantity
+                require(product.stock >= totalPedido) { "Insufficient stock for ${product.name}" }
+                verifiedSlugs.add(product.slug)
                 item.copy(unitPrice = product.price, title = product.name)
             }
 
             // Server-side shipping calculation — never trust client values
             val itemsSubtotal = verifiedItems.sumOf { it.unitPrice * it.quantity }
-            val shippingCost = OrderService.calculateShipping(request.deliveryMethod, itemsSubtotal)
+            val shippingCost = if (OrderService.esCarritoDePrueba(verifiedSlugs)) 0.0
+                else OrderService.calculateShipping(request.deliveryMethod, itemsSubtotal)
             logger.info("MP shipping calculated: deliveryMethod=${request.deliveryMethod}, subtotal=$itemsSubtotal, shipping=$shippingCost")
 
             val mpItems = buildJsonArray {

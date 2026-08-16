@@ -17,6 +17,16 @@ class OrderService(
         const val LOCAL_FREE_THRESHOLD = 400.0
         const val NATIONAL_SHIPPING_COST = 99.0
 
+        // Válvula SOLO para probar pagos reales de bajo monto: si TODO el
+        // carrito son productos con slug "prueba-*", el envío va en cero, así
+        // el cargo es exactamente el precio del artículo. Ningún producto real
+        // usa ese prefijo, así que no puede filtrarse a una venta de verdad.
+        // Para quitarla: borra este bloque, sus dos usos y el producto de prueba.
+        const val TEST_SLUG_PREFIX = "prueba-"
+
+        fun esCarritoDePrueba(slugs: List<String>): Boolean =
+            slugs.isNotEmpty() && slugs.all { it.startsWith(TEST_SLUG_PREFIX) }
+
         /**
          * Server-side shipping calculation. Single source of truth — never trust
          * a shipping cost sent from the client. Rules:
@@ -95,8 +105,11 @@ class OrderService(
         }
 
         val itemsSubtotal = orderItems.sumOf { it.subtotal }
-        // Server-side calculation — never trust client values
-        val shippingCost = calculateShipping(request.deliveryMethod, itemsSubtotal)
+        // Server-side calculation — never trust client values. El mismo criterio
+        // que en create-preference, para que el total del pedido coincida con
+        // lo que Mercado Pago cobró.
+        val shippingCost = if (esCarritoDePrueba(products.map { it.first.slug })) 0.0
+            else calculateShipping(request.deliveryMethod, itemsSubtotal)
         val total = itemsSubtotal + shippingCost
 
         // Descuento atómico. Si a mitad del carrito ya no alcanza (otra compra
