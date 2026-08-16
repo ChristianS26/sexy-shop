@@ -86,7 +86,7 @@ class EmailService(private val config: AppConfig) {
         </div>
         """.trimIndent()
 
-        sendEmail(customerEmail, "Pedido #${order.id.take(8)} confirmado — Sexy Shop", html)
+        sendEmail(customerEmail, "Pedido #${order.id.take(8)} confirmado — Sexy Shop", html, config.replyToEmail)
     }
 
     /**
@@ -153,7 +153,7 @@ class EmailService(private val config: AppConfig) {
         </div>
         """.trimIndent()
 
-        sendEmail(customerEmail, "Recibimos tu pedido #${order.id.take(8)} — en revisión", html)
+        sendEmail(customerEmail, "Recibimos tu pedido #${order.id.take(8)} — en revisión", html, config.replyToEmail)
     }
 
     /** El pedido no se pudo surtir. Va con la promesa de devolución explícita. */
@@ -193,7 +193,7 @@ class EmailService(private val config: AppConfig) {
         </div>
         """.trimIndent()
 
-        sendEmail(customerEmail, "Pedido #${order.id.take(8)} cancelado — Sexy Shop", html)
+        sendEmail(customerEmail, "Pedido #${order.id.take(8)} cancelado — Sexy Shop", html, config.replyToEmail)
     }
 
     suspend fun sendNewOrderNotificationToAdmin(order: Order, items: List<OrderItem>) {
@@ -237,15 +237,28 @@ class EmailService(private val config: AppConfig) {
         </div>
         """.trimIndent()
 
-        sendEmail(config.notificationEmail, "🛒 Nueva venta #${order.id.take(8)} — \$${String.format("%.2f", order.total)}", html)
+        // Responder al aviso de venta escribe directo al comprador
+        sendEmail(
+            config.notificationEmail,
+            "🛒 Nueva venta #${order.id.take(8)} — \$${String.format("%.2f", order.total)}",
+            html,
+            order.customerEmail,
+        )
     }
 
-    private suspend fun sendEmail(to: String, subject: String, html: String) {
+    /**
+     * @param replyTo a dónde va la respuesta si el destinatario contesta. El
+     * dominio de la tienda no recibe correo, así que sin esto un "Responder"
+     * del cliente caería en el vacío. En el aviso al admin se manda el correo
+     * del comprador, para poder contestarle directo desde la bandeja.
+     */
+    private suspend fun sendEmail(to: String, subject: String, html: String, replyTo: String? = null) {
         val client = HttpClient(CIO)
         try {
             val payload = buildJsonObject {
                 put("from", "$fromName <$fromEmail>")
                 put("to", buildJsonArray { add(to) })
+                replyTo?.takeIf { it.isNotBlank() }?.let { put("reply_to", it) }
                 put("subject", subject)
                 put("html", html)
             }
