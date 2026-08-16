@@ -3,6 +3,12 @@
 // ═══════════════════════════════════════════
 const API_URL = APP_CONFIG.API_URL;
 
+// Vista de tienda tomada del hash ANTES de pedir datos: al recargar estando en
+// /#tienda evita que el home aparezca un instante antes de conmutar.
+if (location.hash === '#tienda' || location.hash.startsWith('#tienda/')) {
+  document.body.dataset.view = 'tienda';
+}
+
 // Visual mappings per category slug (bg gradient + emoji fallback)
 const CATEGORY_VISUALS = {
   lenceria:       { bg: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)', emoji: '👙' },
@@ -93,21 +99,8 @@ function toggleMenu() {
   document.getElementById('navLinks').classList.toggle('mobile-open');
 }
 
-// Smooth scroll for all internal anchor links
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('a[href^="#"]');
-  if (!link) return;
-
-  const href = link.getAttribute('href');
-  if (!href || href === '#') return;
-
-  const target = document.querySelector(href);
-  if (target) {
-    e.preventDefault();
-    document.getElementById('navLinks').classList.remove('mobile-open');
-    target.scrollIntoView({ behavior: 'smooth' });
-  }
-});
+// El manejo de anclas vive en la sección de vistas, más abajo: además de
+// desplazar, tiene que conmutar entre el home y la tienda.
 
 // ═══════════════════════════════════════════
 // STATE — STORE SORT
@@ -136,7 +129,85 @@ function filterCategory(catId) {
   activeCategory = catId;
   renderCategories();
   renderProducts();
+  if (document.body.dataset.view === 'tienda') sincronizarHashTienda();
 }
+
+// ═══════════════════════════════════════════
+// VISTAS (home ↔ tienda)
+// ═══════════════════════════════════════════
+// La tienda no es otra página: es el mismo documento con las secciones de
+// presentación ocultas. Así el carrito, el checkout y la ficha siguen siendo
+// los mismos, sin duplicar nada, y la dirección queda compartible.
+function irATienda(refCategoria) {
+  document.body.dataset.view = 'tienda';
+  if (refCategoria && refCategoria !== 'todos') {
+    const cat = categories.find(c => c.slug === refCategoria || c.id === refCategoria);
+    activeCategory = cat ? cat.id : 'todos';
+  } else {
+    activeCategory = 'todos';
+  }
+  renderCategories();
+  renderProducts();
+  sincronizarHashTienda();
+  window.scrollTo({ top: 0 });
+  revelarLoVisible();
+}
+
+/** Refleja la categoría en la URL (#tienda/{slug}) para que sobreviva al refresh. */
+function sincronizarHashTienda() {
+  const cat = activeCategory === 'todos' ? null : categories.find(c => c.id === activeCategory);
+  const destino = '/' + (cat ? `#tienda/${cat.slug}` : '#tienda');
+  // Ruta absoluta: si el visitante venía de /producto/{slug}, quedarse en esa
+  // ruta dejaría direcciones como /producto/x#tienda que no existen.
+  if (location.pathname + location.hash !== destino) history.replaceState(null, '', destino);
+}
+
+function irAlHome() {
+  document.body.dataset.view = 'home';
+  revelarLoVisible();
+}
+
+/**
+ * Las secciones animadas aparecen cuando el observador las ve entrar en
+ * pantalla, pero una sección que estaba en display:none nunca entró: al
+ * conmutar de vista podría quedarse en opacidad cero. Esto marca como visible
+ * lo que ya está en pantalla después del cambio.
+ */
+function revelarLoVisible() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.reveal:not(.visible)').forEach(el => {
+      const caja = el.getBoundingClientRect();
+      if (caja.top < window.innerHeight && caja.bottom > 0) el.classList.add('visible');
+    });
+  });
+}
+
+// Los enlaces internos cambian de vista en vez de solo desplazar la página.
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[href^="#"]');
+  if (!link) return;
+  const href = link.getAttribute('href');
+  if (!href || href === '#') return;
+  e.preventDefault();
+  document.getElementById('navLinks').classList.remove('mobile-open');
+
+  if (href === '#tienda' || href.startsWith('#tienda/')) {
+    irATienda(href.split('/')[1] || null);
+    return;
+  }
+
+  // Cualquier otro ancla pertenece al home: se regresa y luego se desplaza.
+  if (document.body.dataset.view === 'tienda') {
+    irAlHome();
+    history.replaceState(null, '', '/');
+  }
+  const destino = href !== '#inicio' ? document.querySelector(href) : null;
+  if (destino) {
+    setTimeout(() => destino.scrollIntoView({ behavior: 'smooth' }), 40);
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
 
 function changeStoreSort(value) {
   storeSort = value;
@@ -927,12 +998,23 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 // abre ese producto directo en vez de dejar al visitante buscándolo en el grid.
 function abrirProductoDeLaUrl() {
   const slug = new URLSearchParams(location.search).get('producto');
-  if (!slug) return;
+  if (!slug) return false;
   const product = products.find(p => p.slug === slug);
-  if (!product) return;
+  if (!product) return false;
+  // Se abre sobre la tienda para que al cerrar la ficha quede en el catálogo
+  // y no en el home, que es de donde no venía.
+  irATienda(null);
   openPdp(product.id);
-  // Se limpia el parámetro para que recargar no vuelva a abrir la ficha.
-  history.replaceState({}, '', location.pathname + location.hash);
+  return true;
+}
+
+/** Aplica la vista que pide la dirección: /#tienda, /#tienda/{categoria} o home. */
+function aplicarVistaDeLaUrl() {
+  if (abrirProductoDeLaUrl()) return;
+  const hash = location.hash;
+  if (hash === '#tienda' || hash.startsWith('#tienda/')) {
+    irATienda(hash.split('/')[1] || null);
+  }
 }
 
 async function init() {
@@ -940,7 +1022,7 @@ async function init() {
   renderCategories();
   renderProducts();
   updateCart();
-  abrirProductoDeLaUrl();
+  aplicarVistaDeLaUrl();
 }
 
 init();

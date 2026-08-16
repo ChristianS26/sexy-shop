@@ -166,7 +166,7 @@ function paginaProducto(producto, imagenes, categoria) {
 
 <nav class="topbar">
   <a href="/" class="brand">Sexy<span>Shop</span></a>
-  <a href="/#productos" class="volver">Ver todo el catálogo</a>
+  <a href="/#tienda" class="volver">Ver todo el catálogo</a>
 </nav>
 
 <div class="wrap">

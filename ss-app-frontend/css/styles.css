@@ -2513,3 +2513,33 @@ ul { list-style: none; }
   outline-offset: 1px;
   border-radius: 3px;
 }
+
+/* ═══════ Vista de tienda ═══════
+   No es otra página: es el mismo documento con las secciones de presentación
+   ocultas, para que el carrito, el checkout y la ficha de producto sigan
+   siendo los mismos. Lo conmuta app.js con body[data-view]. */
+body[data-view="tienda"] .hero,
+body[data-view="tienda"] .trust,
+body[data-view="tienda"] .how-to,
+body[data-view="tienda"] .cta-banner,
+body[data-view="tienda"] .purchase-info {
+  display: none;
+}
+
+/* Sin el hero encima, el catálogo necesita separarse de la barra fija */
+body[data-view="tienda"] .catalog {
+  padding-top: 120px;
+}
+
+/* El enlace de regreso solo existe dentro de la tienda */
+.catalog-back { display: none; }
+body[data-view="tienda"] .catalog-back {
+  display: inline-block;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gray-500, #6b7280);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+body[data-view="tienda"] .catalog-back:hover { color: #E91E8C; }
