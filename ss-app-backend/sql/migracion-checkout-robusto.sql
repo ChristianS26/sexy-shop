@@ -14,6 +14,7 @@ ALTER TABLE orders
     ADD COLUMN IF NOT EXISTS mp_net NUMERIC(10,2),
     ADD COLUMN IF NOT EXISTS mp_installments INT,
     ADD COLUMN IF NOT EXISTS mp_method TEXT,
+    ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS received_by TEXT,
     ADD COLUMN IF NOT EXISTS delivery_proof_url TEXT;

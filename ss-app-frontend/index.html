@@ -312,8 +312,8 @@
     <div class="footer-bottom">
       <span class="footer-copy">&copy; 2026 Sexy Shop. Todos los derechos reservados.</span>
       <div class="footer-legal">
-        <a href="#">Aviso de privacidad</a>
-        <a href="#">Términos y condiciones</a>
+        <a href="privacidad.html">Aviso de privacidad</a>
+        <a href="terminos.html">Términos y condiciones</a>
       </div>
     </div>
   </div>
@@ -466,6 +466,11 @@
       <div class="checkout-summary__hint" id="localFreeHint" style="display:none"></div>
     </div>
 
+    <label class="checkout-terms" for="localTerms">
+      <input type="checkbox" id="localTerms">
+      <span>He le&iacute;do y acepto los <a href="terminos.html" target="_blank" rel="noopener">t&eacute;rminos y condiciones</a> y el <a href="privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a>.</span>
+    </label>
+
     <div class="checkout-form__divider">&iquest;C&oacute;mo prefieres pagar?</div>
     <div class="checkout-payment-methods checkout-payment-methods--local">
       <button class="checkout-pay-btn checkout-pay-btn--transfer" onclick="processLocalOrder('transfer')">
@@ -557,12 +562,16 @@
       </div>
     </div>
 
+    <label class="checkout-terms" for="checkoutTerms">
+      <input type="checkbox" id="checkoutTerms">
+      <span>He le&iacute;do y acepto los <a href="terminos.html" target="_blank" rel="noopener">t&eacute;rminos y condiciones</a> y el <a href="privacidad.html" target="_blank" rel="noopener">aviso de privacidad</a>.</span>
+    </label>
     <div class="checkout-payment-methods">
       <button class="checkout-pay-btn checkout-pay-btn--mp" id="payMpBtn" onclick="payWithMercadoPago()">
         &#x1F512; Pagar con Mercado Pago
       </button>
     </div>
-    <p class="checkout-form__note">&#x2705; Pago seguro &middot; Tarjetas, OXXO, transferencia y m&aacute;s</p>
+    <p class="checkout-form__note">&#x2705; Pago seguro con tarjeta &middot; Mercado Pago</p>
   </div>
 </aside>
 

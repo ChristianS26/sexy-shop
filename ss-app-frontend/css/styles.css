@@ -2483,3 +2483,33 @@ ul { list-style: none; }
     flex: 1;
   }
 }
+
+/* ═══════ Aceptación de términos en el checkout ═══════ */
+.checkout-terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 4px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #6b7280;
+  cursor: pointer;
+}
+.checkout-terms input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: #E91E8C;
+  flex: none;
+  cursor: pointer;
+}
+.checkout-terms a {
+  color: #E91E8C;
+  text-decoration: underline;
+}
+.checkout-terms--error { color: #b91c1c; }
+.checkout-terms--error input {
+  outline: 2px solid #b91c1c;
+  outline-offset: 1px;
+  border-radius: 3px;
+}

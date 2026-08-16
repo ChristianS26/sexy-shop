@@ -494,6 +494,16 @@ async function processLocalOrder(paymentMethod) {
   const notes = document.getElementById('localNotes').value.trim();
   const fullAddress = `${street}, Col. ${neighborhood}, Guaymas, Sonora`;
 
+  // Aceptación de términos. En pagos con tarjeta el servidor la vuelve a
+  // exigir y es él quien sella la hora: la casilla sola no probaría nada.
+  const localTermsLabel = document.getElementById('localTerms').closest('.checkout-terms');
+  localTermsLabel.classList.remove('checkout-terms--error');
+  if (!document.getElementById('localTerms').checked) {
+    localTermsLabel.classList.add('checkout-terms--error');
+    showToast('Acepta los términos y el aviso de privacidad para continuar');
+    return;
+  }
+
   // Mercado Pago requiere correo: ahí llega el comprobante y los avisos
   if (paymentMethod === 'mp' && !validateEmail('localEmail')) return;
 
@@ -524,6 +534,7 @@ async function processLocalOrder(paymentMethod) {
       customer_references: references || null,
       delivery_method: 'local',
       payment_method: paymentMethod,
+      terms_accepted: true,
       notes: notes || null,
       items: cart.map(item => ({
         product_id: item.id,
@@ -585,6 +596,7 @@ async function payWithMercadoPagoLocal(data) {
         customer_state: 'Sonora',
         customer_references: data.references || null,
         delivery_method: 'local',
+        terms_accepted: true,
         notes: data.notes || null,
       }),
     });
@@ -651,6 +663,16 @@ async function payWithMercadoPago() {
   if (!validateCheckoutField('checkoutZip', 'C.P. requerido')) return;
   if (!validateCheckoutField('checkoutState', 'Estado requerido')) return;
 
+  // Aceptación de términos. El servidor la vuelve a exigir y es él quien
+  // sella la hora: la casilla sola no probaría nada.
+  const checkoutTermsLabel = document.getElementById('checkoutTerms').closest('.checkout-terms');
+  checkoutTermsLabel.classList.remove('checkout-terms--error');
+  if (!document.getElementById('checkoutTerms').checked) {
+    checkoutTermsLabel.classList.add('checkout-terms--error');
+    showToast('Acepta los términos y el aviso de privacidad para continuar');
+    return;
+  }
+
   const btn = document.getElementById('payMpBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="checkout-spinner"></span> Conectando...';
@@ -681,6 +703,7 @@ async function payWithMercadoPago() {
         customer_zip: document.getElementById('checkoutZip').value.trim(),
         customer_references: document.getElementById('checkoutReferences').value.trim() || null,
         delivery_method: 'national',
+        terms_accepted: true,
         notes: document.getElementById('checkoutNotes').value.trim() || null,
       }),
     });

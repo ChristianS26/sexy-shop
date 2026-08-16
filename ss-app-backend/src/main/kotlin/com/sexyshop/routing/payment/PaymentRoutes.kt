@@ -41,6 +41,10 @@ data class CreatePreferenceRequest(
     @SerialName("customer_zip") val customerZip: String? = null,
     @SerialName("customer_references") val customerReferences: String? = null,
     @SerialName("delivery_method") val deliveryMethod: String = "national",
+    // El comprador marcó la casilla de "acepto términos y aviso de privacidad".
+    // Solo llega el sí/no: la hora la pone el servidor, porque la del navegador
+    // la puede escribir cualquiera y entonces no probaría nada.
+    @SerialName("terms_accepted") val termsAccepted: Boolean = false,
     val notes: String? = null,
 )
 
@@ -95,6 +99,9 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
             require(correo.matches(Regex("^[^@\\s]+@[^@\\s.]+\\.[^@\\s]+$"))) {
                 "Correo electrónico requerido"
             }
+            // Aceptación de términos: la hora la sella el servidor.
+            require(request.termsAccepted) { "Debes aceptar los términos y condiciones" }
+            val aceptadosEn = java.time.Instant.now().toString()
 
             // Verify prices against database to prevent price manipulation
             val verifiedItems = request.items.map { item ->
@@ -164,6 +171,7 @@ fun Route.paymentRoutes(config: AppConfig, orderService: OrderService, emailServ
                 request.customerReferences?.let { put("customer_references", it) }
                 put("delivery_method", request.deliveryMethod)
                 put("payment_method", "mp")
+                put("terms_accepted_at", aceptadosEn)
                 request.notes?.let { put("notes", it) }
                 put("items", buildJsonArray {
                     verifiedItems.forEach { item ->
@@ -511,6 +519,7 @@ private suspend fun createOrderFromPayment(
             mpNet = net,
             mpInstallments = payment["installments"]?.jsonPrimitive?.intOrNull,
             mpMethod = mpMethod,
+            termsAcceptedAt = meta["terms_accepted_at"]?.jsonPrimitive?.contentOrNull,
             notes = ((meta["notes"]?.jsonPrimitive?.content ?: "") + " [Pagado con Mercado Pago]").trim(),
             items = items,
         )

@@ -1174,7 +1174,9 @@ async function viewOrder(id) {
     document.getElementById('orderDetailAddress').textContent = addrParts.length > 0 ? addrParts.join('\n') : (order.customer_address || '—');
 
     document.getElementById('orderDetailNotes').value = order.notes || '';
-    document.getElementById('orderDetailDate').textContent = formatDate(order.created_at);
+    // La aceptación de términos es evidencia ante un contracargo: se enseña junto a la fecha
+    document.getElementById('orderDetailDate').textContent = formatDate(order.created_at)
+      + (order.terms_accepted_at ? ` · Aceptó T&C: ${formatDate(order.terms_accepted_at)}` : '');
 
     // Totals breakdown
     const shippingCost = parseFloat(order.shipping_cost) || 0;

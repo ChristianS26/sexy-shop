@@ -50,6 +50,9 @@ fun Route.orderRoutes(
                 mpNet = null,
                 mpInstallments = null,
                 mpMethod = null,
+                // El sello de aceptación de términos lo pone el servidor: del
+                // cliente solo se acepta el sí/no de la casilla.
+                termsAcceptedAt = if (received.termsAccepted) java.time.Instant.now().toString() else null,
             )
             val order = service.create(request)
 

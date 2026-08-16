@@ -29,8 +29,10 @@ data class Order(
     @SerialName("mp_net") val mpNet: Double? = null,
     @SerialName("mp_installments") val mpInstallments: Int? = null,
     @SerialName("mp_method") val mpMethod: String? = null,
-    // Evidencia para una disputa o contracargo: constancia de que el pedido
-    // llegó y quién lo recibió.
+    // Evidencia para una disputa o contracargo: cuándo aceptó los términos y
+    // constancia de que el pedido llegó. El sello de aceptación lo pone el
+    // servidor, nunca el navegador.
+    @SerialName("terms_accepted_at") val termsAcceptedAt: String? = null,
     @SerialName("delivered_at") val deliveredAt: String? = null,
     @SerialName("received_by") val receivedBy: String? = null,
     @SerialName("delivery_proof_url") val deliveryProofUrl: String? = null,
@@ -73,6 +75,11 @@ data class OrderRequest(
     @SerialName("mp_net") val mpNet: Double? = null,
     @SerialName("mp_installments") val mpInstallments: Int? = null,
     @SerialName("mp_method") val mpMethod: String? = null,
+    // El comprador marcó la casilla de términos (checkout local). El sello de
+    // hora lo pone el servidor en OrderRoutes/PaymentRoutes, nunca el cliente.
+    @SerialName("terms_accepted") val termsAccepted: Boolean = false,
+    // Solo llega por flujos internos (webhook de MP con el sello del servidor).
+    @SerialName("terms_accepted_at") val termsAcceptedAt: String? = null,
     val notes: String? = null,
     val items: List<OrderItemRequest>,
 )

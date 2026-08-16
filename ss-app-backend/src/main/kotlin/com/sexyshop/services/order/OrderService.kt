@@ -143,6 +143,7 @@ class OrderService(
                 mpNet = request.mpNet,
                 mpInstallments = request.mpInstallments,
                 mpMethod = request.mpMethod,
+                termsAcceptedAt = request.termsAcceptedAt,
                 notes = request.notes,
             )
         )
