@@ -29,6 +29,24 @@ const dinero = (n) => Number(n || 0).toLocaleString('es-MX', {
   minimumFractionDigits: 2, maximumFractionDigits: 2,
 });
 
+const sinAcentos = (t) => String(t || '')
+  .toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+
+/**
+ * Título de la ficha. Muchos productos se llaman por su nombre de catálogo
+ * ("Eternal Virgin", "BJ Bang"), que nadie teclea en un buscador, así que se
+ * le añade la categoría: es la palabra por la que sí buscan. Se omite cuando
+ * el nombre ya la contiene, para no terminar en "Dildo gama media — Dildos".
+ */
+function tituloDeFicha(producto, categoria) {
+  if (!categoria) return `${producto.name} — Sexy Shop`;
+  const raiz = sinAcentos(categoria.name).replace(/s$/, '');
+  const yaLaDice = raiz.length > 2 && sinAcentos(producto.name).includes(raiz);
+  return yaLaDice
+    ? `${producto.name} — Sexy Shop`
+    : `${producto.name} — ${categoria.name} | Sexy Shop`;
+}
+
 /** Resumen corto y limpio para <meta description> y og:description. */
 function resumen(producto, categoria) {
   const base = (producto.description || '')
@@ -55,7 +73,7 @@ async function pedir(ruta, intentos = 4) {
 
 function paginaProducto(producto, imagenes, categoria) {
   const url = `${SITIO}/producto/${producto.slug}/`;
-  const titulo = `${producto.name} — Sexy Shop`;
+  const titulo = tituloDeFicha(producto, categoria);
   const desc = resumen(producto, categoria);
   const foto = imagenes[0]?.image_url || `${SITIO}/img/logo.png`;
   const hayStock = (producto.stock ?? 0) > 0;
