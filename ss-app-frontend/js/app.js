@@ -230,6 +230,7 @@ function addToCart(productId) {
     cart.push({
       id: product.id,
       name: product.name,
+      slug: product.slug,
       price: product.price,
       category_id: product.category_id,
       qty: 1
@@ -369,6 +370,19 @@ function selectDeliveryMethod(method) {
   setCheckoutState(method);
 }
 
+// Carrito compuesto SOLO por artículos de prueba de la tienda: el servidor no
+// les cobra envío (OrderService.esCarritoDePrueba), así que el resumen tiene
+// que mostrar lo mismo que se va a cobrar. El slug puede faltar en carritos
+// guardados antes de este cambio, de ahí el valor por defecto.
+function esCarritoDePrueba() {
+  return cart.length > 0 && cart.every(item => (item.slug || '').startsWith('prueba-'));
+}
+
+function envioDelCarrito(metodo) {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  return esCarritoDePrueba() ? 0 : calculateShipping(metodo, subtotal);
+}
+
 function updateMethodSelectorHints() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const badge = document.getElementById('localFreeShippingBadge');
@@ -387,14 +401,16 @@ function updateMethodSelectorHints() {
 
 function updateLocalSummary() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const shipping = calculateShipping('local', subtotal);
+  const shipping = envioDelCarrito('local');
   const total = subtotal + shipping;
   document.getElementById('localSubtotal').textContent = `$${subtotal.toFixed(2)}`;
   document.getElementById('localShipping').textContent = shipping === 0 ? 'GRATIS' : `$${shipping.toFixed(2)}`;
   document.getElementById('localTotal').textContent = `$${total.toFixed(2)}`;
 
   const hint = document.getElementById('localFreeHint');
-  if (shipping === 0) {
+  if (esCarritoDePrueba()) {
+    hint.style.display = 'none';
+  } else if (shipping === 0) {
     hint.textContent = '\u2705 \u00a1Tu env\u00edo es GRATIS!';
     hint.className = 'checkout-summary__hint checkout-summary__hint--unlocked';
     hint.style.display = 'block';
@@ -408,8 +424,10 @@ function updateLocalSummary() {
 
 function updateNationalSummary() {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const shipping = calculateShipping('national', subtotal);
+  const shipping = envioDelCarrito('national');
   document.getElementById('checkoutSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+  const envioEl = document.getElementById('checkoutShipping');
+  if (envioEl) envioEl.textContent = shipping === 0 ? 'GRATIS' : `$${shipping.toFixed(2)}`;
   document.getElementById('checkoutTotal').textContent = `$${(subtotal + shipping).toFixed(2)}`;
 }
 
