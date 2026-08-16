@@ -6,6 +6,9 @@
   --pink-light: #F472B6;
   --pink-soft: #FDF2F8;
   --pink-mist: #FEF7FB;
+  /* Cian del logotipo: la segunda voz de la marca, que el sitio no usaba */
+  --cyan: #29ABD4;
+  --cyan-deep: #1E90B8;
   --blue: #7CB9E8;
   --blue-light: #B8D8F0;
   --blue-soft: #F0F7FC;
@@ -151,11 +154,20 @@ ul { list-style: none; }
 }
 
 .age-modal-brand {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 600;
+  font-family: 'Great Vibes', var(--font-display), cursive;
+  font-size: 3rem;
+  font-weight: 400;
+  line-height: 0.95;
   color: var(--pink);
   margin-bottom: 8px;
+}
+.age-modal-brand span {
+  font-family: var(--font-body);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: -0.02em;
+  margin-left: -3px;
 }
 
 .age-modal-sub {
@@ -249,19 +261,38 @@ ul { list-style: none; }
   gap: 4px;
 }
 
+/* ═══════ Logotipo escrito ═══════
+   El logo real tiene dos voces: "Sexy" en caligrafía rosa y "Shop" en una
+   redondeada cian. El texto del sitio era un serif plano en rosa y azul
+   marino, sin caligrafía y sin el cian, así que no se parecía a la marca.
+   Aquí se reconstruye con tipografía: script para la primera mitad, sans
+   pesada en el cian de la marca para la segunda. */
 .nav-brand-name {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 600;
+  font-family: 'Great Vibes', var(--font-display), cursive;
+  /* El script tiene poca altura de x: necesita más cuerpo para pesar igual */
+  font-size: 2.4rem;
+  font-weight: 400;
+  line-height: 0.9;
   color: var(--pink);
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
+  /* La cola de la "y" se mete bajo la "S" siguiente, como en el logo */
+  margin-right: -3px;
 }
 
 .nav-brand-accent {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-family: var(--font-body);
+  font-size: 1.45rem;
   font-weight: 600;
-  color: var(--black);
+  color: var(--cyan);
+  letter-spacing: -0.02em;
+}
+
+/* En pantallas chicas el script no debe estirar la barra */
+@media (max-width: 640px) {
+  .nav-brand-name { font-size: 2rem; }
+  .nav-brand-accent { font-size: 1.2rem; }
+  .age-modal-brand { font-size: 2.5rem; }
+  .age-modal-brand span { font-size: 1.5rem; }
 }
 
 .nav-brand-city {
@@ -1248,14 +1279,22 @@ ul { list-style: none; }
 }
 
 .footer-brand-name {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-family: 'Great Vibes', var(--font-display), cursive;
+  font-size: 2.3rem;
+  font-weight: 400;
+  line-height: 0.95;
   color: var(--pink);
   margin-bottom: 4px;
 }
 
-.footer-brand-name span { color: var(--black); }
+.footer-brand-name span {
+  font-family: var(--font-body);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: -0.02em;
+  margin-left: -3px;
+}
 
 .footer-brand-city {
   font-family: var(--font-display);
