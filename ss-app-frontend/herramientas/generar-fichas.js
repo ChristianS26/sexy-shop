@@ -118,8 +118,8 @@ function paginaProducto(producto, imagenes, categoria) {
   a{color:#E91E8C;text-decoration:none}
   .topbar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #f3e1ea;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
   /* Mismo logotipo que la tienda: script rosa + sans cian */
-  .brand{font-family:'Great Vibes',cursive;font-size:2rem;line-height:1;color:#E91E8C}
-  .brand span{font-family:'Outfit',sans-serif;font-size:1.25rem;font-weight:600;color:#29ABD4;letter-spacing:-.02em;margin-left:-3px}
+  .brand{font-family:'Great Vibes',cursive;font-size:2.5rem;line-height:1;color:#E91E8C}
+  .brand span{font-family:'Outfit',sans-serif;font-size:1.55rem;font-weight:600;color:#29ABD4;letter-spacing:-.02em;margin-left:-3px}
   .topbar a.volver{font-size:.85rem;font-weight:500;color:#6b7280}
   .wrap{max-width:1000px;margin:0 auto;padding:28px 20px 70px;display:grid;gap:34px}
   @media(min-width:840px){.wrap{grid-template-columns:1fr 1fr;align-items:start;padding-top:44px}}

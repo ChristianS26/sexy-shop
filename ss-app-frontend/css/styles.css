@@ -155,7 +155,7 @@ ul { list-style: none; }
 
 .age-modal-brand {
   font-family: 'Great Vibes', var(--font-display), cursive;
-  font-size: 3rem;
+  font-size: 3.7rem;
   font-weight: 400;
   line-height: 0.95;
   color: var(--pink);
@@ -163,7 +163,7 @@ ul { list-style: none; }
 }
 .age-modal-brand span {
   font-family: var(--font-body);
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   font-weight: 600;
   color: var(--cyan);
   letter-spacing: -0.02em;
@@ -270,7 +270,7 @@ ul { list-style: none; }
 .nav-brand-name {
   font-family: 'Great Vibes', var(--font-display), cursive;
   /* El script tiene poca altura de x: necesita más cuerpo para pesar igual */
-  font-size: 2.4rem;
+  font-size: 3rem;
   font-weight: 400;
   line-height: 0.9;
   color: var(--pink);
@@ -281,7 +281,7 @@ ul { list-style: none; }
 
 .nav-brand-accent {
   font-family: var(--font-body);
-  font-size: 1.45rem;
+  font-size: 1.8rem;
   font-weight: 600;
   color: var(--cyan);
   letter-spacing: -0.02em;
@@ -289,10 +289,10 @@ ul { list-style: none; }
 
 /* En pantallas chicas el script no debe estirar la barra */
 @media (max-width: 640px) {
-  .nav-brand-name { font-size: 2rem; }
-  .nav-brand-accent { font-size: 1.2rem; }
-  .age-modal-brand { font-size: 2.5rem; }
-  .age-modal-brand span { font-size: 1.5rem; }
+  .nav-brand-name { font-size: 2.4rem; }
+  .nav-brand-accent { font-size: 1.45rem; }
+  .age-modal-brand { font-size: 3rem; }
+  .age-modal-brand span { font-size: 1.8rem; }
 }
 
 .nav-brand-city {
@@ -1280,7 +1280,7 @@ ul { list-style: none; }
 
 .footer-brand-name {
   font-family: 'Great Vibes', var(--font-display), cursive;
-  font-size: 2.3rem;
+  font-size: 2.9rem;
   font-weight: 400;
   line-height: 0.95;
   color: var(--pink);
@@ -1289,7 +1289,7 @@ ul { list-style: none; }
 
 .footer-brand-name span {
   font-family: var(--font-body);
-  font-size: 1.4rem;
+  font-size: 1.75rem;
   font-weight: 600;
   color: var(--cyan);
   letter-spacing: -0.02em;
