@@ -39,7 +39,11 @@ export async function render(root) {
   const lines = h('div.pos__lines');
   const totals = h('div.pos__totals');
   const cartCard = h('div.card.pos__cart', h('div.card__head', h('div', h('div.card__title', 'Venta'), h('div.card__sub', { id: 'pos-cust' })), h('div.row.gap-1', h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: pickCustomer }, icon('user'), h('span.hide-mobile', 'Cliente')), h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Vaciar', 'data-tip': 'Vaciar carrito', onclick: async () => { if (cart.length && await confirm({ title: 'Vaciar la venta', text: 'Se quitarán todos los productos.', confirmText: 'Vaciar', danger: true })) { cart = []; saveCart(); renderCart(); } } }, icon('trash')))), lines, totals);
-  replace(root, h('div.pos', catalog, cartCard));
+  // barra fija para teléfono: total y cobro siempre a la mano
+  const barTotal = h('div.pos__bar-total', fmt.money(0)), barCount = h('div.pos__bar-count', 'Carrito vacío');
+  const barPay = h('button.btn.btn--primary', { type: 'button', disabled: true, onclick: () => totals.querySelector('.btn--primary.btn--block')?.click() }, icon('cash'), 'Cobrar');
+  const bar = h('div.pos__bar', h('div.pos__bar-info', barTotal, barCount), h('button.btn.btn--secondary', { type: 'button', onclick: () => cartCard.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 'Ver venta'), barPay);
+  replace(root, h('div.pos', catalog, cartCard), bar);
 
   // ── Datos ────────────────────────────────────────────────────────────────
   async function loadShift() {
@@ -135,6 +139,8 @@ export async function render(root) {
       h('div.row.gap-2.mt-2', h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: askNotes }, icon('edit'), notes ? 'Nota ✓' : 'Nota'), me.can('sales.read') ? h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: pickSeller }, icon('user'), 'Vendedor') : null),
       h('button.btn.btn--primary.btn--lg.btn--block.mt-2', { type: 'button', disabled: !cart.length, onclick: () => checkout(total) }, icon('cash'), `Cobrar ${fmt.money(total)}`),
     );
+    const units = cart.reduce((a, l) => a + l.quantity, 0);
+    barTotal.textContent = fmt.money(total); barCount.textContent = units ? fmt.plural(units, 'artículo', 'artículos') : 'Carrito vacío'; barPay.disabled = !cart.length;
   }
   async function askDiscount() {
     const max = me.maxDiscount;

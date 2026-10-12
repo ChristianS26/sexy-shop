@@ -152,6 +152,8 @@
 
 /* ── Toast / Alert / Empty / Skeleton ────────────────────────────────────── */
 .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 200; display: flex; flex-direction: column; gap: 10px; max-width: min(380px, calc(100vw - 32px)); }
+/* En pantallas chicas los avisos van arriba: abajo taparían los botones del cobro y de los formularios */
+@media (max-width: 699px) { .toasts { top: calc(env(safe-area-inset-top) + 12px); bottom: auto; right: 16px; left: 16px; max-width: none; } }
 .toast { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--color-text); color: var(--color-bg); font-size: var(--text-sm); box-shadow: var(--shadow-lg); animation: rise var(--t-base) var(--ease); }
 .toast__icon { width: 20px; height: 20px; flex: none; margin-top: 1px; } .toast--success .toast__icon { color: #8FD9A8; } .toast--error .toast__icon { color: #F39B9A; } .toast--warning .toast__icon { color: #F3C96B; } .toast--info .toast__icon { color: #A9BCF0; }
 .toast__title { font-weight: 600; } .toast__text { opacity: 0.85; font-size: var(--text-xs); margin-top: 2px; }
@@ -218,7 +220,25 @@
 .pay-btn { padding: 12px 10px; border-radius: 10px; border: 1px solid var(--color-border-strong); background: var(--color-bg-elevated); font-weight: 600; font-size: var(--text-sm); display: flex; flex-direction: column; align-items: center; gap: 4px; } .pay-btn[aria-pressed="true"] { border-color: var(--color-primary); background: var(--color-primary-soft); color: var(--color-primary); }
 .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .numpad button { padding: 12px; border-radius: 10px; background: var(--color-bg-muted); font-weight: 600; font-size: var(--text-lg); } .numpad button:hover { background: var(--color-primary-soft); }
 .change-display { font-family: var(--font-display); font-size: 2rem; text-align: center; padding: 10px; border-radius: var(--radius-md); background: var(--color-success-soft); color: var(--color-success); }
-@media (max-width: 1000px) { .pos { grid-template-columns: 1fr; } .pos__cart { position: static; max-height: none; } }
+.pos__bar { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 10px; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--color-bg-elevated); border-top: 1px solid var(--color-border); box-shadow: 0 -6px 20px rgba(43, 26, 30, 0.08); }
+.pos__bar-info { flex: 1; min-width: 0; line-height: 1.2; }
+.pos__bar-total { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+.pos__bar-count { font-size: var(--text-xs); color: var(--color-text-3); }
+/* Tableta: el carrito sigue a la derecha, más angosto */
+@media (max-width: 1000px) and (min-width: 700px) {
+  .pos { grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
+  .pos__grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+  .pos__cart { top: calc(var(--header-h) + 12px); max-height: calc(100vh - var(--header-h) - 24px); }
+  .pos__lines { padding: 0 14px; } .pos__totals { padding: 14px; }
+  .pos__line { grid-template-columns: 1fr; } .pos__line > .row { justify-content: space-between; }
+}
+/* Teléfono: catálogo arriba, venta abajo y una barra fija para cobrar sin desplazarse */
+@media (max-width: 699px) {
+  .pos { grid-template-columns: 1fr; padding-bottom: 88px; }
+  .pos__cart { position: static; max-height: none; scroll-margin-top: calc(var(--header-h) + 8px); }
+  .pos__bar { display: flex; }
+  .pos__catalog > .row { flex-wrap: wrap; } .pos__catalog > .row > .search { flex: 1 1 100%; }
+}
 
 /* ── Login ───────────────────────────────────────────────────────────────── */
 .login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; background: var(--brand-cream); }
