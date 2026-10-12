@@ -219,8 +219,14 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
         val ctx = call.require("categories.manage")
         val body = pick(call.receiveOrThrow<JsonObject>(), CatalogService.CATEGORY_FIELDS)
         validate { notBlank(body.str("name"), "name", "El nombre") }
-        val slug = body.str("slug")?.let(::slugify) ?: slugify(body.str("name")!!)
-        val row = db.insert("categories", body.with("organization_id" to ctx.organizationId, "slug" to slug, "icon" to (body.str("icon") ?: "")))
+        val name = body.str("name")!!.trim()
+        val parent = body.str("parent_id")
+        db.one("categories", "id, name") { org(ctx); isNull("deleted_at"); ilike("name", name); if (parent == null) isNull("parent_id") else eq("parent_id", parent) }?.let {
+            val msg = "Ya existe la categoría “${it.str("name")}”${if (parent != null) " en ese nivel" else ""}."
+            throw ErpException(HttpStatusCode.Conflict, "DUPLICATE", msg, JsonObject(mapOf("name" to JsonPrimitive(msg))))
+        }
+        val slug = uniqueSlug(db, "categories", ctx, body.str("slug")?.let(::slugify) ?: slugify(name))
+        val row = db.insert("categories", body.with("organization_id" to ctx.organizationId, "name" to name, "slug" to slug, "icon" to (body.str("icon") ?: "")))
         audit.log(call, "categories.create", "CATEGORY", row.str("id"), null, row)
         call.respond(HttpStatusCode.Created, row)
     }
@@ -256,7 +262,12 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
         val ctx = call.require("brands.manage")
         val body = pick(call.receiveOrThrow<JsonObject>(), CatalogService.BRAND_FIELDS)
         validate { notBlank(body.str("name"), "name", "El nombre") }
-        val row = db.insert("brands", body.with("organization_id" to ctx.organizationId, "slug" to (body.str("slug") ?: slugify(body.str("name")!!))))
+        val name = body.str("name")!!.trim()
+        db.one("brands", "id, name") { org(ctx); ilike("name", name); eq("is_active", true) }?.let {
+            val msg = "Ya existe la marca “${it.str("name")}”."
+            throw ErpException(HttpStatusCode.Conflict, "DUPLICATE", msg, JsonObject(mapOf("name" to JsonPrimitive(msg))))
+        }
+        val row = db.insert("brands", body.with("organization_id" to ctx.organizationId, "name" to name, "slug" to uniqueSlug(db, "brands", ctx, body.str("slug")?.let(::slugify) ?: slugify(name))))
         audit.log(call, "brands.create", "BRAND", row.str("id"), null, row)
         call.respond(HttpStatusCode.Created, row)
     }
@@ -321,6 +332,14 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
         audit.log(call, "suppliers.delete", "SUPPLIER", id, before, null)
         call.respond(HttpStatusCode.NoContent)
     }
+}
+
+/** Identificador web libre: si "lubricantes" ya existe (aunque esté eliminado), usa "lubricantes-2". */
+private suspend fun uniqueSlug(db: Db, table: String, ctx: AuthContext, base: String): String {
+    val taken = db.selectAll(table, "slug") { org(ctx); ilike("slug", "$base%") }.mapNotNull { it.str("slug") }.toSet()
+    if (base !in taken) return base
+    var i = 2; while ("$base-$i" in taken) i++
+    return "$base-$i"
 }
 
 private suspend fun nextSku(db: Db, ctx: AuthContext): String {
