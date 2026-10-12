@@ -7,6 +7,14 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.json.*
 import java.time.*
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+
+/** Ejecuta en paralelo consultas independientes y arma el JSON (el dashboard pasa de ~2 s a lo que tarde la más lenta). */
+suspend fun parallelJson(vararg parts: Pair<String, suspend () -> Any?>): JsonObject = coroutineScope {
+    val running = parts.map { (k, f) -> k to async { f() } }
+    jsonOf(*running.map { (k, d) -> k to d.await() }.toTypedArray())
+}
 
 /**
  * Rango de fechas de los dashboards. Los presets se resuelven en la zona horaria de la
@@ -86,26 +94,29 @@ fun Route.analyticsRoutes(service: AnalyticsService, insights: InsightEngine) {
     get("/analytics/overview") {
         val ctx = call.require("analytics.read")
         val r = call.range(); val b = call.branch()
-        val out = jsonOf(
-            "range" to r.json(), "overview" to service.overview(ctx, r, b), "timeseries" to service.timeseries(ctx, r, b, call.request.queryParameters["granularity"]),
-            "categories" to service.byCategory(ctx, r, b), "top_products" to service.topProducts(ctx, r, b, "revenue", 8, null), "heatmap" to service.heatmap(ctx, r, b),
-            "neighborhoods" to service.byNeighborhood(ctx, r, b, 8), "payment_methods" to service.paymentMethods(ctx, r, b), "recent_sales" to service.recentSales(ctx, b),
-            "customers" to service.customers(ctx, r, b),
+        val g = call.request.queryParameters["granularity"]
+        val out = parallelJson(
+            "range" to { r.json() }, "overview" to { service.overview(ctx, r, b) }, "timeseries" to { service.timeseries(ctx, r, b, g) },
+            "categories" to { service.byCategory(ctx, r, b) }, "top_products" to { service.topProducts(ctx, r, b, "revenue", 8, null) }, "heatmap" to { service.heatmap(ctx, r, b) },
+            "neighborhoods" to { service.byNeighborhood(ctx, r, b, 8) }, "payment_methods" to { service.paymentMethods(ctx, r, b) }, "recent_sales" to { service.recentSales(ctx, b) },
+            "customers" to { service.customers(ctx, r, b) },
         )
         call.respond(out.stripCostDeep(ctx))
     }
     get("/analytics/sales") {
         val ctx = call.require("analytics.read"); val r = call.range(); val b = call.branch()
-        call.respond(jsonOf("range" to r.json(), "overview" to service.overview(ctx, r, b), "timeseries" to service.timeseries(ctx, r, b, call.request.queryParameters["granularity"]),
-            "payment_methods" to service.paymentMethods(ctx, r, b), "sellers" to service.sellers(ctx, r, b), "heatmap" to service.heatmap(ctx, r, b)).stripCostDeep(ctx))
+        val g = call.request.queryParameters["granularity"]
+        call.respond(parallelJson("range" to { r.json() }, "overview" to { service.overview(ctx, r, b) }, "timeseries" to { service.timeseries(ctx, r, b, g) },
+            "payment_methods" to { service.paymentMethods(ctx, r, b) }, "sellers" to { service.sellers(ctx, r, b) }, "heatmap" to { service.heatmap(ctx, r, b) }).stripCostDeep(ctx))
     }
     get("/analytics/products") {
         val ctx = call.require("analytics.read"); val r = call.range(); val b = call.branch()
         val metric = call.request.queryParameters["metric"] ?: "revenue"
         val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 100) ?: 15
-        call.respond(jsonOf("range" to r.json(), "top" to service.topProducts(ctx, r, b, metric, limit, call.request.queryParameters["category"]),
-            "growth" to service.topProducts(ctx, r, b, "growth", 10, null), "decline" to service.topProducts(ctx, r, b, "decline", 10, null),
-            "categories" to service.byCategory(ctx, r, b), "basket" to service.basket(ctx, r)).stripCostDeep(ctx))
+        val cat = call.request.queryParameters["category"]
+        call.respond(parallelJson("range" to { r.json() }, "top" to { service.topProducts(ctx, r, b, metric, limit, cat) },
+            "growth" to { service.topProducts(ctx, r, b, "growth", 10, null) }, "decline" to { service.topProducts(ctx, r, b, "decline", 10, null) },
+            "categories" to { service.byCategory(ctx, r, b) }, "basket" to { service.basket(ctx, r) }).stripCostDeep(ctx))
     }
     get("/analytics/products/{id}/history") {
         val ctx = call.require("analytics.read", "products.read")
@@ -117,8 +128,9 @@ fun Route.analyticsRoutes(service: AnalyticsService, insights: InsightEngine) {
     }
     get("/analytics/customers") {
         val ctx = call.require("analytics.read"); val r = call.range(); val b = call.branch()
-        call.respond(jsonOf("range" to r.json(), "summary" to service.customers(ctx, r, b), "rfm" to service.rfm(ctx, call.request.queryParameters["segment"], 200),
-            "cohorts" to service.cohorts(ctx, call.request.queryParameters["months"]?.toIntOrNull() ?: 12)).stripCostDeep(ctx))
+        val seg = call.request.queryParameters["segment"]; val months = call.request.queryParameters["months"]?.toIntOrNull() ?: 12
+        call.respond(parallelJson("range" to { r.json() }, "summary" to { service.customers(ctx, r, b) }, "rfm" to { service.rfm(ctx, seg, 200) },
+            "cohorts" to { service.cohorts(ctx, months) }).stripCostDeep(ctx))
     }
     get("/analytics/geography") {
         val ctx = call.require("analytics.read"); val r = call.range(); val b = call.branch()
@@ -127,11 +139,12 @@ fun Route.analyticsRoutes(service: AnalyticsService, insights: InsightEngine) {
     }
     get("/analytics/time") {
         val ctx = call.require("analytics.read"); val r = call.range(); val b = call.branch()
-        call.respond(jsonOf("range" to r.json(), "heatmap" to service.heatmap(ctx, r, b), "by_hour" to service.timeseries(ctx, r, b, "hour").takeIf { r.days <= 7 }, "by_day" to service.timeseries(ctx, r, b, "day")).stripCostDeep(ctx))
+        call.respond(parallelJson("range" to { r.json() }, "heatmap" to { service.heatmap(ctx, r, b) }, "by_hour" to { if (r.days <= 7) service.timeseries(ctx, r, b, "hour") else null }, "by_day" to { service.timeseries(ctx, r, b, "day") }).stripCostDeep(ctx))
     }
     get("/analytics/inventory") {
         val ctx = call.require("analytics.read", "inventory.read"); val r = call.range()
-        call.respond(jsonOf("range" to r.json(), "abc" to service.abc(ctx, r), "rotation" to service.rotation(ctx, call.request.queryParameters["days"]?.toIntOrNull() ?: 90)).stripCostDeep(ctx))
+        val days = call.request.queryParameters["days"]?.toIntOrNull() ?: 90
+        call.respond(parallelJson("range" to { r.json() }, "abc" to { service.abc(ctx, r) }, "rotation" to { service.rotation(ctx, days) }).stripCostDeep(ctx))
     }
     get("/analytics/trends") {
         val ctx = call.require("analytics.read")

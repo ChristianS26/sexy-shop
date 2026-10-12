@@ -45,9 +45,12 @@ export function sparkline(values, { cls = '', w = 90, h: hh = 34, color = 'var(-
 let chartLib = null;
 export async function loadChart() {
   if (chartLib) return chartLib;
-  if (!window.Chart) {
-    await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  // copia local primero (no depende del CDN); el CDN queda como respaldo
+  for (const src of ['./vendor/chart.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js']) {
+    if (window.Chart) break;
+    try { await new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); } catch { /* siguiente fuente */ }
   }
+  if (!window.Chart) throw new Error('No se pudieron cargar las gráficas. Revisa tu conexión y recarga la página.');
   chartLib = window.Chart;
   const css = getComputedStyle(document.documentElement);
   chartLib.defaults.font.family = css.getPropertyValue('--font-body').trim() || 'Montserrat';
@@ -58,6 +61,8 @@ export async function loadChart() {
   chartLib.defaults.elements.line.tension = 0.35; chartLib.defaults.elements.point.radius = 2; chartLib.defaults.elements.bar.borderRadius = 6;
   return chartLib;
 }
+/** Ajusta los colores base de las gráficas al tema actual (claro u oscuro). */
+export function refreshChartTheme() { if (!chartLib) return; const css = getComputedStyle(document.documentElement); chartLib.defaults.color = css.getPropertyValue('--chart-text').trim() || chartLib.defaults.color; }
 export const palette = () => { const css = getComputedStyle(document.documentElement); return [1, 2, 3, 4, 5, 6, 7, 8].map(i => css.getPropertyValue(`--chart-${i}`).trim()); };
 const gridColor = () => getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim();
 
@@ -66,7 +71,9 @@ const gridColor = () => getComputedStyle(document.documentElement).getPropertyVa
  * datasets: [{ label, data, color? }]
  */
 export async function chart(container, { type = 'line', labels = [], datasets = [], money = true, stacked = false, horizontal = false, legend = null, size = '', donutCenter = null, yFormat = null, onClick = null }) {
-  const Chart = await loadChart();
+  let Chart;
+  try { Chart = await loadChart(); } catch (e) { replace(container, h('div.empty', { style: { padding: '24px' } }, h('div.empty__icon', icon('chart')), h('div.empty__text', e.message))); return null; }
+  refreshChartTheme();
   const canvas = h('canvas', { role: 'img', 'aria-label': 'Gráfica' });
   replace(container, h(`div.chart${size ? '.chart--' + size : ''}`, canvas));
   if (container._chart) { container._chart.destroy(); }

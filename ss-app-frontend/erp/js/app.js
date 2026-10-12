@@ -8,6 +8,7 @@ import { store } from './core/store.js';
 import { router } from './core/router.js';
 import { h, icon, replace, clear, $, $$, fmt } from './core/dom.js';
 import { toast, openPalette, dropdown } from './ui/overlay.js';
+import { refreshChartTheme } from './ui/widgets.js';
 import { NAV, MODULES } from './modules/index.js';
 import { openProductQuickView } from './modules/products.js';
 
@@ -15,7 +16,7 @@ const app = $('#app'), sidebar = $('#sidebar'), header = $('#header'), content =
 
 // ── Tema / preferencias ─────────────────────────────────────────────────────
 function applyTheme(t) { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
-function toggleTheme() { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); const next = cur === 'dark' ? 'light' : 'dark'; store.pref('theme', next); applyTheme(next); toast.info(next === 'dark' ? 'Modo oscuro activado' : 'Modo claro activado', { timeout: 1500 }); }
+function toggleTheme() { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); const next = cur === 'dark' ? 'light' : 'dark'; store.pref('theme', next); applyTheme(next); refreshChartTheme(); router.dispatch(); toast.info(next === 'dark' ? 'Modo oscuro activado' : 'Modo claro activado', { timeout: 1500 }); }
 function applyDiscreet(on) { document.body.classList.toggle('discreet', !!on); }
 
 // ── Sidebar ─────────────────────────────────────────────────────────────────
