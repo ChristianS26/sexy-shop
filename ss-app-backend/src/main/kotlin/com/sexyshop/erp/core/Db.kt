@@ -127,7 +127,7 @@ class Db(val supabase: SupabaseClient) {
         log.warn("DB error: {}", raw.take(600))
         val codeMatch = Regex("([A-Z_]{4,})(?::\\s*([^|\"\\n\\r]+))?").find(raw)
         val code = codeMatch?.groupValues?.get(1)
-        val detail = codeMatch?.groupValues?.getOrNull(2)?.trim()?.takeIf { it.isNotBlank() }
+        val detail = codeMatch?.groupValues?.getOrNull(2)?.replace(Regex("""\s*\(\{?\s*$"""), "")?.trim()?.trimEnd('.', ';', ',')?.takeIf { it.isNotBlank() }
         fun msg(default: String) = detail?.let { if (it.length > 3) it.replaceFirstChar(Char::uppercase) else default } ?: default
         return when (code) {
             "STOCK_INSUFICIENTE" -> ErpException.conflict(detail?.let { "No hay existencia suficiente: $it." } ?: "No hay existencia suficiente para completar la operación.", code)

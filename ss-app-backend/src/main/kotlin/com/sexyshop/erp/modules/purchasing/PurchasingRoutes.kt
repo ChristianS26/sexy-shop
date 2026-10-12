@@ -36,8 +36,11 @@ fun Route.purchasingRoutes(db: Db, audit: AuditService) {
         validate {
             notBlank(body.str("supplier_id"), "supplier_id", "El proveedor"); notBlank(body.str("warehouse_id"), "warehouse_id", "El almacén")
             require(items.isNotEmpty(), "items", "Agrega al menos un producto.")
-            require(items.all { (it.int("quantity") ?: 0) > 0 && (it.dbl("unit_cost") ?: -1.0) >= 0 }, "items", "Cantidad y costo deben ser válidos.")
+            require(items.all { (it.int("quantity") ?: 0) > 0 }, "items", "Las cantidades deben ser mayores a 0.")
+            require(items.all { (it.dbl("unit_cost") ?: -1.0) >= 0 }, "items", "El costo unitario no puede ser negativo.")
         }
+        db.one("suppliers", "id") { eq("id", body.str("supplier_id")!!); org(ctx) } ?: throw ErpException.notFound("Proveedor no encontrado.")
+        db.one("warehouses", "id") { eq("id", body.str("warehouse_id")!!); org(ctx) } ?: throw ErpException.notFound("Almacén no encontrado.")
         val po = db.rpcObject("create_purchase_order", jsonOf("p_org" to ctx.organizationId, "p_supplier" to body.str("supplier_id"), "p_warehouse" to body.str("warehouse_id"),
             "p_expected" to body.str("expected_date"), "p_notes" to body.str("notes"), "p_items" to JsonArray(items), "p_user" to ctx.userId))
         if (body.bool("send") == true) db.rpcObject("set_purchase_order_status", jsonOf("p_po" to po.str("id"), "p_status" to "SENT", "p_user" to ctx.userId))
@@ -64,7 +67,9 @@ fun Route.purchasingRoutes(db: Db, audit: AuditService) {
         val body = call.receiveOrThrow<JsonObject>()
         val status = body.str("status")
         validate { oneOf(status, listOf("SENT", "COMPLETED", "CANCELLED"), "status", "El estado"); require(status != null, "status", "El estado es obligatorio.") }
-        if (status == "CANCELLED" && !ctx.has("purchases.cancel")) throw ErpException.forbidden()
+        if (status == "CANCELLED" && !ctx.has("purchases.cancel")) throw ErpException.forbidden("No tienes permiso para cancelar órdenes de compra.")
+        if (status == "CANCELLED") validate { notBlank(body.str("reason"), "reason", "El motivo de la cancelación") }
+        db.one("purchase_orders", "id") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Orden no encontrada.")
         db.rpcObject("set_purchase_order_status", jsonOf("p_po" to id, "p_status" to status, "p_user" to ctx.userId, "p_reason" to body.str("reason")))
         call.respond(db.one("purchase_orders", poCols) { eq("id", id) }!!)
     }
@@ -75,6 +80,16 @@ fun Route.purchasingRoutes(db: Db, audit: AuditService) {
         val body = runCatching { call.receiveOrThrow<JsonObject>() }.getOrDefault(JsonObject(emptyMap()))
         val items = body.arr("items")
         if (items != null && items.any { (it.jsonObject.int("quantity") ?: 0) < 0 }) throw ErpException.badRequest("Las cantidades no pueden ser negativas.")
+        db.one("purchase_orders", "id") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Orden no encontrada.")
+        if (items != null) {
+            val lines = db.selectAll("purchase_order_items", "id, quantity, received_quantity, products(name)") { eq("purchase_order_id", id) }.associateBy { it.str("id") }
+            items.forEach { e ->
+                val it = e.jsonObject; val line = lines[it.str("po_item_id")] ?: throw ErpException.badRequest("Una partida no pertenece a esta orden.", "PARTIDA_INVALIDA")
+                val pending = (line.int("quantity") ?: 0) - (line.int("received_quantity") ?: 0); val q = it.int("quantity") ?: 0
+                if (q > pending) throw ErpException.badRequest("De “${line.obj("products")?.str("name")}” solo faltan ${pending} por recibir; indicaste $q.", "CANTIDAD_INVALIDA")
+            }
+            if (items.all { (it.jsonObject.int("quantity") ?: 0) == 0 }) throw ErpException.badRequest("Indica al menos una cantidad recibida mayor a 0.", "SIN_PARTIDAS")
+        }
         val receipt = db.rpcObject("receive_purchase_order", jsonOf("p_po" to id, "p_user" to ctx.userId, "p_items" to items, "p_invoice" to body.str("invoice_number"), "p_notes" to body.str("notes")))
         call.respond(HttpStatusCode.Created, jsonOf("receipt" to receipt, "purchase_order" to db.one("purchase_orders", poCols) { eq("id", id) }))
     }
