@@ -24,11 +24,11 @@ export async function render(root) {
 
   async function renderCurrent() {
     replace(current, spinner());
-    let r; try { r = await api.get('/cash/shifts/current'); } catch (e) { replace(current, emptyState({ icon: 'alertCircle', title: 'No se pudo consultar la caja', text: friendlyError(e) })); return; }
+    let r; try { r = await api.get('/cash/shifts/current', { mine: 'true' }); } catch (e) { replace(current, emptyState({ icon: 'alertCircle', title: 'No se pudo consultar la caja', text: friendlyError(e) })); return; }
     const actions = head.querySelector('.page-head__actions'); replace(actions);
     if (!r.shift) {
       replace(current, h('div.card', h('div.card__body', h('div.row.row--between', h('div', h('div.card__title', 'No tienes un turno abierto'), h('div.card__sub', me.can('cash.open') ? 'Abre tu turno con el fondo inicial para cobrar en efectivo.' : 'Pide a un gerente que abra el turno.')), me.can('cash.open') ? h('button.btn.btn--primary', { onclick: openShift }, icon('cash'), 'Abrir turno') : null))));
-      if (r.open_shifts?.length) current.appendChild(h('div.alert.alert--info.mt-4', icon('info'), h('div', h('div.alert__title', `${r.open_shifts.length} turno(s) abierto(s) por otras personas`), h('div.alert__text', r.open_shifts.map(s => `${s.cash_registers?.name} · ${fmt.name(s.opener)} desde ${fmt.time(s.opened_at)}`).join(' · ')))));
+      if (r.open_shifts?.length) current.appendChild(h('div.alert.alert--info.mt-4', icon('info'), h('div.flex-1', h('div.alert__title', r.open_shifts.length === 1 ? 'Hay 1 turno abierto por otra persona' : `Hay ${r.open_shifts.length} turnos abiertos por otras personas`), r.open_shifts.map(s => h('div.row.row--between.mt-2', h('span.alert__text', `${s.cash_registers?.name} · ${fmt.name(s.opener)} desde ${fmt.datetime(s.opened_at)}`), me.can('cash.read') ? h('div.row.gap-1', h('button.btn.btn--ghost.btn--sm', { onclick: () => openShiftDetail(s.id) }, 'Ver'), me.can('cash.close') ? h('button.btn.btn--secondary.btn--sm', { onclick: async () => { try { closeShift(await api.get(`/cash/shifts/${s.id}`)); } catch (e) { toast.error(friendlyError(e)); } } }, icon('lock'), 'Cerrar') : null) : null)))));
       return;
     }
     const s = r.shift;

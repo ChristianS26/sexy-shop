@@ -38,7 +38,10 @@ fun Route.cashRoutes(db: Db, audit: AuditService) {
         val register = call.request.queryParameters["register"]
         val branch = call.request.queryParameters["branch"]
         val open = db.selectAll("cash_shifts", shiftCols, order = "opened_at", asc = false) { org(ctx); eq("status", "OPEN"); eqOpt("cash_register_id", register); eqOpt("branch_id", branch) }
-        val mine = open.firstOrNull { it.str("opened_by") == ctx.userId } ?: open.firstOrNull { it.str("branch_id") == (branch ?: ctx.defaultBranchId) } ?: open.firstOrNull()
+        // ?mine=true (pantalla de Caja): solo el turno que abrió esta persona. Sin él (POS, cancelaciones): el de la sucursal pedida.
+        val onlyMine = call.request.queryParameters["mine"] == "true"
+        val mine = open.firstOrNull { it.str("opened_by") == ctx.userId }
+            ?: if (onlyMine) null else open.firstOrNull { it.str("branch_id") == (branch ?: ctx.defaultBranchId) }
         call.respond(jsonOf("shift" to mine?.let { shiftDetail(ctx, it.str("id")!!) }, "open_shifts" to open))
     }
 
