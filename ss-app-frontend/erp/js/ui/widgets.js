@@ -107,7 +107,7 @@ export function heatmap(container, cells, { metric = 'revenue', hours = null } =
   const hs = hours || Array.from({ length: 13 }, (_, i) => i + 9); // 9 AM – 9 PM
   const map = {}; cells.forEach(c => { map[`${c.dow}-${c.hour}`] = c; });
   const max = Math.max(...cells.map(c => c[metric] || 0), 1);
-  const grid = h('div.heatmap', { style: { '--cols': hs.length } }, h('div'), hs.map(hh => h('div.heatmap__col', fmt.hour(hh).replace(' ', ''))),
+  const grid = h('div.heatmap', { style: { '--cols': hs.length } }, h('div'), hs.map(hh => h('div.heatmap__col', { title: fmt.hour(hh) }, `${hh % 12 === 0 ? 12 : hh % 12}${hh < 12 ? 'a' : 'p'}`)),
     [1, 2, 3, 4, 5, 6, 0].map(d => [h('div.heatmap__row', fmt.dow(d)), hs.map(hh => {
       const c = map[`${d}-${hh}`]; const v = c ? c[metric] || 0 : 0; const l = v <= 0 ? 0 : Math.min(5, Math.ceil(v / max * 5));
       return h('div.heatmap__cell', { 'data-l': l, title: c ? `${fmt.dowLong(d)} ${fmt.hour(hh)} · ${c.sales} ventas · ${fmt.money(c.revenue)} · ticket ${fmt.money(c.avg_ticket)}` : `${fmt.dowLong(d)} ${fmt.hour(hh)} · sin ventas` });

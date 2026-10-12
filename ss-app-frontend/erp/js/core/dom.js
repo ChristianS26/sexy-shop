@@ -5,14 +5,14 @@ import { CONFIG } from './config.js';
 
 /** Hyperscript mínimo: h('div.card', { onclick }, [children]) — nunca innerHTML con datos. */
 export function h(tag, props = {}, ...children) {
-  if (Array.isArray(props) || typeof props === 'string' || props instanceof Node) { children.unshift(props); props = {}; }
+  if (Array.isArray(props) || typeof props === 'string' || typeof props === 'number' || props instanceof Node) { children.unshift(props); props = {}; }
   const [name, ...classes] = tag.split('.');
   const el = document.createElement(name || 'div');
   if (classes.length) el.className = classes.join(' ');
   for (const [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
     if (k === 'class' || k === 'className') el.className += (el.className ? ' ' : '') + v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; } }
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'html') el.innerHTML = v; // solo para SVG/iconos estáticos propios
