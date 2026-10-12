@@ -11,6 +11,16 @@ import kotlinx.serialization.json.*
  * Toda modificación de existencias pasa por funciones SQL que registran el movimiento.
  */
 fun Route.inventoryRoutes(db: Db, audit: AuditService) {
+    /** Documentos y almacenes solo de la organización del usuario (aislamiento entre organizaciones). */
+    suspend fun ownWarehouse(ctx: AuthContext, id: String?, label: String = "El almacén"): JsonObject {
+        if (id.isNullOrBlank()) throw ErpException.badRequest("$label es obligatorio.", "DATOS_INCOMPLETOS")
+        val wh = db.one("warehouses", "id, name, branch_id") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Almacén no encontrado.")
+        if (!ctx.canAccessBranch(wh.str("branch_id")!!)) throw ErpException.forbidden("No tienes acceso al almacén ${wh.str("name")}.")
+        return wh
+    }
+    suspend fun ownTransfer(ctx: AuthContext, id: String): JsonObject =
+        db.one("inventory_transfers", "id, reference, status") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Transferencia no encontrada.")
+
 
     get("/inventory/stock") {
         val ctx = call.require("inventory.read", "products.read")
@@ -129,19 +139,26 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
             require(body.str("from_warehouse_id") != body.str("to_warehouse_id"), "to_warehouse_id", "Origen y destino deben ser distintos.")
             require(items.isNotEmpty(), "items", "Agrega al menos un producto."); require(items.all { (it.int("quantity") ?: 0) > 0 }, "items", "Las cantidades deben ser mayores a 0.")
         }
+        ownWarehouse(ctx, body.str("from_warehouse_id"), "El almacén origen"); ownWarehouse(ctx, body.str("to_warehouse_id"), "El almacén destino")
         val folio = db.rpc("next_folio", jsonOf("p_org" to ctx.organizationId, "p_doc_type" to "TRF", "p_prefix" to "TRF")).jsonPrimitive.content
         val t = db.insert("inventory_transfers", jsonOf("organization_id" to ctx.organizationId, "reference" to folio, "from_warehouse_id" to body.str("from_warehouse_id"), "to_warehouse_id" to body.str("to_warehouse_id"), "notes" to body.str("notes"), "created_by" to ctx.userId))
         db.insertMany("inventory_transfer_items", items.map { jsonOf("transfer_id" to t.str("id"), "product_id" to it.str("product_id"), "variant_id" to it.str("variant_id"), "quantity" to it.int("quantity")) })
         audit.log(call, "inventory.transfer.create", "TRANSFER", t.str("id"), null, t.with("items" to items))
         val created = db.one("inventory_transfers", transferCols) { eq("id", t.str("id")!!) }!!
         if (body.bool("send") == true) {
-            call.respond(HttpStatusCode.Created, db.rpcObject("send_transfer", jsonOf("p_transfer" to t.str("id"), "p_user" to ctx.userId)))
+            val sent = try { db.rpcObject("send_transfer", jsonOf("p_transfer" to t.str("id"), "p_user" to ctx.userId)) } catch (e: ErpException) {
+                // no dejar un borrador que la persona no pidió: se descarta y se explica el motivo
+                db.delete("inventory_transfer_items") { eq("transfer_id", t.str("id")!!) }
+                db.delete("inventory_transfers") { eq("id", t.str("id")!!) }
+                throw ErpException(e.status, e.code, "No se envió la transferencia: ${e.message.replaceFirstChar { it.lowercase() }}", e.details)
+            }
+            call.respond(HttpStatusCode.Created, sent.with("reference" to (sent.str("reference") ?: folio)))
         } else call.respond(HttpStatusCode.Created, created)
     }
     patch("/inventory/transfers/{id}") {
         val ctx = call.require("inventory.transfer")
         val id = call.requiredParam("id")
-        val t = db.one("inventory_transfers") { eq("id", id); org(ctx) } ?: throw ErpException.notFound()
+        val t = db.one("inventory_transfers") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Transferencia no encontrada.")
         if (t.str("status") != "DRAFT") throw ErpException.conflict("Solo se editan transferencias en borrador.")
         val body = call.receiveOrThrow<JsonObject>()
         body.arr("items")?.let { arr ->
@@ -156,17 +173,27 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
     }
     post("/inventory/transfers/{id}/send") {
         val ctx = call.require("inventory.transfer")
-        call.respond(db.rpcObject("send_transfer", jsonOf("p_transfer" to call.requiredParam("id"), "p_user" to ctx.userId)))
+        val t = ownTransfer(ctx, call.requiredParam("id"))
+        call.respond(db.rpcObject("send_transfer", jsonOf("p_transfer" to t.str("id"), "p_user" to ctx.userId)))
     }
     post("/inventory/transfers/{id}/receive") {
         val ctx = call.require("inventory.transfer")
         val body = runCatching { call.receiveOrThrow<JsonObject>() }.getOrDefault(JsonObject(emptyMap()))
-        call.respond(db.rpcObject("receive_transfer", jsonOf("p_transfer" to call.requiredParam("id"), "p_user" to ctx.userId, "p_items" to body["items"])))
+        val t = ownTransfer(ctx, call.requiredParam("id"))
+        val sentItems = db.selectAll("inventory_transfer_items", "id, quantity, products(name)") { eq("transfer_id", t.str("id")!!) }.associateBy { it.str("id") }
+        body.arr("items")?.forEach { e ->
+            val it = e.jsonObject; val sent = sentItems[it.str("item_id")] ?: throw ErpException.badRequest("Una partida no pertenece a esta transferencia.", "PARTIDA_INVALIDA")
+            val q = it.int("received_quantity") ?: 0
+            if (q < 0 || q > (sent.int("quantity") ?: 0)) throw ErpException.badRequest("De “${sent.obj("products")?.str("name")}” se enviaron ${sent.int("quantity")}; lo recibido debe estar entre 0 y ${sent.int("quantity")}.", "CANTIDAD_INVALIDA")
+        }
+        call.respond(db.rpcObject("receive_transfer", jsonOf("p_transfer" to t.str("id"), "p_user" to ctx.userId, "p_items" to body["items"])))
     }
     post("/inventory/transfers/{id}/cancel") {
         val ctx = call.require("inventory.transfer")
         val body = runCatching { call.receiveOrThrow<JsonObject>() }.getOrDefault(JsonObject(emptyMap()))
-        call.respond(db.rpcObject("cancel_transfer", jsonOf("p_transfer" to call.requiredParam("id"), "p_user" to ctx.userId, "p_reason" to body.str("reason"))))
+        val t = ownTransfer(ctx, call.requiredParam("id"))
+        validate { notBlank(body.str("reason"), "reason", "El motivo de la cancelación") }
+        call.respond(db.rpcObject("cancel_transfer", jsonOf("p_transfer" to t.str("id"), "p_user" to ctx.userId, "p_reason" to body.str("reason"))))
     }
 
     // ---------------------------------------------------------------- Conteos
@@ -181,6 +208,7 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
         val ctx = call.require("inventory.count")
         val body = call.receiveOrThrow<JsonObject>()
         validate { notBlank(body.str("warehouse_id"), "warehouse_id", "El almacén") }
+        ownWarehouse(ctx, body.str("warehouse_id"))
         val c = db.rpcObject("start_inventory_count", jsonOf("p_org" to ctx.organizationId, "p_warehouse" to body.str("warehouse_id"), "p_user" to ctx.userId, "p_notes" to body.str("notes"), "p_category" to body.str("category_id")))
         audit.log(call, "inventory.count.start", "COUNT", c.str("id"), null, c)
         call.respond(HttpStatusCode.Created, c)
@@ -196,19 +224,20 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
     patch("/inventory/counts/{id}/items") {
         val ctx = call.require("inventory.count")
         val id = call.requiredParam("id")
-        val c = db.one("inventory_counts") { eq("id", id); org(ctx) } ?: throw ErpException.notFound()
-        if (c.str("status") != "OPEN") throw ErpException.conflict("El conteo ya fue cerrado.")
+        val c = db.one("inventory_counts") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Conteo no encontrado.")
+        if (c.str("status") != "OPEN") throw ErpException.conflict("El conteo ya fue cerrado; ya no se pueden capturar cantidades.")
         val items = call.receiveOrThrow<JsonObject>().arr("items")?.map { it.jsonObject } ?: emptyList()
         for (it in items) {
             val qty = it.int("counted_qty")
             if (qty != null && qty < 0) throw ErpException.badRequest("Las cantidades contadas no pueden ser negativas.")
-            db.update("inventory_count_items", it.str("id")!!, jsonOf("counted_qty" to qty))
+            db.updateWhere("inventory_count_items", jsonOf("counted_qty" to qty)) { eq("id", it.str("id")!!); eq("count_id", id) }
         }
         call.respond(jsonOf("updated" to items.size))
     }
     post("/inventory/counts/{id}/finalize") {
         val ctx = call.require("inventory.count")
-        call.respond(db.rpcObject("finalize_inventory_count", jsonOf("p_count" to call.requiredParam("id"), "p_user" to ctx.userId)))
+        val c = db.one("inventory_counts", "id") { eq("id", call.requiredParam("id")); org(ctx) } ?: throw ErpException.notFound("Conteo no encontrado.")
+        call.respond(db.rpcObject("finalize_inventory_count", jsonOf("p_count" to c.str("id"), "p_user" to ctx.userId)))
     }
     post("/inventory/counts/{id}/cancel") {
         val ctx = call.require("inventory.count")

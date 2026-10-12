@@ -141,12 +141,14 @@ fun String?.requireUuid(field: String): String = this.uuidOrNull() ?: throw ErpE
 class Validator {
     private val errors = mutableMapOf<String, String>()
     fun require(cond: Boolean, field: String, message: String) { if (!cond) errors.putIfAbsent(field, message) }
-    fun notBlank(value: String?, field: String, label: String = field) = require(!value.isNullOrBlank(), field, "$label es obligatorio.")
+    /** Concordancia de género: "La categoría es obligatoria", "El nombre es obligatorio". */
+    private fun fem(label: String) = label.startsWith("La ") || label.startsWith("Las ") || label.startsWith("Una ")
+    fun notBlank(value: String?, field: String, label: String = field) = require(!value.isNullOrBlank(), field, "$label es ${if (fem(label)) "obligatoria" else "obligatorio"}.")
     fun positive(value: Double?, field: String, label: String = field) = require(value != null && value > 0, field, "$label debe ser mayor a 0.")
-    fun nonNegative(value: Double?, field: String, label: String = field) = require(value == null || value >= 0, field, "$label no puede ser negativo.")
+    fun nonNegative(value: Double?, field: String, label: String = field) = require(value == null || value >= 0, field, "$label no puede ser ${if (fem(label)) "negativa" else "negativo"}.")
     fun email(value: String?, field: String = "email") = require(value.isNullOrBlank() || Regex("^[^@\\s]{1,64}@[^@\\s]{1,255}$").matches(value!!), field, "El correo no es válido.")
     fun maxLen(value: String?, max: Int, field: String, label: String = field) = require(value == null || value.length <= max, field, "$label no puede exceder $max caracteres.")
-    fun oneOf(value: String?, allowed: Collection<String>, field: String, label: String = field) = require(value == null || value in allowed, field, "$label no es válido.")
+    fun oneOf(value: String?, allowed: Collection<String>, field: String, label: String = field) = require(value == null || value in allowed, field, "$label no es ${if (fem(label)) "válida" else "válido"}.")
     fun throwIfInvalid() {
         if (errors.isNotEmpty()) throw ErpException(
             HttpStatusCode.UnprocessableEntity, "VALIDATION",

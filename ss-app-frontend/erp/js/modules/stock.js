@@ -57,7 +57,12 @@ export async function render(root, ctx) {
 
 /** Ajuste de inventario: entrada, salida, merma, pérdida o inventario inicial. Genera movimientos INV- */
 export async function openAdjustment({ product = null, variant = null, warehouse = null } = {}, onDone) {
-  const items = product ? [{ product, variant, quantity: 1 }] : [];
+  const items = [];
+  if (product && product.has_variants && !variant) {
+    // producto con variantes: el ajuste se hace por variante
+    try { const full = await api.get(`/products/${product.id}`); (full.variants || []).filter(v => !v.deleted_at).forEach(v => items.push({ product, variant: v, quantity: 0 })); }
+    catch (e) { toast.error(friendlyError(e)); return; }
+  } else if (product) items.push({ product, variant, quantity: 1 });
   const whSel = field({ label: 'Almacén', name: 'warehouse_id', type: 'select', required: true, options: me.warehouses, value: warehouse || me.warehousesOf(me.user?.default_branch_id)[0]?.id || me.warehouses[0]?.id });
   const type = field({ label: 'Tipo de ajuste', name: 'type', type: 'select', required: true, options: [['ADJUSTMENT_IN', 'Entrada por ajuste (+)'], ['ADJUSTMENT_OUT', 'Salida por ajuste (−)'], ['DAMAGE', 'Merma / producto dañado (−)'], ['LOSS', 'Pérdida / robo (−)'], ['INITIAL_STOCK', 'Inventario inicial (+)']].map(([value, label]) => ({ value, label })) });
   const reason = field({ label: 'Motivo (obligatorio, queda auditado)', name: 'reason', required: true, placeholder: 'Ej. conteo de estante, empaque roto…' });
@@ -71,12 +76,12 @@ export async function openAdjustment({ product = null, variant = null, warehouse
     h('td.actions', h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Quitar', onclick: () => { items.splice(i, 1); renderList(); } }, icon('x')))))))) : h('p.text-sm.text-3', 'Agrega al menos un producto.'));
   const doSearch = debounce(async () => {
     const q = search.value.trim(); if (q.length < 2) { results.hidden = true; return; }
-    const r = await api.get('/products', { q, size: 8, active: 'false' });
+    const r = await api.get('/products', { q, size: 8, active: 'false', warehouse: whSel.input.value });
     replace(results, r.data.length ? r.data.map(p => h('button.menu__item', { type: 'button', onclick: async () => {
       if (p.has_variants) { const full = await api.get(`/products/${p.id}`); const vs = full.variants || []; vs.forEach(v => items.push({ product: p, variant: v, quantity: 0 })); }
       else items.push({ product: p, variant: null, quantity: 1 });
       results.hidden = true; search.value = ''; renderList();
-    } }, h('div.thumb', { style: { width: '28px', height: '28px' } }, p.image_url ? h('img', { src: p.image_url, alt: '' }) : icon('box')), h('div', h('div', p.name), h('div.text-xs.text-3', `${p.sku || ''} · stock ${p.stock}`)))) : h('div.menu__label', 'Sin resultados'));
+    } }, h('div.thumb', { style: { width: '28px', height: '28px' } }, p.image_url ? h('img', { src: p.image_url, alt: '' }) : icon('box')), h('div', h('div', p.name), h('div.text-xs.text-3', `${p.sku || ''} · ${p.warehouse_stock ?? p.stock} en este almacén`)))) : h('div.menu__label', 'Sin resultados'));
     results.hidden = false;
   }, 250);
   search.addEventListener('input', doSearch);
@@ -84,12 +89,13 @@ export async function openAdjustment({ product = null, variant = null, warehouse
   openModal({ title: 'Ajuste de inventario', size: 'md', sub: 'Cada partida genera un movimiento con referencia única y queda en auditoría.', body: h('div.stack', h('div.form-grid', whSel, type), reason, h('div', h('div.search', icon('search'), search), results), list, notes),
     footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
       const valid = items.filter(it => it.quantity > 0);
-      if (!valid.length) { toast.warn('Agrega productos con cantidad mayor a 0.'); return; }
-      if (!reason.input.value.trim()) { toast.warn('Indica el motivo.'); reason.input.focus(); return; }
+      if (!valid.length) { toast.warn(items.length ? 'Escribe una cantidad mayor a 0 en al menos un producto.' : 'Agrega al menos un producto con el buscador.'); return; }
+      if (!reason.input.value.trim()) { toast.warn('Indica el motivo del ajuste; queda en la auditoría.'); reason.input.focus(); return; }
       setLoading(e.target.closest('button'), true);
       try {
         const res = await api.post('/inventory/adjustments', { warehouse_id: whSel.input.value, type: type.input.value, reason: reason.input.value, notes: notes.input.value || null, items: valid.map(it => ({ product_id: it.product.id, variant_id: it.variant?.id || null, quantity: it.quantity, unit_cost: it.unit_cost ?? null })) });
-        toast(`Ajuste ${res.reference} aplicado`); m.close(); onDone?.();
+        const units = valid.reduce((a, it) => a + it.quantity, 0); const sign = ['ADJUSTMENT_IN', 'INITIAL_STOCK'].includes(type.input.value) ? '+' : '−';
+        toast(`${fmt.plural(valid.length, 'producto', 'productos')}, ${sign}${fmt.int(units)} unidades en ${whSel.input.selectedOptions[0]?.textContent || 'el almacén'}.`, { title: `Ajuste ${res.reference || ''} aplicado` }); m.close(); onDone?.();
       } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, icon('check'), 'Aplicar ajuste')] });
 }

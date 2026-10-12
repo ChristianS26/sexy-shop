@@ -63,9 +63,9 @@ export async function render(root, ctx) {
   async function bulk(rows, patch) {
     const res = await Promise.allSettled(rows.map(r => api.patch(`/products/${r.id}`, patch)));
     const bad = res.filter(x => x.status === 'rejected');
-    const verb = patch.status === 'ACTIVE' ? 'activados' : 'desactivados';
-    if (!bad.length) toast(`${fmt.plural(rows.length, 'producto', 'productos')} ${verb}.`);
-    else toast.error(`${rows.length - bad.length} ${verb} y ${bad.length} con error: ${friendlyError(bad[0].reason)}`);
+    const n = rows.length - bad.length; const verb = (patch.status === 'ACTIVE' ? 'activado' : 'desactivado') + (n === 1 ? '' : 's');
+    if (!bad.length) toast(`${fmt.plural(n, 'producto', 'productos')} ${verb}.`);
+    else toast.error(`${n} ${verb} y ${bad.length} con error: ${friendlyError(bad[0].reason)}`);
   }
   if (ctx.params.id) openProductQuickView(ctx.params.id, () => table.reload());
 }
@@ -143,7 +143,7 @@ export async function openProductForm(id, onDone) {
       const saved = p ? await api.patch(`/products/${p.id}`, data) : await api.post('/products', data);
       toast(p ? `“${saved.name}” · ${fmt.money(saved.price)}` : `SKU ${saved.sku}. Ahora puedes agregar variantes e imágenes; la existencia se carga con un ajuste o una compra.`, { title: p ? 'Cambios guardados' : `Producto “${saved.name}” creado`, timeout: 6000 }); onDone?.();
       if (!p) { ctx.close(); openProductForm(saved.id, onDone); } else ctx.close();
-    } catch (err) { if (!showErrors(form, err)) toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+    } catch (err) { showErrors(form, err); toast.error(friendlyError(err), { title: err?.details ? 'Revisa los campos marcados' : null }); setLoading(e.target.closest('button'), false); }
   } }, icon('check'), p ? 'Guardar cambios' : 'Crear producto')] });
   setTimeout(() => f.name.input.focus(), 50);
 }
