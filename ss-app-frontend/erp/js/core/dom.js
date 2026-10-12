@@ -113,7 +113,8 @@ export function icon(name, cls = '') {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
   svg.setAttribute('stroke-width', '1.8'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
-  svg.setAttribute('aria-hidden', 'true'); if (cls) svg.setAttribute('class', cls);
+  svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'icon' + (cls ? ' ' + cls : ''));
+  svg.setAttribute('width', '1em'); svg.setAttribute('height', '1em');
   svg.innerHTML = ICONS[name] || ICONS.info;
   return svg;
 }

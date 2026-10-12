@@ -18,6 +18,9 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
 :focus-visible { outline: none; box-shadow: var(--shadow-focus); border-radius: var(--radius-sm); }
 ::selection { background: var(--brand-rose); color: var(--brand-wine-deep); }
 [hidden] { display: none !important; }
+/* Todo icono tiene tamaño por defecto; los contextos específicos lo ajustan */
+svg.icon { width: 1.1em; height: 1.1em; flex: none; display: inline-block; vertical-align: -0.18em; }
+kbd { white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 10px; border: 2px solid var(--color-bg); } ::-webkit-scrollbar-track { background: transparent; }
 
@@ -98,7 +101,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
 .up { color: var(--color-success); } .down { color: var(--color-danger); } .flat { color: var(--color-text-3); }
 .muted { opacity: 0.6; }
 .w-full { width: 100%; } .flex-1 { flex: 1; min-width: 0; }
-.hide-mobile { } .only-mobile { display: none; }
+@media (min-width: 861px) { .only-mobile { display: none !important; } }
 .divider { height: 1px; background: var(--color-border); margin: 8px 0; }
 .eyebrow { font-size: var(--text-xs); letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-3); font-weight: 600; }
 .serif { font-family: var(--font-display); }
@@ -118,7 +121,7 @@ code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
   .header { padding: 0 16px; } .content { padding: 16px 16px 40px; }
   .header__search { min-width: 0; flex: 1; } .header__search kbd { display: none; }
   .grid--2, .grid--3, .grid--4 { grid-template-columns: 1fr; } .span-2, .span-3 { grid-column: auto; }
-  .hide-mobile { display: none !important; } .only-mobile { display: initial; }
+  .hide-mobile { display: none !important; }
   .page-head__title { font-size: var(--text-xl); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
