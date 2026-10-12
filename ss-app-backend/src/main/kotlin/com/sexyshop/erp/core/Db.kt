@@ -105,6 +105,21 @@ class Db(val supabase: SupabaseClient) {
         throw translate(e)
     }
 
+    /** Duplicado: identifica la columna y el valor a partir de "Key (organization_id, sku)=(…, X)". */
+    private fun duplicate(raw: String): ErpException {
+        val m = Regex("Key \\(([^)]+)\\)=\\((.+?)\\) already exists").find(raw)
+        val cols = m?.groupValues?.get(1)?.split(",")?.map { it.trim().removePrefix("lower(").removeSuffix(")") } ?: emptyList()
+        val vals = m?.groupValues?.get(2)?.split(",")?.map { it.trim() } ?: emptyList()
+        val idx = cols.indexOfLast { it !in setOf("organization_id", "branch_id", "product_id", "warehouse_id") }.takeIf { it >= 0 }
+        val col = idx?.let { cols[it] } ?: Regex("_(sku|barcode|slug|email|username|code|name|folio)_").find(raw)?.groupValues?.get(1)
+        val value = idx?.let { vals.getOrNull(it) }
+        val label = mapOf("sku" to "SKU", "barcode" to "código de barras", "slug" to "identificador web", "email" to "correo", "username" to "usuario",
+            "code" to "código", "name" to "nombre", "folio" to "folio", "rfc" to "RFC", "phone" to "teléfono")[col]
+        if (label == null) return ErpException.conflict("Ya existe un registro con esos datos. Revisa que no esté duplicado.", "DUPLICATE")
+        val msg = if (value != null) "Ya existe otro registro con el $label “$value”." else "Ya existe otro registro con ese $label."
+        return ErpException(HttpStatusCode.Conflict, "DUPLICATE", msg, JsonObject(mapOf(col!! to JsonPrimitive(msg))))
+    }
+
     /** Traduce los errores que lanzan las funciones SQL (RAISE EXCEPTION 'CODIGO: detalle'). */
     private fun translate(e: RestException): ErpException {
         val pg = e as? PostgrestRestException
@@ -115,7 +130,7 @@ class Db(val supabase: SupabaseClient) {
         val detail = codeMatch?.groupValues?.getOrNull(2)?.trim()?.takeIf { it.isNotBlank() }
         fun msg(default: String) = detail?.let { if (it.length > 3) it.replaceFirstChar(Char::uppercase) else default } ?: default
         return when (code) {
-            "STOCK_INSUFICIENTE" -> ErpException.conflict("No hay existencia suficiente para completar la operación.", code)
+            "STOCK_INSUFICIENTE" -> ErpException.conflict(detail?.let { "No hay existencia suficiente: $it." } ?: "No hay existencia suficiente para completar la operación.", code)
             "CAJA_ABIERTA" -> ErpException.conflict(msg("Esta caja ya tiene un turno abierto."), code)
             "TURNO_CERRADO" -> ErpException.conflict(msg("El turno de caja está cerrado."), code)
             "TURNO_REQUERIDO" -> ErpException.conflict(msg("Abre un turno de caja para continuar."), code)
@@ -131,7 +146,7 @@ class Db(val supabase: SupabaseClient) {
             "PRECIO_INVALIDO", "CLIENTE_INVALIDO", "MOTIVO_REQUERIDO", "PARTIDA_INVALIDA", "MONTO_INVALIDO", "TIPO_INVALIDO", "DATOS_INCOMPLETOS",
             "SIGNO_INVALIDO", "DESCRIPCION_REQUERIDA" -> ErpException.badRequest(msg("Revisa los datos de la operación."), code)
             else -> when {
-                raw.contains("23505") || raw.contains("duplicate key") -> ErpException.conflict("Ya existe un registro con ese valor (SKU, código o nombre duplicado).", "DUPLICATE")
+                raw.contains("23505") || raw.contains("duplicate key") -> duplicate(raw)
                 raw.contains("23503") || raw.contains("foreign key") -> ErpException.conflict("No se puede completar porque hay registros relacionados.", "RELATED_RECORDS")
                 raw.contains("23514") || raw.contains("check constraint") -> ErpException.badRequest("Alguno de los valores no está permitido.", "CHECK")
                 raw.contains("PGRST116") -> ErpException.notFound()

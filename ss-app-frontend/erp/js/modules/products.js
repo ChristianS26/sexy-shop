@@ -55,12 +55,18 @@ export async function render(root, ctx) {
         me.can('products.update') ? { label: 'Editar', icon: 'edit', onClick: () => openProductForm(r.id, () => table.reload()) } : null,
         me.can('inventory.adjust') ? { label: 'Ajustar stock', icon: 'layers', onClick: () => import('./stock.js').then(m => m.openAdjustment({ product: r }, () => table.reload())) } : null,
         me.can('products.delete') ? { sep: true } : null,
-        me.can('products.delete') ? { label: r.stock > 0 ? 'Desactivar / ocultar' : 'Eliminar', icon: 'trash', danger: true, onClick: async () => { if (await confirm({ title: `Eliminar “${r.name}”`, text: 'Si tiene ventas o existencia solo se desactivará y ocultará para conservar el historial.', confirmText: 'Eliminar', danger: true })) { try { const res = await api.del(`/products/${r.id}`); toast(res?.message || 'Producto eliminado'); table.reload(); } catch (e) { toast.error(friendlyError(e)); } } } } : null,
+        me.can('products.delete') ? { label: r.stock > 0 ? 'Desactivar / ocultar' : 'Eliminar', icon: 'trash', danger: true, onClick: async () => { if (await confirm({ title: `Eliminar “${r.name}”`, text: 'Si tiene ventas o existencia solo se desactivará y ocultará para conservar el historial.', confirmText: 'Eliminar', danger: true })) { try { const res = await api.del(`/products/${r.id}`); toast(res?.message || `“${r.name}” se eliminó.`, { title: res?.soft ? 'Producto desactivado' : 'Producto eliminado', timeout: 6000 }); table.reload(); } catch (e) { toast.error(friendlyError(e)); } } } } : null,
       ]) },
     ],
     onRow: (r) => openProductQuickView(r.id, () => table.reload()),
   }).mount(box);
-  async function bulk(rows, patch) { try { await Promise.all(rows.map(r => api.patch(`/products/${r.id}`, patch))); toast(`${rows.length} productos actualizados`); } catch (e) { toast.error(friendlyError(e)); } }
+  async function bulk(rows, patch) {
+    const res = await Promise.allSettled(rows.map(r => api.patch(`/products/${r.id}`, patch)));
+    const bad = res.filter(x => x.status === 'rejected');
+    const verb = patch.status === 'ACTIVE' ? 'activados' : 'desactivados';
+    if (!bad.length) toast(`${fmt.plural(rows.length, 'producto', 'productos')} ${verb}.`);
+    else toast.error(`${rows.length - bad.length} ${verb} y ${bad.length} con error: ${friendlyError(bad[0].reason)}`);
+  }
   if (ctx.params.id) openProductQuickView(ctx.params.id, () => table.reload());
 }
 
@@ -91,7 +97,8 @@ export async function openProductQuickView(id, onChange) {
 /** Formulario de producto (crear / editar) con variantes e imágenes */
 export async function openProductForm(id, onDone) {
   const refs = await loadCatalogRefs();
-  const p = id ? await api.get(`/products/${id}`) : null;
+  let p = null;
+  if (id) { try { p = await api.get(`/products/${id}`); } catch (e) { toast.error(friendlyError(e), { title: 'No se pudo abrir el producto' }); return; } }
   const canCost = me.can('products.cost.read');
   const form = h('form', { novalidate: true });
   const f = {
@@ -124,11 +131,17 @@ export async function openProductForm(id, onDone) {
   else extra.append(h('div.alert.alert--info.mt-4', icon('info'), h('div', 'Guarda el producto para agregar variantes e imágenes. El inventario inicial se registra desde Existencias → Ajuste o recibiendo una compra.')));
   const d = openDrawer({ title: p ? 'Editar producto' : 'Nuevo producto', size: 'lg', body: [form, extra], footer: (ctx) => [h('button.btn.btn--secondary', { onclick: () => ctx.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
     const data = formData(form);
+    const local = {};
+    if (!data.name?.trim()) local.name = 'El nombre es obligatorio.';
+    if (!data.category_id) local.category_id = 'Elige una categoría.';
+    if (!(data.price > 0)) local.price = 'El precio debe ser mayor a 0.';
+    if (data.max_stock != null && data.low_stock_threshold != null && data.max_stock < data.low_stock_threshold) local.max_stock = 'El máximo debe ser mayor o igual al mínimo.';
+    if (Object.keys(local).length) { showErrors(form, { details: local }); toast.warn(Object.values(local)[0], { title: 'Revisa los campos marcados' }); return; }
     ['length', 'width', 'height'].forEach(k => { const v = form.querySelector(`input[name="${k}"]`).value; data[k] = v === '' ? null : Number(v); });
     setLoading(e.target.closest('button'), true);
     try {
       const saved = p ? await api.patch(`/products/${p.id}`, data) : await api.post('/products', data);
-      toast(p ? 'Producto actualizado' : 'Producto creado'); onDone?.();
+      toast(p ? `“${saved.name}” · ${fmt.money(saved.price)}` : `SKU ${saved.sku}. Ahora puedes agregar variantes e imágenes; la existencia se carga con un ajuste o una compra.`, { title: p ? 'Cambios guardados' : `Producto “${saved.name}” creado`, timeout: 6000 }); onDone?.();
       if (!p) { ctx.close(); openProductForm(saved.id, onDone); } else ctx.close();
     } catch (err) { if (!showErrors(form, err)) toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
   } }, icon('check'), p ? 'Guardar cambios' : 'Crear producto')] });
@@ -138,7 +151,7 @@ export async function openProductForm(id, onDone) {
 function variantsSection(p, onChange) {
   const list = h('div');
   const sec = h('div.form-section', h('div.form-section__title', icon('layers'), 'Variantes', h('span.text-xs.text-3', '(color, talla, presentación, aroma, modelo…)')), list, h('button.btn.btn--secondary.btn--sm.mt-2', { type: 'button', onclick: () => editVariant(null) }, icon('plus'), 'Agregar variante'));
-  const render = (variants) => replace(list, variants.length ? h('div.table-wrap', h('table.table.table--compact', h('thead', h('tr', h('th', 'Nombre'), h('th', 'Atributos'), h('th', 'SKU'), h('th.num', 'Precio'), h('th', ''))), h('tbody', variants.map(v => h('tr', h('td', v.name, v.is_active === false ? h('span.badge', { style: { marginLeft: '6px' } }, 'inactiva') : null), h('td.text-xs.text-3', Object.entries(v.attributes || {}).map(([k, x]) => `${k}: ${x}`).join(', ')), h('td', v.sku || '—'), h('td.num', v.price != null ? fmt.money(v.price) : h('span.text-3', 'hereda')), h('td.actions', h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Editar', onclick: () => editVariant(v) }, icon('edit')), h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: `Eliminar variante ${v.name}`, confirmText: 'Eliminar', danger: true })) { try { await api.del(`/variants/${v.id}`); reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash')))))))) : h('p.text-sm.text-3', 'Sin variantes. El producto se vende tal cual.'));
+  const render = (variants) => replace(list, variants.length ? h('div.table-wrap', h('table.table.table--compact', h('thead', h('tr', h('th', 'Nombre'), h('th', 'Atributos'), h('th', 'SKU'), h('th.num', 'Precio'), h('th', ''))), h('tbody', variants.map(v => h('tr', h('td', v.name, v.is_active === false ? h('span.badge', { style: { marginLeft: '6px' } }, 'inactiva') : null), h('td.text-xs.text-3', Object.entries(v.attributes || {}).map(([k, x]) => `${k}: ${x}`).join(', ')), h('td', v.sku || '—'), h('td.num', v.price != null ? fmt.money(v.price) : h('span.text-3', 'hereda')), h('td.actions', h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Editar', onclick: () => editVariant(v) }, icon('edit')), h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: `Eliminar variante ${v.name}`, confirmText: 'Eliminar', danger: true })) { try { await api.del(`/variants/${v.id}`); toast(`Si tenía ventas o existencia, quedó inactiva para conservar el historial.`, { title: `Variante ${v.name} eliminada` }); reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash')))))))) : h('p.text-sm.text-3', 'Sin variantes. El producto se vende tal cual.'));
   const reload = async () => { const full = await api.get(`/products/${p.id}`); render(full.variants || []); onChange(); };
   render(p.variants || []);
   function editVariant(v) {
@@ -150,10 +163,11 @@ function variantsSection(p, onChange) {
     const cost = me.can('products.cost.read') ? field({ label: 'Costo (vacío = hereda)', name: 'cost_price', type: 'number', min: 0, step: '0.01', prefix: '$', value: v?.cost_price }) : null;
     const active = field({ label: 'Activa', name: 'is_active', type: 'switch', value: v ? v.is_active !== false : true });
     openModal({ title: v ? 'Editar variante' : 'Nueva variante', body: h('div.form-grid', h('div.span-2', name), attrK, attrV, sku, barcode, price, cost, active), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
-      const data = { name: name.input.value, sku: sku.input.value || null, barcode: barcode.input.value || null, price: price.input.value === '' ? null : Number(price.input.value), is_active: active.querySelector('input').checked, attributes: attrV.input.value ? { [attrK.input.value]: attrV.input.value } : {} };
+      if (!name.input.value.trim()) { toast.warn('Escribe el nombre de la variante (ej. Rosa, 250 ml, Talla M).'); name.input.focus(); return; }
+      const data = { name: name.input.value.trim(), sku: sku.input.value || null, barcode: barcode.input.value || null, price: price.input.value === '' ? null : Number(price.input.value), is_active: active.querySelector('input').checked, attributes: attrV.input.value ? { [attrK.input.value]: attrV.input.value } : {} };
       if (cost) data.cost_price = cost.input.value === '' ? null : Number(cost.input.value);
       setLoading(e.target.closest('button'), true);
-      try { if (v) await api.patch(`/variants/${v.id}`, data); else await api.post(`/products/${p.id}/variants`, data); m.close(); reload(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+      try { if (v) await api.patch(`/variants/${v.id}`, data); else await api.post(`/products/${p.id}/variants`, data); toast(`${data.name} · ${data.price != null ? fmt.money(data.price) : 'precio del producto'}`, { title: v ? 'Variante actualizada' : 'Variante agregada' }); m.close(); reload(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Guardar')] });
   }
   return sec;
@@ -164,16 +178,19 @@ function imagesSection(p) {
   const input = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true });
   const sec = h('div.form-section', h('div.form-section__title', icon('eye'), 'Imágenes', h('span.text-xs.text-3', '(la primera es la principal)')), grid, h('div.row.gap-2.mt-2', h('button.btn.btn--secondary.btn--sm', { type: 'button', onclick: () => input.click() }, icon('upload'), 'Subir imágenes'), input));
   const render = (images) => replace(grid, images.length ? images.map((im, i) => h('div', { style: { position: 'relative' } }, h('div.thumb.thumb--lg', h('img', { src: im.image_url, alt: '' })), i === 0 ? h('span.badge.badge--primary', { style: { position: 'absolute', top: '4px', left: '4px' } }, 'Principal') : null,
-    h('div.row.gap-1.mt-2', i > 0 ? h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Hacer principal', 'data-tip': 'Principal', onclick: () => move(im, 'up', true) }, icon('star')) : null, h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: 'Eliminar imagen', confirmText: 'Eliminar', danger: true })) { try { await api.legacyDelete(`/images/${im.id}`); reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash'))))) : h('p.text-sm.text-3', 'Sin imágenes.'));
+    h('div.row.gap-1.mt-2', i > 0 ? h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Hacer principal', 'data-tip': 'Principal', onclick: () => move(im, 'up', true) }, icon('star')) : null, h('button.btn.btn--ghost.btn--sm.btn--icon', { type: 'button', 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: 'Eliminar imagen', confirmText: 'Eliminar', danger: true })) { try { await api.legacyDelete(`/images/${im.id}`); toast('Imagen eliminada.'); reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash'))))) : h('p.text-sm.text-3', 'Sin imágenes.'));
   let current = p.images || [];
   const reload = async () => { try { current = await api.legacy(`/products/${p.id}/images`); render(current); } catch { render([]); } };
-  const move = async (im) => { try { await api.legacyPut('/images/reorder', { image_ids: [im.id, ...current.filter(x => x.id !== im.id).map(x => x.id)] }); reload(); } catch (e) { toast.error(friendlyError(e)); } };
+  const move = async (im) => { try { await api.legacyPut('/images/reorder', { image_ids: [im.id, ...current.filter(x => x.id !== im.id).map(x => x.id)] }); toast('Esa imagen es ahora la principal en la tienda y el POS.'); reload(); } catch (e) { toast.error(friendlyError(e)); } };
   input.addEventListener('change', async () => {
+    let okN = 0;
     for (const file of input.files) {
-      if (file.size > 5 * 1024 * 1024) { toast.warn(`${file.name} excede 5 MB.`); continue; }
-      const fd = new FormData(); fd.append('productId', p.id); fd.append('isPrimary', String(current.length === 0)); fd.append('file', file);
-      try { await api.legacyUpload('/images/upload', fd); } catch (e) { toast.error(friendlyError(e)); }
+      if (!file.type.startsWith('image/')) { toast.warn(`${file.name} no es una imagen.`); continue; }
+      if (file.size > 5 * 1024 * 1024) { toast.warn(`${file.name} pesa más de 5 MB; redúcela e intenta de nuevo.`); continue; }
+      const fd = new FormData(); fd.append('productId', p.id); fd.append('isPrimary', String(current.length === 0 && okN === 0)); fd.append('file', file);
+      try { await api.legacyUpload('/images/upload', fd); okN++; } catch (e) { toast.error(friendlyError(e), { title: `No se subió ${file.name}` }); }
     }
+    if (okN) toast(`${fmt.plural(okN, 'imagen subida', 'imágenes subidas')}.`);
     input.value = ''; reload();
   });
   render(p.images || []);

@@ -70,6 +70,8 @@ export function friendlyError(e) {
   }
   if (e?.name === 'AbortError') return null;
   if (e instanceof TypeError) return 'No hay conexión con el servidor. Revisa tu internet.';
+  // errores lanzados por la propia app con un mensaje pensado para la persona (new Error('…'))
+  if (e && e.constructor === Error && e.message) return e.message;
   console.error(e);
   return 'Ocurrió un error inesperado.';
 }

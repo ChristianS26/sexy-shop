@@ -56,7 +56,9 @@ class CatalogService(private val db: Db) {
     }
 
     fun validateProduct(body: JsonObject, creating: Boolean) = validate {
-        if (creating) { notBlank(body.str("name"), "name", "El nombre"); positive(body.dbl("price"), "price", "El precio") }
+        if (creating) { notBlank(body.str("name"), "name", "El nombre"); positive(body.dbl("price"), "price", "El precio"); notBlank(body.str("category_id"), "category_id", "La categoría") }
+        if (!creating && body.containsKey("name")) notBlank(body.str("name"), "name", "El nombre")
+        if (!creating && body.containsKey("price")) positive(body.dbl("price"), "price", "El precio")
         nonNegative(body.dbl("price"), "price", "El precio"); nonNegative(body.dbl("cost_price"), "cost_price", "El costo"); nonNegative(body.dbl("old_price"), "old_price", "El precio anterior")
         maxLen(body.str("name"), 160, "name", "El nombre"); maxLen(body.str("sku"), 40, "sku", "El SKU"); maxLen(body.str("barcode"), 40, "barcode", "El código de barras")
         oneOf(body.str("status"), listOf("ACTIVE", "INACTIVE", "DISCONTINUED", "DRAFT"), "status", "El estado")
@@ -155,17 +157,19 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
         val before = db.one("products") { eq("id", id); org(ctx); isNull("deleted_at") } ?: throw ErpException.notFound("Producto no encontrado.")
         val hasSales = db.count("sale_items") { eq("product_id", id) } > 0 || db.count("order_items") { eq("product_id", id) } > 0
         val hasStock = (before.int("stock") ?: 0) > 0
-        if (hasSales || hasStock) {
+        val hasHistory = db.count("inventory_movements") { eq("product_id", id) } > 0 || db.count("purchase_order_items") { eq("product_id", id) } > 0
+        if (hasSales || hasStock || hasHistory) {
             // Soft delete: conserva historial. Se desactiva y se oculta.
             db.update("products", id, jsonOf("deleted_at" to nowIso(), "deleted_by" to ctx.userId, "status" to "INACTIVE", "is_active" to false))
-            audit.log(call, "products.delete", "PRODUCT", id, before, null, jsonOf("soft" to true, "reason" to if (hasSales) "has_sales" else "has_stock"))
-            call.respond(jsonOf("deleted" to true, "soft" to true, "message" to "El producto tiene historial; se desactivó y ocultó en lugar de borrarse."))
+            audit.log(call, "products.delete", "PRODUCT", id, before, null, jsonOf("soft" to true, "reason" to if (hasSales) "has_sales" else if (hasStock) "has_stock" else "has_history"))
+            val why = when { hasSales -> "tiene ventas"; hasStock -> "aún tiene existencia"; else -> "tiene movimientos de inventario o compras" }
+            call.respond(jsonOf("deleted" to true, "soft" to true, "message" to "“${before.str("name")}” $why, así que se desactivó y se ocultó para conservar el historial."))
         } else {
             db.delete("product_variants") { eq("product_id", id) }
             db.delete("inventory_levels") { eq("product_id", id) }
             db.delete("products") { eq("id", id) }
             audit.log(call, "products.delete", "PRODUCT", id, before, null, jsonOf("soft" to false))
-            call.respond(jsonOf("deleted" to true, "soft" to false))
+            call.respond(jsonOf("deleted" to true, "soft" to false, "message" to "“${before.str("name")}” se eliminó definitivamente."))
         }
     }
 
@@ -185,6 +189,7 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
         val id = call.requiredParam("id")
         val before = db.byId("product_variants", id)
         var body = pick(call.receiveOrThrow<JsonObject>(), CatalogService.VARIANT_FIELDS)
+        validate { if (body.containsKey("name")) notBlank(body.str("name"), "name", "El nombre de la variante"); nonNegative(body.dbl("price"), "price", "El precio") }
         if (!ctx.has("products.cost.read")) body = body.without("cost_price")
         val after = db.update("product_variants", id, body)
         audit.log(call, "products.variant.update", "PRODUCT", before.str("product_id"), before, after)

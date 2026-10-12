@@ -54,13 +54,19 @@ function actionsFor(s, onDone) {
 }
 
 export async function cancelSale(s, onDone) {
-  const reason = await confirm({ title: `Cancelar ${s.folio}`, text: 'El inventario regresa al almacén y el reembolso se registra en el turno abierto (si lo hay). Esta acción queda auditada.', confirmText: 'Cancelar venta', danger: true, input: { label: 'Motivo', placeholder: 'Ej. error de captura', required: true } });
+  // el reembolso se registra en el turno abierto de la sucursal de la venta
+  const cur = await api.get('/cash/shifts/current', { branch: s.branch_id }).catch(() => ({ shift: null }));
+  const shift = cur.shift?.branch_id === s.branch_id ? cur.shift : null;
+  const paidCash = (s.payments || []).some(p => me.paymentMethods.find(m => m.code === p.method_code)?.is_cash);
+  const text = 'El inventario regresa al almacén y la acción queda auditada. ' + (shift
+    ? `El reembolso se registrará en la caja ${shift.cash_registers?.name || 'abierta'}.`
+    : paidCash ? 'No hay turno de caja abierto en esta sucursal: entrega el efectivo y regístralo después como salida de caja.' : '');
+  const reason = await confirm({ title: `Cancelar ${s.folio}`, text, confirmText: 'Cancelar venta', danger: true, input: { label: 'Motivo', placeholder: 'Ej. error de captura', required: true } });
   if (!reason) return;
   try {
-    const cur = await api.get('/cash/shifts/current').catch(() => ({ shift: null }));
-    await api.post(`/sales/${s.id}/cancel`, { reason, cash_shift_id: cur.shift?.id || null });
-    toast('Venta cancelada'); onDone?.();
-  } catch (e) { toast.error(friendlyError(e)); }
+    await api.post(`/sales/${s.id}/cancel`, { reason, cash_shift_id: shift?.id || null });
+    toast(`El inventario regresó al almacén${shift ? ' y el reembolso quedó registrado en caja' : ''}.`, { title: `Venta ${s.folio} cancelada` }); onDone?.();
+  } catch (e) { toast.error(friendlyError(e), { title: `No se pudo cancelar ${s.folio}` }); }
 }
 
 export async function openSaleDetail(id, onDone) {
@@ -95,7 +101,8 @@ export async function openSaleDetail(id, onDone) {
 function labelAction(a) { return ({ 'sales.create': 'Venta creada', 'sales.discount': 'Descuento aplicado', 'sales.cancel': 'Venta cancelada', 'sales.refund': 'Devolución registrada', 'sales.update': 'Venta editada', 'sales.ticket.print': 'Ticket impreso' })[a] || a; }
 
 export async function openReturn(saleId, onDone) {
-  const s = await api.get(`/sales/${saleId}`);
+  let s;
+  try { s = await api.get(`/sales/${saleId}`); } catch (e) { toast.error(friendlyError(e)); return; }
   const items = (s.items || []).filter(i => i.product_id && i.quantity - i.returned_quantity > 0);
   if (!items.length) { toast.warn('No quedan artículos por devolver.'); return; }
   const qtys = {};
@@ -108,15 +115,19 @@ export async function openReturn(saleId, onDone) {
   items.forEach(i => qtys[i.id].q.addEventListener('input', recalc));
   openModal({ title: `Devolución de ${s.folio}`, size: 'md', body: h('div.stack', h('div.table-wrap', h('table.table.table--compact', h('thead', h('tr', h('th', 'Producto'), h('th', 'Cantidad'), h('th', ''))), h('tbody', rows))), h('div.form-grid', reason, method), notes, totalEl),
     footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
+      const over = items.find(i => Number(qtys[i.id].q.value) > i.quantity - i.returned_quantity);
+      if (over) { toast.warn(`De “${over.product_name}” solo puedes devolver ${over.quantity - over.returned_quantity}.`); qtys[over.id].q.focus(); return; }
       const sel = items.filter(i => Number(qtys[i.id].q.value) > 0).map(i => ({ sale_item_id: i.id, quantity: Number(qtys[i.id].q.value), restock: qtys[i.id].restock.checked }));
-      if (!sel.length) { toast.warn('Indica las cantidades a devolver.'); return; }
+      if (!sel.length) { toast.warn('Indica cuántas piezas se devuelven de al menos un producto.'); return; }
       if (!reason.input.value) { toast.warn('Elige el motivo.'); return; }
       setLoading(e.target.closest('button'), true);
       try {
-        const cur = await api.get('/cash/shifts/current').catch(() => ({ shift: null }));
-        await api.post(`/sales/${saleId}/returns`, { reason: reason.input.value, refund_method_code: method.input.value, cash_shift_id: cur.shift?.id || null, notes: notes.input.value || null, items: sel });
-        toast('Devolución registrada'); m.close(); onDone?.();
-      } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+        const cur = await api.get('/cash/shifts/current', { branch: s.branch_id }).catch(() => ({ shift: null }));
+        const shift = cur.shift?.branch_id === s.branch_id ? cur.shift : null;
+        const res = await api.post(`/sales/${saleId}/returns`, { reason: reason.input.value, refund_method_code: method.input.value, cash_shift_id: shift?.id || null, notes: notes.input.value || null, items: sel });
+        const ret = (res?.returns || []).slice(-1)[0];
+        toast(ret ? `Reembolso de ${fmt.money(ret.refund_amount)} vía ${me.paymentMethods.find(x => x.code === ret.refund_method_code)?.name || ret.refund_method_code}.` : 'El inventario y la venta se actualizaron.', { title: ret ? `Devolución ${ret.folio} registrada` : 'Devolución registrada' }); m.close(); onDone?.();
+      } catch (err) { toast.error(err?.code === 'TURNO_REQUERIDO' ? 'Para reembolsar en efectivo abre primero un turno de caja en esta sucursal, o elige otro método de reembolso.' : friendlyError(err), { title: 'No se registró la devolución' }); setLoading(e.target.closest('button'), false); }
     } }, icon('undo'), 'Registrar devolución')] });
 }
 

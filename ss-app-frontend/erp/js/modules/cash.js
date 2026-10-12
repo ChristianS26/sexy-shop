@@ -56,8 +56,9 @@ export async function render(root) {
     const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
     openModal({ title: 'Abrir turno de caja', body: h('div.form-grid', me.branches.length > 1 ? branchSel : null, regSel, amount, notes), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
       if (!regSel.input.value) { toast.warn('Esta sucursal no tiene cajas. Crea una en Configuración → Sucursales.'); return; }
+      if (amount.input.value === '' || Number(amount.input.value) < 0) { toast.warn('Indica el fondo inicial; puede ser $0 si la caja empieza vacía.'); amount.input.focus(); return; }
       setLoading(e.target.closest('button'), true);
-      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value), notes: notes.input.value || null }); toast('Turno abierto'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value), notes: notes.input.value || null }); toast(`${regSel.input.selectedOptions[0]?.textContent || 'Caja'} con fondo de ${fmt.money(Number(amount.input.value))}.`, { title: 'Turno abierto' }); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Abrir turno')] });
   }
   function addMovement(s) {
@@ -65,8 +66,12 @@ export async function render(root) {
     const amount = field({ label: 'Monto', name: 'amount', type: 'number', min: 0.01, step: '0.01', prefix: '$', required: true });
     const desc = field({ label: 'Descripción', name: 'description', required: true, placeholder: 'Ej. retiro para depósito bancario' });
     openModal({ title: 'Movimiento de efectivo', body: h('div.form-grid', type, amount, h('div.span-2', desc)), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
+      const amt = Number(amount.input.value);
+      if (!(amt > 0)) { toast.warn('Indica un monto mayor a $0.'); amount.input.focus(); return; }
+      if (!desc.input.value.trim()) { toast.warn('Describe el motivo del movimiento; queda en el arqueo.'); desc.input.focus(); return; }
+      if (type.input.value === 'WITHDRAWAL' && amt > s.expected_cash_live + 0.001) { toast.warn(`No puedes retirar más de lo que hay en el cajón (${fmt.money(s.expected_cash_live)}).`); amount.input.focus(); return; }
       setLoading(e.target.closest('button'), true);
-      try { await api.post(`/cash/shifts/${s.id}/movements`, { type: type.input.value, amount: Number(amount.input.value), description: desc.input.value }); toast('Movimiento registrado'); m.close(); renderCurrent(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+      try { await api.post(`/cash/shifts/${s.id}/movements`, { type: type.input.value, amount: amt, description: desc.input.value.trim() }); toast(`${type.input.value === 'DEPOSIT' ? 'Depósito' : 'Retiro'} de ${fmt.money(amt)} registrado en el turno.`, { title: 'Movimiento de caja' }); m.close(); renderCurrent(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Registrar')] });
   }
   function closeShift(s) {
@@ -83,7 +88,13 @@ export async function render(root) {
         const d = (Number(counted.value) || 0) - s.expected_cash_live;
         if (Math.abs(d) > 0.5 && !(await confirm({ title: 'Hay diferencia de caja', text: `La diferencia es ${fmt.money(d)}. Se generará una alerta para gerencia. ¿Cerrar de todos modos?`, confirmText: 'Cerrar turno', danger: true }))) return;
         setLoading(e.target.closest('button'), true);
-        try { await api.post(`/cash/shifts/${s.id}/close`, { counted_cash: Number(counted.value), notes: notes.input.value || null }); toast('Turno cerrado'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+        try {
+          const closed = await api.post(`/cash/shifts/${s.id}/close`, { counted_cash: Number(counted.value), notes: notes.input.value || null });
+          const dif = closed?.difference ?? d;
+          if (Math.abs(dif) > 0.5) toast.warn(`Contado ${fmt.money(Number(counted.value))} contra ${fmt.money(s.expected_cash_live)} esperado: diferencia de ${dif > 0 ? '+' : ''}${fmt.money(dif)}. Gerencia recibió una alerta.`, { title: 'Turno cerrado con diferencia', timeout: 8000 });
+          else toast(`La caja cuadra: ${fmt.money(Number(counted.value))} en efectivo.`, { title: 'Turno cerrado' });
+          m.close(); renderCurrent(); renderShifts();
+        } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
       } }, icon('lock'), 'Cerrar turno')] });
     setTimeout(() => counted.focus(), 60);
   }
@@ -130,7 +141,7 @@ export async function render(root) {
         { key: 'user', label: 'Registró', sortable: false, hideSm: true, render: r => fmt.name(r.users) },
         { key: 'receipt_url', label: '', sortable: false, render: r => r.receipt_url ? h('a.btn.btn--ghost.btn--sm.btn--icon', { href: r.receipt_url, target: '_blank', 'aria-label': 'Comprobante' }, icon('file')) : null },
         { key: 'amount', label: 'Monto', num: true, render: r => h('b', fmt.money(r.amount)) },
-        { key: '_actions', label: '', render: r => me.can('expenses.manage') && !r.cash_shift_id ? h('div.row.gap-1', { style: { justifyContent: 'flex-end' } }, h('button.btn.btn--ghost.btn--sm.btn--icon', { 'aria-label': 'Editar', onclick: () => openExpenseForm(r, () => t.reload(), cats) }, icon('edit')), h('button.btn.btn--ghost.btn--sm.btn--icon', { 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: 'Eliminar gasto', text: r.description, confirmText: 'Eliminar', danger: true })) { try { await api.del(`/expenses/${r.id}`); toast('Gasto eliminado'); t.reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash'))) : null },
+        { key: '_actions', label: '', render: r => me.can('expenses.manage') && !r.cash_shift_id ? h('div.row.gap-1', { style: { justifyContent: 'flex-end' } }, h('button.btn.btn--ghost.btn--sm.btn--icon', { 'aria-label': 'Editar', onclick: () => openExpenseForm(r, () => t.reload(), cats) }, icon('edit')), h('button.btn.btn--ghost.btn--sm.btn--icon', { 'aria-label': 'Eliminar', onclick: async () => { if (await confirm({ title: 'Eliminar gasto', text: r.description, confirmText: 'Eliminar', danger: true })) { try { await api.del(`/expenses/${r.id}`); toast(`${r.description} · ${fmt.money(r.amount)}`, { title: 'Gasto eliminado' }); t.reload(); } catch (e) { toast.error(friendlyError(e)); } } } }, icon('trash'))) : null },
       ],
     }).mount(body);
   }
@@ -148,6 +159,11 @@ export async function render(root) {
     };
     openModal({ title: x ? 'Editar gasto' : 'Registrar gasto', size: 'md', body: h('div.form-grid', f.category, f.amount, f.desc, f.date, f.method, me.branches.length > 1 ? f.branch : null, f.fromShift, f.receipt, f.notes),
       footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
+        const amt = Number(f.amount.input.value);
+        if (!f.category.input.value) { toast.warn('Elige la categoría del gasto.'); f.category.input.focus(); return; }
+        if (!(amt > 0)) { toast.warn('Indica un monto mayor a $0.'); f.amount.input.focus(); return; }
+        if (!f.desc.input.value.trim()) { toast.warn('Describe el gasto (ej. pago de luz de octubre).'); f.desc.input.focus(); return; }
+        if (!f.date.input.value) { toast.warn('Indica la fecha del gasto.'); f.date.input.focus(); return; }
         setLoading(e.target.closest('button'), true);
         try {
           let receiptUrl = x?.receipt_url || null;
@@ -155,8 +171,8 @@ export async function render(root) {
           if (file) { const fd = new FormData(); fd.append('file', file); fd.append('entity_type', 'EXPENSE'); receiptUrl = (await api.upload('/files', fd)).url; }
           const payload = { expense_category_id: f.category.input.value, amount: Number(f.amount.input.value), description: f.desc.input.value, expense_date: f.date.input.value, payment_method_code: f.method.input.value, branch_id: f.branch.input.value, notes: f.notes.input.value || null, receipt_url: receiptUrl };
           if (x) await api.patch(`/expenses/${x.id}`, payload);
-          else { let shiftId = null; if (f.fromShift.querySelector('input').checked) { const cur = await api.get('/cash/shifts/current'); shiftId = cur.shift?.id; if (!shiftId) throw new Error('No tienes un turno abierto.'); payload.payment_method_code = 'CASH'; } await api.post('/expenses', { ...payload, cash_shift_id: shiftId }); }
-          toast('Gasto guardado'); m.close(); onDone?.();
+          else { let shiftId = null; if (f.fromShift.querySelector('input').checked) { const cur = await api.get('/cash/shifts/current', { branch: payload.branch_id }); shiftId = cur.shift?.branch_id === payload.branch_id ? cur.shift.id : null; if (!shiftId) throw new Error('Para pagar con el efectivo de la caja necesitas un turno abierto en esa sucursal. Abre el turno o desactiva la opción.'); payload.payment_method_code = 'CASH'; } await api.post('/expenses', { ...payload, cash_shift_id: shiftId }); }
+          toast(x ? `${payload.description} · ${fmt.money(payload.amount)}` : `${payload.description} · ${fmt.money(payload.amount)}${payload.payment_method_code === 'CASH' && f.fromShift?.querySelector('input').checked ? ' (salió de la caja)' : ''}`, { title: x ? 'Gasto actualizado' : 'Gasto registrado' }); m.close(); onDone?.();
         } catch (err) { toast.error(friendlyError(err) || err.message); setLoading(e.target.closest('button'), false); }
       } }, 'Guardar')] });
   }

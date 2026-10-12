@@ -54,7 +54,8 @@ export async function render(root) {
     const amount = field({ label: 'Fondo inicial en efectivo', name: 'opening_amount', type: 'number', value: 500, min: 0, step: '0.01', prefix: '$', required: true });
     openModal({ title: 'Abrir turno de caja', body: h('div.form-grid', regSel, amount), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
       setLoading(e.target.closest('button'), true);
-      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value) }); toast('Turno abierto'); m.close(); loadShift(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
+      if (amount.input.value === '' || Number(amount.input.value) < 0) { toast.warn('Indica el fondo inicial; puede ser $0 si la caja empieza vacía.'); amount.input.focus(); setLoading(e.target.closest('button'), false); return; }
+      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value) }); toast(`${regSel.input.selectedOptions[0]?.textContent || 'Caja'} con fondo de ${fmt.money(Number(amount.input.value))}. Ya puedes cobrar en efectivo.`, { title: 'Turno abierto' }); m.close(); loadShift(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Abrir turno')] });
   }
   async function loadProducts(q = '', category = '') {
@@ -190,7 +191,7 @@ export async function render(root) {
             payments: [{ method_code: method.code, amount: method.is_cash ? received : total, reference: refInput.input.value || undefined }] });
           ctx.close();
           cart = []; saveCart(); customer = null; discountPct = 0; discountReason = ''; notes = ''; clientRef.v = uid(); quote = null; renderCart();
-          toast(`Venta ${sale.folio} registrada`, { title: sale.change_amount > 0 ? `Cambio: ${fmt.money(sale.change_amount)}` : null });
+          toast(sale.change_amount > 0 ? `Entrega ${fmt.money(sale.change_amount)} de cambio.` : `Cobrado: ${fmt.money(sale.total)} con ${method.name}.`, { title: `Venta ${sale.folio} registrada`, timeout: 6000 });
           printTicket(sale.id, { auto: true });
           loadProducts(scan.value.trim(), activeCat);
         } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); ctx.setBusy(false); }
@@ -208,8 +209,13 @@ export async function render(root) {
       const r = await api.get('/products/lookup', { code, warehouse: whOf() });
       if (r.match === 'variant') add(r.product, r.variant);
       else if (r.match === 'product') { if (r.product.has_variants && r.variants?.length === 1) add(r.product, r.variants[0]); else add(r.product); }
-      else if (products.length === 1) add(products[0]);
-      else toast.warn('Producto no encontrado.');
+      else {
+        // sin coincidencia exacta: buscar por nombre y decidir con resultados frescos
+        await loadProducts(code, activeCat);
+        if (products.length === 1) add(products[0]);
+        else if (products.length > 1) toast.info(`Hay ${products.length} productos que coinciden con “${code}”. Toca el correcto.`);
+        else toast.warn(`No encontramos ningún producto con el código o nombre “${code}”.`);
+      }
     } catch (err) { toast.error(friendlyError(err)); }
   });
   // F2 enfoca el escáner, F9 cobra
