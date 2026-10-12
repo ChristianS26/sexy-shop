@@ -30,7 +30,7 @@ export async function render(root, ctx) {
       ...(sellers.length ? [{ key: 'seller', label: 'Vendedor', type: 'select', options: sellers.map(u => ({ value: u.id, label: fmt.name(u) })) }] : []),
     ],
     columns: [
-      { key: 'folio', label: 'Folio', render: r => h('div', h('div.cell-main', r.folio), h('div.cell-sub', fmt.datetime(r.sold_at))) },
+      { key: 'folio', label: 'Folio', render: r => h('div', h('div.cell-main.nowrap', r.folio), h('div.cell-sub', fmt.datetime(r.sold_at))) },
       { key: 'customer', label: 'Cliente', sortable: false, render: r => r.customer ? h('span', { 'data-private': '' }, fmt.name(r.customer)) : h('span.text-3', 'Público') },
       { key: 'seller_name', label: 'Vendedor', sortable: false, hideSm: true, render: r => r.seller_name || h('span.text-3', '—') },
       { key: 'channel', label: 'Canal', sortable: false, hideSm: true, render: r => badge('channel', r.channel) },

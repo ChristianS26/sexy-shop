@@ -50,12 +50,25 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
 
     get("/inventory/alerts") {
         val ctx = call.require("inventory.read", "alerts.read")
-        val rows = db.selectAll("products", "id, name, sku, stock, low_stock_threshold, max_stock, price, cost_price, category_id, categories(name), supplier_id, suppliers(name)", order = "stock") { org(ctx); isNull("deleted_at"); eq("is_active", true) }
-        val shaped = rows.map { p ->
-            val stock = p.int("stock") ?: 0; val min = p.int("low_stock_threshold") ?: 3; val max = p.int("max_stock")
-            val status = when { stock <= 0 -> "OUT"; stock <= Math.ceil(min * 0.5) -> "CRITICAL"; stock <= min -> "LOW"; max != null && stock > max -> "EXCESS"; else -> "HEALTHY" }
-            p.with("stock_status" to status, "min_stock" to min, "category_name" to p.obj("categories")?.str("name"), "supplier_name" to p.obj("suppliers")?.str("name"), "suggested_order" to if (status in setOf("OUT", "CRITICAL", "LOW")) ((max ?: (min * 3)) - stock).coerceAtLeast(1) else 0).without("categories", "suppliers").stripCost(ctx)
-        }.filter { it.str("stock_status") != "HEALTHY" }
+        val warehouse = call.request.queryParameters["warehouse"]
+        // Una fila por producto × almacén, igual que Existencias y el dashboard: lo agotado en una sucursal es accionable.
+        val rows = db.selectAll("v_stock", "product_id, variant_id, product_name, variant_name, effective_sku, sku, quantity, min_stock, max_stock, unit_price, unit_cost, stock_value, stock_status, warehouse_id, warehouse_name, branch_id, category_id, category_name", order = "quantity") {
+            org(ctx); eq("is_active", true); eqOpt("warehouse_id", warehouse); isIn("stock_status", listOf("OUT", "CRITICAL", "LOW", "EXCESS"))
+        }
+        val productIds = rows.mapNotNull { it.str("product_id") }.distinct()
+        val suppliers = if (productIds.isEmpty()) emptyMap() else db.selectAll("products", "id, supplier_id, suppliers(name)") { org(ctx); isIn("id", productIds) }
+            .associate { it.str("id")!! to (it.str("supplier_id") to it.obj("suppliers")?.str("name")) }
+        val shaped = rows.map { r ->
+            val stock = r.int("quantity") ?: 0; val min = r.int("min_stock") ?: 3; val max = r.int("max_stock"); val status = r.str("stock_status") ?: "HEALTHY"
+            val sup = suppliers[r.str("product_id")]
+            jsonOf(
+                "id" to r.str("product_id"), "variant_id" to r.str("variant_id"), "name" to listOfNotNull(r.str("product_name"), r.str("variant_name")).joinToString(" · "),
+                "sku" to (r.str("effective_sku") ?: r.str("sku")), "stock" to stock, "min_stock" to min, "max_stock" to max, "price" to r.dbl("unit_price"), "cost_price" to r.dbl("unit_cost"), "stock_value" to r.dbl("stock_value"),
+                "stock_status" to status, "warehouse_id" to r.str("warehouse_id"), "warehouse_name" to r.str("warehouse_name"), "branch_id" to r.str("branch_id"),
+                "category_id" to r.str("category_id"), "category_name" to r.str("category_name"), "supplier_id" to sup?.first, "supplier_name" to sup?.second,
+                "suggested_order" to if (status in setOf("OUT", "CRITICAL", "LOW")) ((max ?: (min * 3)) - stock).coerceAtLeast(1) else 0,
+            ).stripCost(ctx)
+        }
         val rotation = db.rpcObject("bi_inventory_rotation", jsonOf("p_org" to ctx.organizationId, "p_days" to 90, "p_dead_days" to 90))
         val dead = rotation.arr("rows")?.map { it.jsonObject }?.filter { it.str("classification") in setOf("DEAD", "SLOW") }?.take(50)?.map { it.stripCost(ctx) } ?: emptyList()
         call.respond(jsonOf("stock" to shaped, "slow" to dead, "summary" to jsonOf(

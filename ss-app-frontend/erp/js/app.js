@@ -67,7 +67,7 @@ function renderHeader() {
   const collapseBtn = h('button.btn.btn--ghost.btn--icon.hide-mobile', { type: 'button', 'aria-label': 'Contraer menú', onclick: () => { const c = app.toggleAttribute('data-collapsed'); store.pref('collapsed', c); } }, icon('menu'));
   const search = h('button.header__search.hide-mobile', { type: 'button', onclick: openSearch }, icon('search'), h('span', 'Buscar…'), h('kbd', navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K'));
   const searchMobile = h('button.btn.btn--ghost.btn--icon.only-mobile', { type: 'button', 'aria-label': 'Buscar', onclick: openSearch }, icon('search'));
-  const alertsBtn = h('a.btn.btn--ghost.btn--icon', { href: '#/alerts', 'aria-label': 'Alertas', style: { position: 'relative' } }, icon('bell'), h('span.count', { id: 'alertCount', hidden: true, style: { position: 'absolute', top: '2px', right: '2px', minWidth: '16px', height: '16px', fontSize: '0.6rem' } }));
+  const alertsBtn = h('a.btn.btn--ghost.btn--icon', { href: '#/alerts', 'aria-label': 'Alertas', style: { position: 'relative' } }, icon('bell'), h('span.count.topbar__count', { id: 'alertCount', hidden: true }));
   store.on('unreadAlerts', n => { const c = $('#alertCount'); if (c) { c.hidden = !n; c.textContent = n > 99 ? '99+' : n; } });
   const posBtn = me.can('sales.create') ? h('a.btn.btn--primary.btn--sm.hide-mobile', { href: '#/pos' }, icon('cart'), 'Vender') : null;
   replace(header, menuBtn, collapseBtn, h('div', { style: { minWidth: 0 } }, crumbEl, titleEl), h('div.header__spacer'), search, searchMobile, posBtn, alertsBtn);
