@@ -1,6 +1,9 @@
 package com.sexyshop
 
 import com.sexyshop.di.*
+import com.sexyshop.erp.configureErpRateLimit
+import com.sexyshop.erp.configureErpScheduler
+import com.sexyshop.erp.erpModule
 import com.sexyshop.plugins.configureCors
 import com.sexyshop.plugins.configureSerialization
 import com.sexyshop.routing.configureRouting
@@ -31,11 +34,14 @@ fun Application.module() {
             dashboardModule,
             withdrawalModule,
             shipmentModule,
+            erpModule,
         )
     }
 
     configureSerialization()
     configureCors()
+    configureErpRateLimit()
+    if (System.getenv("ERP_SCHEDULER")?.equals("false", ignoreCase = true) != true) configureErpScheduler()
 
     intercept(ApplicationCallPipeline.Plugins) {
         // Guard against responses that are already committed (e.g. error

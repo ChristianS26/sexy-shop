@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eToys — Propuesta de Desarrollo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#0891b2;--brand-d:#0e7490;--brand-dd:#155e75;--brand-l:#cffafe;--brand-ll:#ecfeff;
+  --accent:#f59e0b;--accent-d:#d97706;--accent-l:#fef3c7;
+  --ok:#10b981;--ok-l:#d1fae5;--no:#ef4444;--no-l:#fee2e2;
+  --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;--g400:#9ca3af;
+  --g500:#6b7280;--g600:#4b5563;--g700:#374151;--g800:#1f2937;--g900:#111827;
+  --radius:16px;--radius-sm:10px;
+}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  color:var(--g800);background:#fff;line-height:1.6;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+a{color:var(--brand);text-decoration:none}
+
+/* ══════ NAV ══════ */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:rgba(17,24,39,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.nav__inner{
+  max-width:1200px;margin:0 auto;padding:0 32px;height:64px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav__logo{font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-.02em}
+.nav__logo span{color:var(--accent)}
+.nav__links{display:flex;gap:6px}
+.nav__links a{
+  color:rgba(255,255,255,.65);font-size:.78rem;font-weight:500;
+  padding:6px 14px;border-radius:100px;transition:all .25s;
+}
+.nav__links a:hover{color:#fff;background:rgba(255,255,255,.08)}
+@media(max-width:768px){.nav__links{display:none}}
+
+/* ══════ HERO ══════ */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--g900);position:relative;overflow:hidden;padding:100px 32px 80px;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 80%,rgba(8,145,178,.15),transparent),
+    radial-gradient(ellipse 60% 50% at 80% 20%,rgba(245,158,11,.1),transparent);
+}
+.hero::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--brand),var(--accent),transparent);
+}
+.hero__c{position:relative;text-align:center;max-width:820px}
+.hero__badge{
+  display:inline-block;border:1px solid rgba(8,145,178,.4);color:var(--brand-l);
+  padding:6px 20px;border-radius:100px;font-size:.72rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:32px;
+  background:rgba(8,145,178,.08);
+}
+.hero__title{
+  font-size:clamp(2.4rem,6vw,4.2rem);font-weight:800;line-height:1.08;
+  color:#fff;margin-bottom:20px;letter-spacing:-.03em;
+}
+.hero__title em{font-style:normal;color:var(--accent)}
+.hero__sub{
+  font-size:clamp(1rem,2vw,1.15rem);color:var(--g400);line-height:1.7;
+  max-width:640px;margin:0 auto 48px;
+}
+.hero__pills{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.hero__pill{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:var(--g300);padding:10px 22px;border-radius:100px;font-size:.82rem;font-weight:500;
+}
+.hero__pill b{color:#fff}
+.hero__scroll{
+  position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+  color:var(--g500);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  animation:float 2s ease-in-out infinite;
+}
+.hero__scroll-arrow{
+  width:20px;height:20px;border-right:2px solid var(--g500);border-bottom:2px solid var(--g500);
+  transform:rotate(45deg);
+}
+@keyframes float{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
+
+/* ══════ SECTIONS ══════ */
+.s{padding:100px 32px}
+.s--dark{background:var(--g900);color:#fff}
+.s--dark .s__eyebrow{color:var(--brand-l);border-color:rgba(8,145,178,.3)}
+.s--dark .s__title{color:#fff}
+.s--dark .s__desc{color:var(--g400)}
+.s--alt{background:var(--g50)}
+.s--brand{background:var(--brand-dd);color:#fff}
+.s--brand .s__eyebrow{color:var(--brand-l);border-color:rgba(255,255,255,.2)}
+.s--brand .s__title{color:#fff}
+.s--brand .s__desc{color:rgba(255,255,255,.7)}
+
+.s__inner{max-width:1100px;margin:0 auto}
+.s__header{text-align:center;margin-bottom:64px}
+.s__eyebrow{
+  display:inline-block;font-size:.7rem;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--brand);
+  border:1px solid rgba(8,145,178,.25);padding:5px 18px;border-radius:100px;
+  margin-bottom:18px;
+}
+.s__title{
+  font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;line-height:1.12;
+  letter-spacing:-.02em;margin-bottom:16px;color:var(--g900);
+}
+.s__desc{font-size:1.05rem;color:var(--g500);max-width:620px;margin:0 auto;line-height:1.65}
+
+/* ══════ CARDS ══════ */
+.cards{display:grid;gap:20px}
+.cards--2{grid-template-columns:repeat(2,1fr)}
+.cards--3{grid-template-columns:repeat(3,1fr)}
+.cards--4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.cards--3,.cards--4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.cards--2,.cards--3,.cards--4{grid-template-columns:1fr}}
+
+.card{
+  background:#fff;border:1px solid var(--g200);border-radius:var(--radius);
+  padding:32px 28px;transition:all .3s;position:relative;overflow:hidden;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.08);border-color:var(--brand)}
+.card__icon{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;margin-bottom:18px;background:var(--brand-ll);
+}
+.card__title{font-size:1rem;font-weight:700;color:var(--g900);margin-bottom:8px}
+.card__text{font-size:.85rem;color:var(--g500);line-height:1.6}
+
+.s--dark .card{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+.s--dark .card:hover{border-color:var(--brand);background:rgba(255,255,255,.06);box-shadow:0 20px 40px rgba(0,0,0,.3)}
+.s--dark .card__title{color:#fff}
+.s--dark .card__text{color:var(--g400)}
+.s--dark .card__icon{background:rgba(8,145,178,.15)}
+
+/* ══════ STATS ══════ */
+.stat-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:600px){.stat-strip{grid-template-columns:1fr}}
+.stat-card{
+  text-align:center;padding:36px 20px;border-radius:var(--radius);
+  background:rgba(8,145,178,.06);border:1px solid rgba(8,145,178,.15);
+}
+.stat-card__val{font-size:2.4rem;font-weight:800;color:var(--brand);line-height:1}
+.stat-card__lbl{font-size:.75rem;color:var(--g500);margin-top:8px;text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+.s--dark .stat-card{background:rgba(8,145,178,.1);border-color:rgba(8,145,178,.2)}
+.s--dark .stat-card__val{color:var(--brand-l)}
+.s--dark .stat-card__lbl{color:var(--g400)}
+.stat-card--accent{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2)}
+.stat-card--accent .stat-card__val{color:var(--accent-d)}
+.stat-card--w{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15)}
+.stat-card--w .stat-card__val{color:#fff}
+.stat-card--w .stat-card__lbl{color:rgba(255,255,255,.6)}
+
+/* ══════ TABLE ══════ */
+.tbl-wrap{overflow-x:auto;margin:0 -8px;padding:0 8px}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:.85rem;border-radius:var(--radius);overflow:hidden;border:1px solid var(--g200)}
+.tbl th{
+  background:var(--g900);color:#fff;font-weight:600;padding:14px 18px;
+  text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;
+}
+.tbl td{padding:13px 18px;border-bottom:1px solid var(--g100);color:var(--g600)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tr:hover td{background:var(--brand-ll)}
+.tbl--brand th{background:var(--brand-dd)}
+
+/* ══════ VS ══════ */
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:600px){.vs{grid-template-columns:1fr}}
+.vs__col{border-radius:var(--radius);padding:32px 28px}
+.vs__col--bad{background:var(--no-l);border:1.5px solid #fca5a5}
+.vs__col--good{background:var(--ok-l);border:1.5px solid #6ee7b7}
+.vs__tag{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px}
+.vs__col--bad .vs__tag{color:#b91c1c}
+.vs__col--good .vs__tag{color:#047857}
+.vs__list{list-style:none}
+.vs__list li{font-size:.85rem;color:var(--g700);padding:6px 0 6px 24px;position:relative}
+.vs__col--bad .vs__list li::before{content:'\2717';position:absolute;left:0;color:var(--no);font-weight:700}
+.vs__col--good .vs__list li::before{content:'\2713';position:absolute;left:0;color:var(--ok);font-weight:700}
+
+/* ══════ TIMELINE ══════ */
+.tl{position:relative;padding-left:40px}
+.tl::before{
+  content:'';position:absolute;left:15px;top:8px;bottom:8px;width:2px;
+  background:linear-gradient(180deg,var(--brand),var(--accent));border-radius:2px;
+}
+.tl__item{position:relative;margin-bottom:40px}
+.tl__item:last-child{margin-bottom:0}
+.tl__dot{
+  position:absolute;left:-40px;top:4px;width:32px;height:32px;border-radius:50%;
+  background:var(--brand);display:flex;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;font-size:.75rem;box-shadow:0 0 0 4px var(--brand-ll);
+}
+.s--dark .tl__dot{box-shadow:0 0 0 4px rgba(8,145,178,.2)}
+.tl__title{font-size:1.05rem;font-weight:700;color:var(--g900);margin-bottom:4px}
+.s--dark .tl__title{color:#fff}
+.tl__desc{font-size:.85rem;color:var(--g500);line-height:1.6}
+.tl__badge{
+  display:inline-block;margin-top:8px;padding:3px 14px;border-radius:100px;
+  font-size:.7rem;font-weight:600;background:var(--brand-ll);color:var(--brand-dd);
+}
+.s--dark .tl__badge{background:rgba(8,145,178,.15);color:var(--brand-l)}
+
+/* ══════ HIGHLIGHT ══════ */
+.hl{border-radius:var(--radius);padding:28px 32px;margin-top:48px;position:relative;overflow:hidden}
+.hl--brand{background:var(--brand-ll);border:1px solid rgba(8,145,178,.2)}
+.hl--brand p{color:var(--brand-dd)}
+.hl--ok{background:var(--ok-l);border:1px solid rgba(16,185,129,.25)}
+.hl--ok p{color:#065f46}
+.hl--warn{background:var(--accent-l);border:1px solid rgba(245,158,11,.3)}
+.hl--warn p{color:#92400e}
+.hl p{font-size:.92rem;line-height:1.65;font-weight:500}
+.hl strong{font-weight:700}
+
+/* ══════ FLOW ══════ */
+.flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:40px 0}
+.flow__step{
+  background:var(--brand);color:#fff;padding:16px 22px;border-radius:var(--radius-sm);
+  font-size:.82rem;font-weight:600;text-align:center;min-width:110px;
+  box-shadow:0 4px 16px rgba(8,145,178,.25);
+}
+.flow__arr{color:var(--brand);font-size:1.4rem;font-weight:700}
+.s--dark .flow__arr{color:var(--brand-l)}
+@media(max-width:600px){.flow__arr{display:none}.flow{gap:10px}.flow__step{flex:1 1 100%}}
+
+/* ══════ SCALER (new) ══════ */
+.scaler{display:grid;grid-template-columns:1fr 1fr;gap:0;border-radius:var(--radius);overflow:hidden;border:1px solid var(--g200)}
+@media(max-width:600px){.scaler{grid-template-columns:1fr}}
+.scaler__side{padding:36px 32px}
+.scaler__side--dark{background:var(--g900);color:#fff}
+.scaler__side--light{background:var(--g50)}
+.scaler__tag{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;color:var(--brand)}
+.scaler__side--dark .scaler__tag{color:var(--brand-l)}
+.scaler__list{list-style:none}
+.scaler__list li{
+  font-size:.85rem;padding:8px 0 8px 28px;position:relative;
+  color:var(--g600);border-bottom:1px solid var(--g200);
+}
+.scaler__side--dark .scaler__list li{color:var(--g400);border-color:rgba(255,255,255,.06)}
+.scaler__list li:last-child{border-bottom:0}
+.scaler__list li::before{
+  content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;border-radius:50%;
+}
+.scaler__side--light .scaler__list li::before{background:var(--brand);opacity:.15}
+.scaler__side--dark .scaler__list li::before{background:var(--accent);opacity:.25}
+
+/* ══════ CTA ══════ */
+.cta{
+  padding:120px 32px;text-align:center;
+  background:var(--g900);position:relative;overflow:hidden;
+}
+.cta::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 50% at 50% 100%,rgba(8,145,178,.12),transparent);
+}
+.cta__inner{position:relative;max-width:640px;margin:0 auto}
+.cta__title{
+  font-size:clamp(2rem,4vw,3rem);font-weight:800;color:#fff;
+  line-height:1.12;letter-spacing:-.02em;margin-bottom:16px;
+}
+.cta__title em{font-style:normal;color:var(--accent)}
+.cta__sub{font-size:1.05rem;color:var(--g400);margin-bottom:44px;line-height:1.65}
+.cta__box{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  border-radius:var(--radius);padding:32px;margin-bottom:28px;
+}
+.cta__box p{color:var(--g300);font-size:.92rem;margin:3px 0}
+.cta__box strong{color:#fff}
+.cta__fine{font-size:.72rem;color:var(--g600);max-width:480px;margin:0 auto}
+.footer{
+  background:var(--g900);border-top:1px solid rgba(255,255,255,.06);
+  padding:24px 32px;text-align:center;font-size:.75rem;color:var(--g600);
+}
+
+/* ══════ UTILS ══════ */
+.mt-48{margin-top:48px}.mt-32{margin-top:32px}.mb-48{margin-bottom:48px}
+.sub-title{font-size:1.1rem;font-weight:700;margin-bottom:20px;color:var(--g900)}
+.sub-title--light{color:var(--brand-l)}
+
+/* ══════ ANIMATIONS ══════ */
+.reveal{opacity:0;transform:translateY(32px);transition:all .7s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav__inner">
+    <div class="nav__logo">e<span>Toys</span></div>
+    <div class="nav__links">
+      <a href="#plataforma">Plataforma</a>
+      <a href="#modulos">Modulos</a>
+      <a href="#inspiracion">Inspiracion</a>
+      <a href="#ventaja">Ventaja</a>
+      <a href="#escala">Escalabilidad</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#inversion">Cotizacion</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     HERO
+     ══════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero__c">
+    <div class="hero__badge">Propuesta de Desarrollo &middot; Abril 2026</div>
+    <h1 class="hero__title">Tu plataforma de venta,<br>distribucion e inventario.<br><em>A tu medida.</em></h1>
+    <p class="hero__sub">Proponemos construir una plataforma e-commerce completa y propia para eToys: tienda online, control de inventario, pagos, envios automaticos y estadisticas en tiempo real — sin comisiones de terceros y con capacidad de crecer sin limites.</p>
+    <div class="hero__pills">
+      <div class="hero__pill"><b>Tienda</b> online completa</div>
+      <div class="hero__pill"><b>Inventario</b> en tiempo real</div>
+      <div class="hero__pill"><b>Pagos</b> y envios integrados</div>
+      <div class="hero__pill"><b>Estadisticas</b> y finanzas</div>
+      <div class="hero__pill"><b>0%</b> comision de plataforma</div>
+    </div>
+  </div>
+  <div class="hero__scroll">scroll<div class="hero__scroll-arrow"></div></div>
+</section>
+
+<!-- ══════════════════════════════════════
+     01 — QUE INCLUYE LA PLATAFORMA
+     ══════════════════════════════════════ -->
+<section class="s" id="plataforma">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">01 &mdash; La Plataforma</div>
+      <h2 class="s__title">Todo lo que eToys necesita<br>en un solo sistema</h2>
+      <p class="s__desc">Una plataforma construida especificamente para eToys: tienda online profesional, inventario, pagos, envios y panel de administracion — todo conectado y listo para crecer.</p>
+    </div>
+
+    <div class="flow">
+      <div class="flow__step">Inventario<br>centralizado</div>
+      <div class="flow__arr">&#8594;</div>
+      <div class="flow__step">Tienda<br>online</div>
+      <div class="flow__arr">&#8594;</div>
+      <div class="flow__step">Carrito y<br>pagos</div>
+      <div class="flow__arr">&#8594;</div>
+      <div class="flow__step">Envios<br>automaticos</div>
+      <div class="flow__arr">&#8594;</div>
+      <div class="flow__step">Panel de<br>administracion</div>
+      <div class="flow__arr">&#8594;</div>
+      <div class="flow__step">Estadisticas<br>en vivo</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     02 — MODULOS
+     ══════════════════════════════════════ -->
+<section class="s s--dark" id="modulos">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">02 &mdash; Modulos del Sistema</div>
+      <h2 class="s__title">Cada area del negocio,<br>cubierta</h2>
+    </div>
+
+    <h3 class="sub-title sub-title--light">Tienda Online &mdash; Venta al Publico</h3>
+    <div class="cards cards--3 mb-48">
+      <div class="card">
+        <div class="card__icon">&#128722;</div>
+        <div class="card__title">Catalogo inteligente</div>
+        <div class="card__text">Filtros por categoria, precio, marca y tipo. Busqueda predictiva. Imagenes de alta calidad con zoom. Productos organizados por colecciones.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128176;</div>
+        <div class="card__title">Carrito y checkout</div>
+        <div class="card__text">Carrito persistente entre sesiones. Calculo de envio automatico. Barra de progreso de envio gratis. Pagos con Stripe y Mercado Pago: tarjeta de credito/debito, meses sin intereses, OXXO y transferencia.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#127912;</div>
+        <div class="card__title">Personalizacion de producto</div>
+        <div class="card__text">Selector de colores, texto personalizado, logos. Ideal para inflables corporativos, paquetes tematicos o pedidos especiales.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128230;</div>
+        <div class="card__title">Paquetes y bundles</div>
+        <div class="card__text">"Arma tu pool party", "Kit emprendedor de renta", "Paquete fiesta infantil". Bundles con descuento que aumentan el ticket promedio.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128172;</div>
+        <div class="card__title">WhatsApp integrado</div>
+        <div class="card__text">Boton flotante con mensaje pre-llenado del producto que esta viendo el cliente. Atencion inmediata sin salir del sitio.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128666;</div>
+        <div class="card__title">Envio multi-carrier</div>
+        <div class="card__text">Integracion con Envia.com: cotizaciones automaticas de DHL, FedEx, Estafeta y UPS. Generacion de guias y tracking en un clic.</div>
+      </div>
+    </div>
+
+    <h3 class="sub-title sub-title--light">Inventario y Operaciones</h3>
+    <div class="cards cards--3 mb-48">
+      <div class="card">
+        <div class="card__icon">&#128230;</div>
+        <div class="card__title">Gestion de productos</div>
+        <div class="card__text">Alta, edicion y baja de productos. Multiples imagenes que se reordenan arrastrando. Variantes como talla y color. Precios menudeo y mayoreo por producto.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128202;</div>
+        <div class="card__title">Control de stock</div>
+        <div class="card__text">Inventario en tiempo real. Alertas de stock bajo configurables. Deduccion automatica al vender. Restauracion al cancelar.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128203;</div>
+        <div class="card__title">Categorias y colecciones</div>
+        <div class="card__text">Organiza productos en categorias con iconos, descripciones y orden personalizado. Colecciones especiales por temporada o campaña.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128179;</div>
+        <div class="card__title">Gestion de ordenes</div>
+        <div class="card__text">Flujo completo: pendiente, confirmada, enviada, entregada, cancelada. Notas internas, timeline de eventos, datos de envio.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128231;</div>
+        <div class="card__title">Emails automaticos</div>
+        <div class="card__text">Confirmacion de compra al cliente, alerta de nueva orden al admin, notificacion de envio con tracking. Todo automatico y brandeado.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128181;</div>
+        <div class="card__title">Finanzas y reportes</div>
+        <div class="card__text">Revenue total y mensual, costo de productos, gastos operativos, utilidad bruta y neta. Top productos por ventas. Todo en el dashboard.</div>
+      </div>
+    </div>
+
+    <h3 class="sub-title sub-title--light">Panel de Administracion</h3>
+    <div class="cards cards--4">
+      <div class="card">
+        <div class="card__icon">&#128200;</div>
+        <div class="card__title">Panel de control en vivo</div>
+        <div class="card__text">Revenue, ordenes del mes, productos top, alertas de stock. Todo de un vistazo.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128274;</div>
+        <div class="card__title">Acceso seguro</div>
+        <div class="card__text">Inicio de sesion protegido para el equipo de administracion. Solo personal autorizado puede acceder.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128181;</div>
+        <div class="card__title">Gastos y retiros</div>
+        <div class="card__text">Registro de gastos por categoria, retiros de efectivo, calculo de utilidad neta.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     03 — INSPIRACION (FESTIBODA)
+     ══════════════════════════════════════ -->
+<section class="s s--alt" id="inspiracion">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">03 &mdash; Caso de Inspiracion</div>
+      <h2 class="s__title">El modelo FestiBoda:<br>lo que funciona en el mercado</h2>
+      <p class="s__desc">FestiBoda es una empresa de Zapopan que vende articulos personalizados para eventos. Su exito digital demuestra lo que es posible cuando se combina producto fisico con la plataforma y estrategia correctas.</p>
+    </div>
+
+    <div class="stat-strip mb-48">
+      <div class="stat-card stat-card--accent">
+        <div class="stat-card__val">+1,400</div>
+        <div class="stat-card__lbl">Productos en su tienda online</div>
+      </div>
+      <div class="stat-card stat-card--accent">
+        <div class="stat-card__val">53K</div>
+        <div class="stat-card__lbl">Seguidores en Instagram</div>
+      </div>
+      <div class="stat-card stat-card--accent">
+        <div class="stat-card__val">62.6K</div>
+        <div class="stat-card__lbl">Seguidores en TikTok</div>
+      </div>
+    </div>
+
+    <h3 class="sub-title">Las estrategias que les funcionan</h3>
+    <div class="cards cards--2 mb-48">
+      <div class="card">
+        <div class="card__icon">&#128171;</div>
+        <div class="card__title">Marca propia con venta directa</div>
+        <div class="card__text">No son intermediarios — son la marca. Controlan fabricacion, personalizacion, venta y envio. Esto les da margenes superiores y control total de la experiencia del cliente.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#9997;&#65039;</div>
+        <div class="card__title">Personalizacion como diferenciador</div>
+        <div class="card__text">Cada producto se personaliza con colores, nombres y fechas. Esto justifica precios premium y elimina la competencia por precio con productos genericos.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128250;</div>
+        <div class="card__title">Contenido como motor de ventas</div>
+        <div class="card__text">774K likes en TikTok mostrando productos en uso real. El contenido genera demanda sin pagar publicidad — los clientes llegan solos.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128722;</div>
+        <div class="card__title">Experiencia de compra profesional</div>
+        <div class="card__text">Filtros avanzados, envio gratis, meses sin intereses, WhatsApp integrado. Todo diseñado para que el cliente compre sin friccion.</div>
+      </div>
+    </div>
+
+    <h3 class="sub-title">Lo que proponemos tomar de este modelo</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Estrategia FestiBoda</th><th>Adaptacion para eToys</th></tr></thead>
+        <tbody>
+          <tr><td>Tienda online con +1,400 productos</td><td>Catalogo digital completo con todo el inventario de eToys, organizado por colecciones</td></tr>
+          <tr><td>Personalizacion por producto</td><td>Configurador para inflables corporativos, paquetes tematicos, pedidos especiales</td></tr>
+          <tr><td>Envio gratis arriba de $2,999</td><td>Umbral de envio gratis configurable + barra de progreso en el carrito</td></tr>
+          <tr><td>Meses sin intereses</td><td>Integracion con Stripe y Mercado Pago: meses sin intereses, pago en OXXO, tarjeta y transferencia</td></tr>
+          <tr><td>WhatsApp como canal de venta</td><td>Boton flotante con mensaje pre-llenado del producto que esta viendo el cliente</td></tr>
+          <tr><td>Contenido en TikTok/Instagram</td><td>La plataforma facilita compartir productos y generar contenido visual</td></tr>
+          <tr><td>Calificacion 4.8/5 en directorios</td><td>Sistema de reviews integrado para construir reputacion online desde el dia uno</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hl hl--warn mt-48">
+      <p><strong>La diferencia clave:</strong> FestiBoda paga 2% de comision a Shopify por cada venta, mas apps de pago para funcionalidades basicas. La plataforma que proponemos es propiedad total de eToys, sin comisiones y con funcionalidades que Shopify no ofrece — como el portal completo de distribuidores.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     04 — VENTAJA TECNICA
+     ══════════════════════════════════════ -->
+<section class="s s--dark" id="ventaja">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">04 &mdash; Ventaja Tecnica</div>
+      <h2 class="s__title">Por que desarrollo a la medida<br>y no una plataforma rentada</h2>
+      <p class="s__desc">Una plataforma propia no es solo mas barata — es mas poderosa, mas flexible y es un activo que se valoriza con el tiempo.</p>
+    </div>
+
+    <div class="vs mb-48">
+      <div class="vs__col vs__col--bad">
+        <div class="vs__tag">Shopify / plataformas rentadas</div>
+        <ul class="vs__list">
+          <li>Comision del 2% en CADA venta, para siempre</li>
+          <li>Apps de pago para funcionalidades basicas (~$5,000 MXN/mes)</li>
+          <li>Portal de distribuidores requiere Shopify Plus ($2,300 USD/mes)</li>
+          <li>Diseño limitado a templates predefinidos</li>
+          <li>Posicionamiento en Google limitado por estructura rigida</li>
+          <li>Si dejas de pagar, pierdes todo</li>
+          <li>Dependencia total de un tercero</li>
+        </ul>
+      </div>
+      <div class="vs__col vs__col--good">
+        <div class="vs__tag">Plataforma propia de eToys</div>
+        <ul class="vs__list">
+          <li>0% comision de plataforma — solo Mercado Pago</li>
+          <li>Todas las funcionalidades incluidas sin costo extra</li>
+          <li>Portal de distribuidores se agrega como modulo sin costo extra de plataforma</li>
+          <li>Diseño 100% personalizado a la marca</li>
+          <li>Control total para aparecer en Google y redes</li>
+          <li>El codigo es propiedad permanente de eToys</li>
+          <li>Sin dependencia — portable y modificable</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub-title sub-title--light">Tecnologia que respalda la plataforma</h3>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl tbl--brand">
+        <thead><tr><th>Componente</th><th>Que hace</th><th>Beneficio para eToys</th></tr></thead>
+        <tbody>
+          <tr><td>Motor del sistema</td><td>Procesa pedidos, inventario, pagos</td><td>Rapido, seguro, maneja miles de visitas simultaneas</td></tr>
+          <tr><td>Base de datos</td><td>Almacena productos, ordenes, clientes</td><td>Escalable, con respaldo automatico y acceso seguro</td></tr>
+          <tr><td>Pagina web</td><td>Lo que ve el cliente</td><td>Carga ultra-rapida, aparece bien en Google, funciona perfecto en celular</td></tr>
+          <tr><td>Pagos</td><td>Stripe + Mercado Pago</td><td>Tarjetas, meses sin intereses, OXXO, transferencia. Dos opciones de procesador.</td></tr>
+          <tr><td>Envios</td><td>Envia.com</td><td>DHL, FedEx, Estafeta, UPS — cotiza y genera guias automaticamente</td></tr>
+          <tr><td>Correos</td><td>Notificaciones automaticas</td><td>Confirmaciones de compra y alertas de envio con la marca de eToys</td></tr>
+          <tr><td>Servidor</td><td>Donde vive la plataforma</td><td>Se actualiza solo, con seguridad incluida, rapido en todo Mexico</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hl hl--ok">
+      <p><strong>Mas adelante en esta propuesta</strong> se encuentra el <a href="#inversion" style="color:#065f46;text-decoration:underline">desglose completo de costos</a> con precios reales de Shopify (consultados de shopify.com), comisiones de Stripe y Mercado Pago, y una comparativa lado a lado para que los numeros hablen por si solos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     05 — ESCALABILIDAD
+     ══════════════════════════════════════ -->
+<section class="s" id="escala">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">05 &mdash; Escalabilidad</div>
+      <h2 class="s__title">La plataforma crece<br>junto con el negocio</h2>
+      <p class="s__desc">El sistema base cubre todo lo esencial. Pero esta diseñado para que cada nueva funcionalidad se agregue como un modulo — sin reescribir nada, sin limites.</p>
+    </div>
+
+    <div class="scaler mb-48">
+      <div class="scaler__side scaler__side--light">
+        <div class="scaler__tag">Incluido desde el lanzamiento</div>
+        <ul class="scaler__list">
+          <li>Tienda online completa</li>
+          <li>Catalogo de productos con fotos e inventario</li>
+          <li>Carrito de compras y checkout</li>
+          <li>Pagos con Stripe y Mercado Pago (meses sin intereses)</li>
+          <li>Envios con DHL, FedEx, Estafeta, UPS</li>
+          <li>Correos automaticos de confirmacion</li>
+          <li>Panel de administracion</li>
+          <li>Control de pedidos con seguimiento</li>
+          <li>Finanzas (ingresos, gastos, utilidad)</li>
+          <li>WhatsApp integrado</li>
+        </ul>
+      </div>
+      <div class="scaler__side scaler__side--dark">
+        <div class="scaler__tag">Modulos escalables a futuro</div>
+        <ul class="scaler__list">
+          <li>Portal de distribuidores con precios de mayoreo</li>
+          <li>Personalizacion de productos</li>
+          <li>Facturacion electronica automatica</li>
+          <li>Blog para posicionarse en Google</li>
+          <li>Cupones y promociones avanzadas</li>
+          <li>Catalogo PDF descargable para mayoreo</li>
+          <li>Integracion con MercadoLibre y Amazon</li>
+          <li>Sistema de calificaciones y opiniones</li>
+          <li>Programa de lealtad / puntos</li>
+          <li>App movil</li>
+          <li>Multi-sucursal (inventario por ubicacion)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub-title">Nuevas lineas de ingreso que la plataforma habilita</h3>
+    <div class="cards cards--3">
+      <div class="card">
+        <div class="card__icon">&#128176;</div>
+        <div class="card__title">Venta directa al cliente</div>
+        <div class="card__text">Vender al consumidor final sin intermediarios, con margenes completos y datos del cliente para recompra.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#127912;</div>
+        <div class="card__title">Personalizacion premium</div>
+        <div class="card__text">Cobro adicional por inflables con branding corporativo, colores especiales o personalizado por evento.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128230;</div>
+        <div class="card__title">Paquetes curados</div>
+        <div class="card__text">Bundles tematicos con mayor ticket: "Pool party completa", "Kit para negocio de renta", "Paquete verano familiar".</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128101;</div>
+        <div class="card__title">Red de distribuidores online</div>
+        <div class="card__text">Programa formal de distribuidores con niveles, precios escalonados y herramientas para que ellos vendan mas.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#127891;</div>
+        <div class="card__title">Contenido monetizable</div>
+        <div class="card__text">Guias y cursos para emprendedores: "Como iniciar tu negocio de renta de inflables". Info-producto de alto margen.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128640;</div>
+        <div class="card__title">Expansion a plataformas de venta</div>
+        <div class="card__text">Sincronizar inventario con MercadoLibre y Amazon para vender en multiples canales desde un solo panel.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     06 — ROADMAP
+     ══════════════════════════════════════ -->
+<section class="s s--dark" id="roadmap">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">06 &mdash; Roadmap</div>
+      <h2 class="s__title">Plan de implementacion</h2>
+      <p class="s__desc">La plataforma base se entrega en 2 a 3 semanas. Los modulos adicionales se agregan despues del lanzamiento, segun las prioridades del negocio.</p>
+    </div>
+
+    <div class="tl">
+      <div class="tl__item">
+        <div class="tl__dot">1</div>
+        <div class="tl__title">Levantamiento y diseño</div>
+        <div class="tl__desc">Recepcion del catalogo de productos (fotos, precios, categorias). Diseño visual de la tienda adaptado a la identidad de eToys.</div>
+        <div class="tl__badge">Semana 1</div>
+      </div>
+      <div class="tl__item">
+        <div class="tl__dot">2</div>
+        <div class="tl__title">Desarrollo de la plataforma</div>
+        <div class="tl__desc">Tienda online, carrito, pagos con Stripe y Mercado Pago, envios con Envia.com, panel de administracion, inventario, ordenes y correos automaticos.</div>
+        <div class="tl__badge">Semana 1-2</div>
+      </div>
+      <div class="tl__item">
+        <div class="tl__dot">3</div>
+        <div class="tl__title">Pruebas, ajustes y lanzamiento</div>
+        <div class="tl__desc">Pruebas de compra, pagos, envios y panel de admin. Ajustes finales. Configuracion del dominio, correo corporativo y puesta en linea.</div>
+        <div class="tl__badge">Semana 2-3</div>
+      </div>
+      <div class="tl__item" style="opacity:.6">
+        <div class="tl__dot" style="background:var(--accent)">+</div>
+        <div class="tl__title">Modulos adicionales (post-lanzamiento)</div>
+        <div class="tl__desc">Portal de distribuidores, personalizacion de productos, facturacion electronica, blog, cupones, integracion con MercadoLibre — se agregan segun la prioridad y ritmo del negocio.</div>
+        <div class="tl__badge" style="background:rgba(245,158,11,.15);color:var(--accent)">Cuando se necesiten</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     07 — COTIZACION
+     ══════════════════════════════════════ -->
+<section class="s" id="inversion">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">07 &mdash; Cotizacion</div>
+      <h2 class="s__title">Inversion en la plataforma</h2>
+      <p class="s__desc">Desglose completo de lo que incluye el desarrollo, tiempos de entrega y costos de operacion.</p>
+    </div>
+
+    <!-- ── DESGLOSE ── -->
+    <h3 class="sub-title">Desglose del desarrollo de la plataforma</h3>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl">
+        <thead><tr><th>Modulo</th><th>Que incluye</th><th>Inversion</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Diseño y maquetacion de la tienda</td>
+            <td>Diseño visual completo adaptado a la marca eToys: pagina principal, catalogo de productos, pagina de detalle de cada producto, pagina de contacto. Responsive (funciona en celular, tablet y computadora).</td>
+            <td style="white-space:nowrap">$15,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Catalogo e inventario</td>
+            <td>Sistema para dar de alta, editar y organizar todos los productos con fotos, precios, categorias y control de existencias. Alertas cuando un producto esta por agotarse.</td>
+            <td style="white-space:nowrap">$10,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Carrito de compras y pagos</td>
+            <td>Carrito que el cliente puede llenar, con calculo automatico de envio. Pago seguro con Stripe y Mercado Pago: tarjeta de credito/debito, meses sin intereses, pago en OXXO y transferencia bancaria.</td>
+            <td style="white-space:nowrap">$12,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Sistema de envios</td>
+            <td>Integracion con Envia.com para generar guias de DHL, FedEx, Estafeta o UPS. Cotizacion automatica al cliente segun su ubicacion. Numero de rastreo en cada pedido.</td>
+            <td style="white-space:nowrap">$8,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Panel de administracion</td>
+            <td>Panel privado para gestionar: productos, pedidos (con estados: pendiente, confirmado, enviado, entregado), finanzas (ingresos, gastos, utilidad), y estadisticas de ventas.</td>
+            <td style="white-space:nowrap">$10,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Correos automaticos</td>
+            <td>El cliente recibe un correo al comprar con el detalle de su pedido. El administrador recibe alerta de cada venta nueva. Correo de "tu pedido fue enviado" con numero de rastreo.</td>
+            <td style="white-space:nowrap">$3,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Puesta en marcha</td>
+            <td>Configuracion del servidor, dominio, correo corporativo (@etoys.com.mx), certificado de seguridad, pruebas finales y capacitacion para usar el panel de administracion.</td>
+            <td style="white-space:nowrap">$2,000</td>
+          </tr>
+          <tr style="background:var(--brand-ll)">
+            <td style="font-weight:800;color:var(--g900)">Total plataforma completa</td>
+            <td style="font-weight:600;color:var(--brand-dd)">Tienda online lista para vender + panel de administracion + envios + pagos + correos</td>
+            <td style="font-weight:800;color:var(--brand);font-size:1.1rem;white-space:nowrap">$60,000 MXN</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hl hl--brand">
+      <p><strong>Tiempo de entrega: 2 a 3 semanas.</strong> Contamos con la arquitectura base ya desarrollada y probada en produccion, lo que nos permite enfocarnos en el diseño, la adaptacion al catalogo de eToys y las pruebas de calidad, reduciendo significativamente el tiempo de desarrollo.</p>
+    </div>
+
+    <!-- ── MODULOS ADICIONALES ── -->
+    <h3 class="sub-title mt-48">Modulos adicionales (opcionales, se agregan despues)</h3>
+    <p style="font-size:.88rem;color:var(--g500);margin-bottom:20px">La plataforma base cubre todo lo necesario para vender en linea. Estos modulos se pueden contratar en cualquier momento para expandir las capacidades del sistema:</p>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl">
+        <thead><tr><th>Modulo</th><th>Que agrega</th><th>Inversion estimada</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Portal de distribuidores</td>
+            <td>Seccion privada donde los distribuidores inician sesion y ven precios de mayoreo, hacen pedidos, consultan su historial y descargan catalogos con precios especiales.</td>
+            <td style="white-space:nowrap">$15,000 - $20,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Personalizacion de productos</td>
+            <td>El cliente puede elegir colores, agregar logos o texto personalizado en productos seleccionados. Ideal para pedidos corporativos o eventos.</td>
+            <td style="white-space:nowrap">$8,000 - $12,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Facturacion electronica</td>
+            <td>Generacion automatica de facturas al momento de la compra. El cliente ingresa sus datos fiscales y recibe su factura por correo.</td>
+            <td style="white-space:nowrap">$8,000 - $10,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Blog y posicionamiento en Google</td>
+            <td>Seccion de articulos para atraer visitas desde Google: guias de compra, comparativas de productos, consejos de mantenimiento de albercas, etc.</td>
+            <td style="white-space:nowrap">$5,000 - $8,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Programa de cupones y promociones</td>
+            <td>Crear codigos de descuento, promociones por temporada, descuentos por primera compra, o envio gratis en fechas especiales.</td>
+            <td style="white-space:nowrap">$5,000 - $7,000</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Integracion con MercadoLibre</td>
+            <td>Sincronizar productos e inventario con MercadoLibre para vender en ambos canales desde un solo panel, sin duplicar trabajo.</td>
+            <td style="white-space:nowrap">$10,000 - $15,000</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="hl hl--warn">
+      <p><strong>Nota:</strong> Los modulos adicionales no son necesarios para lanzar. La plataforma base de $60,000 ya es una tienda online completa y funcional. Los modulos se pueden agregar gradualmente conforme el negocio digital vaya creciendo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     08 — COMPARATIVA SHOPIFY
+     ══════════════════════════════════════ -->
+<section class="s s--dark">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">08 &mdash; Plataforma propia vs Shopify</div>
+      <h2 class="s__title">Cuanto cuesta realmente<br>vender en Shopify</h2>
+      <p class="s__desc">Shopify es la plataforma de tiendas online mas conocida. Para tomar una decision informada, aqui estan sus costos reales desglosados con datos de su pagina oficial.</p>
+    </div>
+
+    <!-- Planes Shopify -->
+    <h3 class="sub-title sub-title--light">Planes de Shopify (precios oficiales de shopify.com/pricing)</h3>
+    <p style="font-size:.85rem;color:var(--g400);margin-bottom:20px">Shopify cobra en dolares. Los precios en pesos estan calculados a un tipo de cambio de $20 MXN por dolar:</p>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl tbl--brand">
+        <thead><tr><th>Plan</th><th>Precio mensual</th><th>En pesos (aprox.)</th><th>Para quien es</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Basic</td>
+            <td>$29 USD/mes</td>
+            <td>~$580 MXN/mes</td>
+            <td>Tiendas nuevas o pequenas. Funcionalidades basicas.</td>
+          </tr>
+          <tr>
+            <td>Grow</td>
+            <td>$79 USD/mes</td>
+            <td>~$1,580 MXN/mes</td>
+            <td>Tiendas en crecimiento. Reportes profesionales, 5 cuentas de staff.</td>
+          </tr>
+          <tr>
+            <td>Advanced</td>
+            <td>$299 USD/mes</td>
+            <td>~$5,980 MXN/mes</td>
+            <td>Negocios grandes. Reportes avanzados, 15 cuentas de staff.</td>
+          </tr>
+          <tr>
+            <td>Plus</td>
+            <td>$2,300 USD/mes</td>
+            <td>~$46,000 MXN/mes</td>
+            <td>Empresas. Necesario para funcionalidades como precios diferenciados por tipo de cliente.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Comisiones por venta -->
+    <h3 class="sub-title sub-title--light">Comisiones que cobra Shopify por cada venta</h3>
+    <p style="font-size:.85rem;color:var(--g400);margin-bottom:20px">Ademas de la renta mensual, Shopify cobra una comision por cada transaccion. Si usas su procesador de pagos propio (Shopify Payments), la comision es de tarjeta solamente. Si usas un procesador externo como Mercado Pago o Stripe, Shopify cobra un porcentaje adicional:</p>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl tbl--brand">
+        <thead><tr><th>Plan</th><th>Comision por tarjeta con Shopify Payments</th><th>Comision extra si usas otro procesador</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Basic</td>
+            <td>2.9% + $3 MXN por venta</td>
+            <td>2% adicional por venta</td>
+          </tr>
+          <tr>
+            <td>Grow</td>
+            <td>2.7% + $3 MXN por venta</td>
+            <td>1% adicional por venta</td>
+          </tr>
+          <tr>
+            <td>Advanced</td>
+            <td>2.5% + $3 MXN por venta</td>
+            <td>0.6% adicional por venta</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.78rem;color:var(--g500);margin-bottom:40px;font-style:italic">Fuente: shopify.com/pricing — consultado en abril 2026</p>
+
+    <!-- Pasarelas de pago -->
+    <h3 class="sub-title sub-title--light">Comisiones de las pasarelas de pago (se pagan con o sin Shopify)</h3>
+    <p style="font-size:.85rem;color:var(--g400);margin-bottom:20px">Independientemente de si usas Shopify o una plataforma propia, al aceptar pagos con tarjeta siempre se paga una comision al procesador de pagos. Estas son las comisiones de los dos principales en Mexico:</p>
+    <div class="tbl-wrap mb-48">
+      <table class="tbl tbl--brand">
+        <thead><tr><th>Procesador</th><th>Comision por venta con tarjeta</th><th>Notas</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Stripe</td>
+            <td>3.6% + $3 MXN por transaccion</td>
+            <td>IVA ya incluido en la comision. Acepta tarjetas de credito, debito, Apple Pay y Google Pay.</td>
+          </tr>
+          <tr>
+            <td>Mercado Pago</td>
+            <td>3.49% + $4 MXN + IVA (16%)</td>
+            <td>Comision efectiva: ~4.05% + $4.64 MXN. Acepta tarjetas, OXXO, y saldo de Mercado Pago.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.78rem;color:var(--g500);margin-bottom:40px;font-style:italic">Fuentes: stripe.com/pricing y atempora.studio/blog/stripe-vs-mercado-pago-vs-conekta — consultados en abril 2026. La plataforma que proponemos integra tanto Stripe como Mercado Pago para ofrecer la mayor flexibilidad.</p>
+
+    <!-- Ejemplo real -->
+    <h3 class="sub-title sub-title--light">Ejemplo con numeros reales: venta de $300,000 MXN al mes</h3>
+    <p style="font-size:.85rem;color:var(--g400);margin-bottom:20px">Para hacer la comparacion justa, usamos el plan Grow de Shopify ($79 USD/mes) que es el mas adecuado para un negocio como eToys. La comision de la pasarela de pago (Stripe o Mercado Pago) se paga igual en ambos casos, por eso la separamos:</p>
+    <div class="vs mb-48">
+      <div class="vs__col vs__col--bad">
+        <div class="vs__tag">Costos mensuales con Shopify (plan Grow)</div>
+        <ul class="vs__list">
+          <li>Renta mensual Shopify: $1,580 MXN ($79 USD)</li>
+          <li>Comision Shopify Payments 2.7% sobre $300K: $8,100</li>
+          <li>Cargo fijo $3 MXN x ~200 pedidos: $600</li>
+          <li>Comision Stripe o MP (~3.6%) sobre $300K: $10,800</li>
+          <li style="font-weight:700;padding-top:12px;border-top:1px solid #fca5a5">Total al mes: $21,080</li>
+          <li style="font-weight:700">Total al ano: $252,960</li>
+        </ul>
+      </div>
+      <div class="vs__col vs__col--good">
+        <div class="vs__tag">Costos mensuales con plataforma propia</div>
+        <ul class="vs__list">
+          <li>Servidor y base de datos: $1,000</li>
+          <li>Dominio y correo corporativo: $200</li>
+          <li>Comision de plataforma: $0</li>
+          <li>Comision Stripe o MP (~3.6%) sobre $300K: $10,800</li>
+          <li style="font-weight:700;padding-top:12px;border-top:1px solid #6ee7b7">Total al mes: $12,000</li>
+          <li style="font-weight:700">Total al ano: $144,000</li>
+        </ul>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:var(--g400);margin-bottom:8px;text-align:center"><strong style="color:var(--brand-l)">Ahorro real: $9,080 MXN al mes / $108,960 MXN al ano.</strong></p>
+    <p style="font-size:.78rem;color:var(--g500);margin-bottom:40px;text-align:center">La comision de Stripe o Mercado Pago (~3.6%) se paga igual en ambos casos — es el costo de aceptar tarjetas. La diferencia esta en todo lo demas: renta de Shopify, comision de Shopify Payments, y cargos fijos por pedido que con plataforma propia no existen.</p>
+
+    <div class="hl hl--ok">
+      <p><strong>Con $300K de venta mensual, la plataforma propia de $60,000 se recupera en ~6 meses</strong> solo con el ahorro en renta y comisiones de Shopify. Y a diferencia de Shopify, el costo de la plataforma propia no sube cuando las ventas crecen — los $1,200/mes se mantienen igual vendas $300K o $3 millones al mes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     09 — COSTOS OPERATIVOS
+     ══════════════════════════════════════ -->
+<section class="s s--alt">
+  <div class="s__inner reveal">
+    <div class="s__header">
+      <div class="s__eyebrow">09 &mdash; Costos de Operacion</div>
+      <h2 class="s__title">Cuanto cuesta mantener<br>la plataforma cada mes</h2>
+      <p class="s__desc">Una vez que la plataforma esta en linea, los costos de operacion son minimos y fijos — no dependen del volumen de ventas.</p>
+    </div>
+
+    <div class="tbl-wrap mb-48">
+      <table class="tbl">
+        <thead><tr><th>Concepto</th><th>Que cubre</th><th>Costo mensual</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Base de datos y almacenamiento</td>
+            <td>Donde se guardan los productos, pedidos, clientes y fotos. Incluye respaldos automaticos.</td>
+            <td>~$500 MXN</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Servidor de la plataforma</td>
+            <td>La computadora en la nube que mantiene la tienda funcionando 24/7 para recibir visitas y procesar pedidos.</td>
+            <td>~$500 MXN</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Dominio y correo corporativo</td>
+            <td>La direccion web (etoys.com.mx) y correos profesionales como ventas@etoys.com.mx</td>
+            <td>~$200 MXN</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;color:var(--g900)">Correos automaticos</td>
+            <td>Confirmaciones de compra y avisos de envio que le llegan al cliente automaticamente</td>
+            <td>$0 (incluido)</td>
+          </tr>
+          <tr style="background:var(--brand-ll)">
+            <td style="font-weight:800;color:var(--g900)">Total mensual</td>
+            <td style="font-weight:600;color:var(--brand-dd)">Todo lo necesario para que la tienda funcione las 24 horas</td>
+            <td style="font-weight:800;color:var(--brand);font-size:1.05rem">~$1,200 MXN</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cards cards--4">
+      <div class="card">
+        <div class="card__icon">&#128176;</div>
+        <div class="card__title">Sin comisiones ocultas</div>
+        <div class="card__text">No importa si vendes $50,000 o $500,000 al mes — el costo de la plataforma es el mismo.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#127968;</div>
+        <div class="card__title">Propiedad de eToys</div>
+        <div class="card__text">La plataforma es de eToys para siempre. Si cambian de proveedor de desarrollo, se llevan su sistema completo.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#128640;</div>
+        <div class="card__title">Crece sin pagar mas</div>
+        <div class="card__text">En Shopify, a mayor venta, mayor comision. Con plataforma propia, crecer no cuesta mas.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon">&#9881;&#65039;</div>
+        <div class="card__title">Se adapta a lo que necesites</div>
+        <div class="card__text">Cualquier funcionalidad nueva se agrega como modulo, sin migrar de plataforma ni cambiar de plan.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     CTA
+     ══════════════════════════════════════ -->
+<section class="cta">
+  <div class="cta__inner">
+    <div class="nav__logo" style="font-size:2rem;margin-bottom:28px">e<span>Toys</span></div>
+    <h2 class="cta__title">La plataforma que el<br>negocio <em>merece.</em></h2>
+    <p class="cta__sub">Tienda online, inventario, estadisticas, envios y pagos — todo en un sistema propio, sin comisiones y con la capacidad de crecer al ritmo que el negocio necesite.</p>
+    <div class="cta__fine" style="margin-top:20px">Documento confidencial preparado exclusivamente para eToys.</div>
+  </div>
+</section>
+
+<footer class="footer">&copy; 2026 &middot; Propuesta de desarrollo para eToys</footer>
+
+<script>
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

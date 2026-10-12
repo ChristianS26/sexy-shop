@@ -1,0 +1,9 @@
+{
+  "name": "sonroja-erp",
+  "private": true,
+  "type": "module",
+  "description": "SONROJA ERP — frontend sin build (ES modules). Este archivo solo marca los .js como módulos para herramientas y chequeos de sintaxis.",
+  "scripts": {
+    "check": "node --check js/app.js && node scripts/check.mjs"
+  }
+}

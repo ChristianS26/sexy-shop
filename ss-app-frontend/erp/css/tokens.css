@@ -1,0 +1,105 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SONROJA ERP — Design tokens
+   Única fuente de verdad de color, tipografía, espaciado y elevación.
+   Cambiar la marca = cambiar este archivo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Marca (guía de identidad SONROJA) */
+  --brand-wine:        #6B1F32;   /* Vino profundo — acción principal */
+  --brand-wine-deep:   #521626;
+  --brand-wine-soft:   #8A3147;
+  --brand-terracotta:  #C7777A;   /* Rosa terracota — secundario */
+  --brand-rose:        #F2B8B8;   /* Rosa suave */
+  --brand-nude:        #F8E1DD;   /* Durazno nude */
+  --brand-cream:       #FDF6F3;   /* Crema — fondo */
+  --brand-mocha:       #A65A5A;   /* Café rosado */
+
+  /* Semánticos */
+  --color-bg:          var(--brand-cream);
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-muted:    #FBF0EC;
+  --color-bg-sunken:   #F6E8E4;
+  --color-border:      #EED7D1;
+  --color-border-strong: #E1C2BA;
+  --color-text:        #2B1A1E;
+  --color-text-2:      #6E555A;
+  --color-text-3:      #9E8488;
+  --color-text-inverse: #FFF7F4;
+  --color-primary:     var(--brand-wine);
+  --color-primary-hover: var(--brand-wine-deep);
+  --color-primary-soft: #F3E3E6;
+  --color-secondary:   var(--brand-terracotta);
+  --color-secondary-soft: #FBE9E9;
+  --color-accent:      var(--brand-mocha);
+  --color-sidebar:     #3A1620;
+  --color-sidebar-2:   #4A1C29;
+  --color-sidebar-text: #E9CFD3;
+  --color-sidebar-muted: #B68E96;
+
+  /* Estados (significado consistente) */
+  --color-success:     #3E8E5E;
+  --color-success-soft:#E6F3EA;
+  --color-warning:     #C98A1E;
+  --color-warning-soft:#FBF1DC;
+  --color-danger:      #C2403F;
+  --color-danger-soft: #FBE4E3;
+  --color-info:        #4E6FB5;
+  --color-info-soft:   #E8EDF8;
+
+  /* Tipografía */
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body:    'Montserrat', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-xs: 0.72rem;  --text-sm: 0.8125rem; --text-md: 0.9rem; --text-base: 0.95rem;
+  --text-lg: 1.1rem;   --text-xl: 1.35rem;   --text-2xl: 1.8rem; --text-3xl: 2.4rem;
+  --leading: 1.5;
+
+  /* Espaciado y forma */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-xl: 26px; --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(107,31,50,0.06), 0 1px 3px rgba(43,26,30,0.04);
+  --shadow-md: 0 6px 20px rgba(107,31,50,0.08), 0 2px 6px rgba(43,26,30,0.04);
+  --shadow-lg: 0 18px 50px rgba(107,31,50,0.14);
+  --shadow-focus: 0 0 0 3px rgba(107,31,50,0.18);
+
+  /* Layout */
+  --sidebar-w: 256px; --sidebar-w-collapsed: 72px; --header-h: 64px; --content-max: 1480px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1); --t-fast: 140ms; --t-base: 220ms;
+
+  /* Gráficas (categóricas, armónicas con la marca; secuencial para heatmap) */
+  --chart-1: #6B1F32; --chart-2: #C7777A; --chart-3: #A65A5A; --chart-4: #E3A5A5; --chart-5: #8C5B6B; --chart-6: #D9B8A8; --chart-7: #5C3A44; --chart-8: #F2B8B8;
+  --chart-grid: #F0DEDA; --chart-text: #6E555A;
+  --heat-0: #FBF0EC; --heat-1: #F5D6D3; --heat-2: #E9ABAC; --heat-3: #D27F83; --heat-4: #A94A5A; --heat-5: #6B1F32;
+}
+
+/* Dark mode: misma identidad, superficies cálidas oscuras */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --is-dark: 1; }
+}
+:root[data-theme="dark"], :root:not([data-theme="light"]):has(body[data-auto-dark="1"]) {
+  --color-bg:          #1B1114;
+  --color-bg-elevated: #241619;
+  --color-bg-muted:    #2B1B1F;
+  --color-bg-sunken:   #15090C;
+  --color-border:      #3A262B;
+  --color-border-strong: #4C333A;
+  --color-text:        #F6E8E4;
+  --color-text-2:      #C9AEB2;
+  --color-text-3:      #8C7378;
+  --color-text-inverse:#FFF7F4;
+  --color-primary:     #D98A99;
+  --color-primary-hover: #E9A5B2;
+  --color-primary-soft: #3B2229;
+  --color-secondary:   #C7777A;
+  --color-secondary-soft: #3A2528;
+  --color-sidebar:     #150B0E;
+  --color-sidebar-2:   #1F1114;
+  --color-sidebar-text:#E9CFD3;
+  --color-sidebar-muted:#8C6F76;
+  --color-success-soft:#1E3327; --color-warning-soft:#3A2E14; --color-danger-soft:#3C1E1E; --color-info-soft:#1F2740;
+  --color-success: #6FBF8B; --color-warning: #E0AA48; --color-danger: #E26968; --color-info: #8FA6E0;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3); --shadow-md: 0 8px 24px rgba(0,0,0,0.35); --shadow-lg: 0 18px 50px rgba(0,0,0,0.5); --shadow-focus: 0 0 0 3px rgba(217,138,153,0.3);
+  --chart-grid: #3A262B; --chart-text: #C9AEB2;
+  --chart-1: #D98A99; --chart-2: #C7777A; --chart-3: #E3A5A5; --chart-4: #A65A5A; --chart-5: #F2B8B8; --chart-6: #8C5B6B; --chart-7: #D9B8A8; --chart-8: #F8E1DD;
+  --heat-0: #241619; --heat-1: #3B2229; --heat-2: #5A2E3A; --heat-3: #83404F; --heat-4: #B35C6E; --heat-5: #E9A5B2;
+}

@@ -1,6 +1,7 @@
 package com.sexyshop.routing
 
 import com.sexyshop.config.AppConfig
+import com.sexyshop.erp.erpRoutes
 import com.sexyshop.repositories.expense.ExpenseRepository
 import com.sexyshop.repositories.shipment.ShipmentRepository
 import com.sexyshop.repositories.withdrawal.WithdrawalRepository
@@ -50,6 +51,7 @@ fun Application.configureRouting() {
             paymentRoutes(appConfig, orderService, emailService, productService)
             settingsRoutes(supabaseClient)
             shippingRoutes(appConfig, supabaseClient, shipmentRepository)
+            erpRoutes(this@configureRouting)
         }
     }
 }

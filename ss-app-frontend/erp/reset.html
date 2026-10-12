@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restablecer contraseña · SONROJA</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div class="login"><section class="login__art" aria-hidden="true"><div class="sidebar__wordmark">SONROJA</div><p class="login__quote">Nueva<br><em>contraseña.</em></p><span></span></section>
+    <section class="login__panel"><form class="login__card" id="f" novalidate>
+      <div><div class="login__brand">SONROJA</div><div class="login__tag">Restablecer contraseña</div></div>
+      <div class="alert alert--danger" id="err" hidden role="alert"><span id="errText"></span></div>
+      <div class="field"><label class="field__label" for="p1">Nueva contraseña</label><input class="input" id="p1" type="password" autocomplete="new-password" required minlength="8"></div>
+      <div class="field"><label class="field__label" for="p2">Confirmar contraseña</label><input class="input" id="p2" type="password" autocomplete="new-password" required minlength="8"></div>
+      <button class="btn btn--primary btn--lg btn--block" type="submit" id="btn">Guardar y entrar</button>
+    </form></section></div>
+  <script type="module">
+    import { auth, session } from './js/core/auth.js';
+    // GoTrue envía los tokens en el fragmento (#access_token=...&refresh_token=...)
+    const hp = new URLSearchParams(location.hash.slice(1));
+    if (hp.get('access_token')) session.set({ access_token: hp.get('access_token'), refresh_token: hp.get('refresh_token') });
+    const err = document.getElementById('err'), errText = document.getElementById('errText');
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault(); err.hidden = true;
+      const a = document.getElementById('p1').value, b = document.getElementById('p2').value;
+      if (a.length < 8) { err.hidden = false; errText.textContent = 'Mínimo 8 caracteres.'; return; }
+      if (a !== b) { err.hidden = false; errText.textContent = 'Las contraseñas no coinciden.'; return; }
+      const btn = document.getElementById('btn'); btn.classList.add('btn--loading');
+      try { await auth.updatePassword(a); location.replace('index.html'); } catch (ex) { err.hidden = false; errText.textContent = ex.message; btn.classList.remove('btn--loading'); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SONROJA · ERP</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#6B1F32">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/print.css">
+  <script>
+    // Tema antes de pintar (evita parpadeo) y redirección si no hay sesión
+    (function () {
+      try {
+        var p = JSON.parse(localStorage.getItem('sonroja_erp_prefs') || '{}');
+        if (p.theme) document.documentElement.setAttribute('data-theme', p.theme);
+        if (!localStorage.getItem('sonroja_erp_session')) location.replace('login.html');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div class="app" id="app" aria-busy="true">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal"></aside>
+    <div class="scrim" id="scrim"></div>
+    <div class="main">
+      <header class="header" id="header"></header>
+      <main class="content" id="content" tabindex="-1"></main>
+    </div>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

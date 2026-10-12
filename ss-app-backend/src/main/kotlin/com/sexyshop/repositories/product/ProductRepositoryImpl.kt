@@ -27,13 +27,15 @@ class ProductRepositoryImpl(
     private data class DisplayOrderUpdate(@SerialName("display_order") val displayOrder: Int)
 
     override suspend fun getAll(categoryId: String?, activeOnly: Boolean): List<Product> {
+        // Solo la organización por defecto (la tienda) y sin productos borrados del ERP
+        val orgId = com.sexyshop.repositories.category.defaultOrganizationId(supabase)
         return supabase.from("products")
             .select {
-                if (activeOnly) {
-                    filter { eq("is_active", true) }
-                }
-                if (categoryId != null) {
-                    filter { eq("category_id", categoryId) }
+                filter {
+                    eq("organization_id", orgId)
+                    filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, "null")
+                    if (activeOnly) eq("is_active", true)
+                    if (categoryId != null) eq("category_id", categoryId)
                 }
                 order("display_order", Order.ASCENDING)
             }
