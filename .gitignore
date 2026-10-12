@@ -6,3 +6,6 @@ memory/
 .gradle/
 build/
 *.class
+
+# Propuestas a clientes: no se publican
+ss-app-frontend/propuesta-*.html
