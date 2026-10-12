@@ -10,6 +10,15 @@ import kotlinx.serialization.json.*
  * Clientes (datos mínimos, privados), direcciones y colonias normalizadas.
  * Cada acceso al expediente completo (Customer 360) queda auditado.
  */
+/** Teléfono solo con dígitos (y + inicial). Valida 10 dígitos nacionales o con lada internacional. */
+private fun normalizePhone(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    val p = raw.trim().let { if (it.startsWith("+")) "+" + it.drop(1).filter(Char::isDigit) else it.filter(Char::isDigit) }
+    val digits = p.count(Char::isDigit)
+    if (digits < 10 || digits > 13) throw ErpException(HttpStatusCode.UnprocessableEntity, "VALIDATION", "El teléfono debe tener 10 dígitos (ej. 622 123 4567).", JsonObject(mapOf("phone" to JsonPrimitive("El teléfono debe tener 10 dígitos (ej. 622 123 4567)."))))
+    return p
+}
+
 fun Route.customersRoutes(db: Db, audit: AuditService) {
     val fields = listOf("first_name", "last_name", "phone", "email", "birthday", "notes", "source", "status", "accepts_marketing", "code")
     val addressFields = listOf("label", "street", "ext_number", "int_number", "neighborhood_text", "zip", "city", "state", "references_text", "is_default")
@@ -43,11 +52,12 @@ fun Route.customersRoutes(db: Db, audit: AuditService) {
         val body = call.receiveOrThrow<JsonObject>()
         val f = pick(body, fields)
         validate { notBlank(f.str("first_name"), "first_name", "El nombre"); email(f.str("email")); maxLen(f.str("notes"), 1000, "notes", "Las notas") }
-        val phone = f.str("phone")?.replace(Regex("[^0-9+]"), "")
+        val phone = normalizePhone(f.str("phone"))
         if (!phone.isNullOrBlank()) db.one("customers", "id, first_name, last_name") { org(ctx); isNull("deleted_at"); eq("phone", phone) }?.let {
-            throw ErpException.conflict("Ya existe un cliente con ese teléfono: ${it.str("first_name")} ${it.str("last_name")}.", "PHONE_EXISTS")
+            val msg = "Ya existe un cliente con ese teléfono: ${listOfNotNull(it.str("first_name"), it.str("last_name")).joinToString(" ")}. Búscalo en lugar de crearlo de nuevo."
+            throw ErpException(HttpStatusCode.Conflict, "PHONE_EXISTS", msg, JsonObject(mapOf("phone" to JsonPrimitive(msg))))
         }
-        val row = db.insert("customers", f.with("organization_id" to ctx.organizationId, "created_by" to ctx.userId, "source" to (f.str("source") ?: "POS")))
+        val row = db.insert("customers", f.with("organization_id" to ctx.organizationId, "created_by" to ctx.userId, "source" to (f.str("source") ?: "POS"), "phone" to phone))
         body.obj("address")?.let { a ->
             val af = pick(a, addressFields)
             if (af.values.any { it !is JsonNull }) db.insert("customer_addresses", af.with("customer_id" to row.str("id"), "is_default" to true))
@@ -60,8 +70,16 @@ fun Route.customersRoutes(db: Db, audit: AuditService) {
         val ctx = call.require("customers.update")
         val id = call.requiredParam("id")
         val before = db.one("customers") { eq("id", id); org(ctx); isNull("deleted_at") } ?: throw ErpException.notFound("Cliente no encontrado.")
-        val f = pick(call.receiveOrThrow<JsonObject>(), fields)
-        validate { email(f.str("email")); oneOf(f.str("status"), listOf("ACTIVE", "INACTIVE"), "status", "El estado") }
+        var f = pick(call.receiveOrThrow<JsonObject>(), fields)
+        validate { if (f.containsKey("first_name")) notBlank(f.str("first_name"), "first_name", "El nombre"); email(f.str("email")); oneOf(f.str("status"), listOf("ACTIVE", "INACTIVE"), "status", "El estado") }
+        if (f.containsKey("phone")) {
+            val phone = normalizePhone(f.str("phone"))
+            if (phone != null) db.one("customers", "id, first_name, last_name") { org(ctx); isNull("deleted_at"); eq("phone", phone); neq("id", id) }?.let {
+                val msg = "Ese teléfono ya pertenece a ${listOfNotNull(it.str("first_name"), it.str("last_name")).joinToString(" ")}."
+                throw ErpException(HttpStatusCode.Conflict, "PHONE_EXISTS", msg, JsonObject(mapOf("phone" to JsonPrimitive(msg))))
+            }
+            f = f.with("phone" to phone)
+        }
         val after = db.update("customers", id, f)
         audit.log(call, "customers.update", "CUSTOMER", id, before.without("search_text"), after.without("search_text"))
         call.respond(after.without("search_text"))
@@ -83,6 +101,7 @@ fun Route.customersRoutes(db: Db, audit: AuditService) {
         val id = call.requiredParam("id")
         db.one("customers", "id") { eq("id", id); org(ctx); isNull("deleted_at") } ?: throw ErpException.notFound("Cliente no encontrado.")
         val af = pick(call.receiveOrThrow<JsonObject>(), addressFields)
+        validate { notBlank(af.str("neighborhood_text"), "neighborhood_text", "La colonia") }
         if (af.bool("is_default") == true) db.updateWhere("customer_addresses", jsonOf("is_default" to false)) { eq("customer_id", id) }
         val row = db.insert("customer_addresses", af.with("customer_id" to id))
         audit.log(call, "customers.address.create", "CUSTOMER", id, null, row)
@@ -92,16 +111,19 @@ fun Route.customersRoutes(db: Db, audit: AuditService) {
         val ctx = call.require("customers.update")
         val id = call.requiredParam("id")
         val before = db.byId("customer_addresses", id)
+        db.one("customers", "id") { eq("id", before.str("customer_id")!!); org(ctx) } ?: throw ErpException.notFound("Dirección no encontrada.")
         val af = pick(call.receiveOrThrow<JsonObject>(), addressFields)
+        validate { if (af.containsKey("neighborhood_text")) notBlank(af.str("neighborhood_text"), "neighborhood_text", "La colonia") }
         if (af.bool("is_default") == true) db.updateWhere("customer_addresses", jsonOf("is_default" to false)) { eq("customer_id", before.str("customer_id")!!) }
         val after = db.update("customer_addresses", id, af)
         audit.log(call, "customers.address.update", "CUSTOMER", before.str("customer_id"), before, after)
         call.respond(after)
     }
     delete("/customers/addresses/{id}") {
-        call.require("customers.update")
+        val ctx = call.require("customers.update")
         val id = call.requiredParam("id")
         val before = db.byId("customer_addresses", id)
+        db.one("customers", "id") { eq("id", before.str("customer_id")!!); org(ctx) } ?: throw ErpException.notFound("Dirección no encontrada.")
         db.delete("customer_addresses") { eq("id", id) }
         audit.log(call, "customers.address.delete", "CUSTOMER", before.str("customer_id"), before, null)
         call.respond(HttpStatusCode.NoContent)
