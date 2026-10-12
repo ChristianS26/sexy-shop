@@ -147,6 +147,9 @@ export const fmt = {
   dow: (d) => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d] || '',
   dowLong: (d) => ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][d] || '',
   plural: (n, s, p) => `${fmt.int(n)} ${n === 1 ? s : p}`,
+  /** Fecha de calendario sin zona ("2026-09-13" o "2026-09-13T00:00:00"): se muestra tal cual, sin convertir de huso. */
+  calendarDay: (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString(CONFIG.LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; },
+  calendarMonth: (v) => { const m = /^(\d{4})-(\d{2})/.exec(String(v || '')); return m ? new Date(+m[1], +m[2] - 1, 1).toLocaleDateString(CONFIG.LOCALE, { month: 'long', year: 'numeric' }) : '—'; },
 };
 
 export const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -179,6 +182,12 @@ export const STATUS = {
   rotation: { FAST: ['Rápida', 'success'], NORMAL: ['Normal', ''], SLOW: ['Lenta', 'warning'], DEAD: ['Sin movimiento', 'danger'] },
   abc: { A: ['A', 'success'], B: ['B', 'warning'], C: ['C', ''] },
 };
+/** Texto en español para cualquier código interno conocido (COMPLETED → Completada). */
+export function codeLabel(v) {
+  if (typeof v !== 'string' || !/^[A-Z][A-Z_]+$/.test(v)) return null;
+  for (const k of ['sale', 'purchase', 'transfer', 'stock', 'movement', 'channel', 'rfm', 'rotation', 'shift', 'count', 'generic', 'alert', 'severity']) { const hit = STATUS[k][v]; if (hit) return hit[0]; }
+  return ({ CASH: 'Efectivo', CARD: 'Tarjeta', TRANSFER: 'Transferencia', MERCADO_PAGO: 'Mercado Pago', OTHER: 'Otro', IMPORT: 'Importado' })[v] || null;
+}
 export function badge(kind, value, extra = '') {
   const [label, tone] = (STATUS[kind] || {})[value] || [value || '—', ''];
   return h(`span.badge${tone ? '.badge--' + tone : ''}${extra ? '.' + extra : ''}`, label);

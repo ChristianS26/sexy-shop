@@ -65,9 +65,35 @@ object Exporter {
         return bos.toByteArray()
     }
 
+    /** Códigos internos → texto para la persona que abre el archivo. */
+    private val LABELS = mapOf(
+        "COMPLETED" to "Completada", "CANCELLED" to "Cancelada", "REFUNDED" to "Devuelta", "PARTIALLY_REFUNDED" to "Devolución parcial",
+        "POS" to "Tienda", "ONLINE" to "En línea", "WHATSAPP" to "WhatsApp", "MARKETPLACE" to "Marketplace", "IMPORT" to "Importado",
+        "DRAFT" to "Borrador", "SENT" to "Enviada", "PARTIAL" to "Parcial", "RECEIVED" to "Recibida", "IN_TRANSIT" to "En tránsito",
+        "OUT" to "Agotado", "CRITICAL" to "Crítico", "LOW" to "Bajo", "HEALTHY" to "Saludable", "EXCESS" to "Exceso",
+        "ACTIVE" to "Activo", "INACTIVE" to "Inactivo", "OPEN" to "Abierto", "CLOSED" to "Cerrado", "FINALIZED" to "Finalizado",
+        "CHAMPIONS" to "Champions", "LOYAL" to "Leales", "NEW" to "Nuevos", "POTENTIAL" to "Potenciales", "AT_RISK" to "En riesgo",
+        "CANT_LOSE" to "No perder", "HIBERNATING" to "Dormidos", "LOST" to "Perdidos",
+        "FAST" to "Rápida", "NORMAL" to "Normal", "SLOW" to "Lenta", "DEAD" to "Sin movimiento",
+        "SALE" to "Venta", "PURCHASE" to "Compra", "SALE_RETURN" to "Devolución", "PURCHASE_RETURN" to "Devolución a proveedor",
+        "TRANSFER_IN" to "Entrada por transferencia", "TRANSFER_OUT" to "Salida por transferencia", "ADJUSTMENT_IN" to "Ajuste (+)",
+        "ADJUSTMENT_OUT" to "Ajuste (−)", "DAMAGE" to "Merma", "LOSS" to "Pérdida", "INITIAL_STOCK" to "Inventario inicial", "INVENTORY_COUNT" to "Conteo físico",
+        "CASH" to "Efectivo", "CARD" to "Tarjeta", "TRANSFER" to "Transferencia", "MERCADO_PAGO" to "Mercado Pago", "OTHER" to "Otro",
+    )
+    private val ZONE = java.time.ZoneId.of("America/Hermosillo")
+    private val DT = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private fun human(s: String): String = when {
+        LABELS.containsKey(s) -> LABELS.getValue(s)
+        // fecha "pura" de un corte por día/mes (sin zona): solo la fecha
+        Regex("""^\d{4}-\d{2}-\d{2}T00:00:00(\.0+)?$""").matches(s) -> s.take(10)
+        // marca de tiempo con zona: hora local de la tienda
+        Regex("""^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:\d{2}|Z)$""").matches(s) ->
+            runCatching { java.time.OffsetDateTime.parse(s).atZoneSameInstant(ZONE).format(DT) }.getOrDefault(s)
+        else -> s
+    }
     private fun cell(r: JsonObject, key: String): String = when (val v = r[key]) {
         null, is JsonNull -> ""
-        is JsonPrimitive -> v.content
+        is JsonPrimitive -> if (v.isString) human(v.content) else v.content
         else -> v.toString()
     }
 

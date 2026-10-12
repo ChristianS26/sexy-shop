@@ -164,3 +164,23 @@ fun fakeCtx(perms: Set<String>, maxDiscount: Double? = null, roles: List<String>
     roles = roles.map { RoleRef("r-$it", it, it) }, permissions = perms, branches = listOf(BranchRef("b1", "GYM", "Guaymas")), maxDiscountPct = maxDiscount,
     organization = jsonOf("id" to "o1", "timezone" to "America/Hermosillo"), raw = jsonOf("user" to jsonOf("id" to "u1")),
 )
+
+class ReadableExportAndValidationTest {
+    @Test fun csvTranslatesCodesAndDates() {
+        val csv = String(Exporter.csv(
+            listOf(ExportColumn("status", "Estado"), ExportColumn("sold_at", "Fecha"), ExportColumn("bucket", "Día"), ExportColumn("folio", "Folio")),
+            listOf(jsonOf("status" to "COMPLETED", "sold_at" to "2026-10-13T03:14:54+00:00", "bucket" to "2026-09-13T00:00:00", "folio" to "SON-2026-000001")),
+        ), Charsets.UTF_8)
+        assertTrue(csv.contains("Completada"), csv)
+        assertTrue(csv.contains("2026-10-12 20:14"), "la hora se expresa en la zona de la tienda: $csv")
+        assertTrue(csv.contains("2026-09-13,"), "un corte por día no cambia de fecha: $csv")
+        assertTrue(csv.contains("SON-2026-000001"), "los folios no se traducen: $csv")
+    }
+
+    @Test fun validationAgreesInGender() {
+        val e = assertFailsWith<ErpException> { validate { notBlank(null, "category_id", "La categoría") } }
+        assertEquals("La categoría es obligatoria.", e.message)
+        val e2 = assertFailsWith<ErpException> { validate { notBlank("", "name", "El nombre") } }
+        assertEquals("El nombre es obligatorio.", e2.message)
+    }
+}
