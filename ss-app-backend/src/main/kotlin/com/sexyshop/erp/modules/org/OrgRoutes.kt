@@ -55,6 +55,7 @@ fun Route.orgRoutes(db: Db, service: OrgService, audit: AuditService, erpAuth: E
         val key = call.requiredParam("key")
         if (key == "security" && !ctx.has("settings.system")) throw ErpException.forbidden("Solo un super administrador cambia la configuración de seguridad.")
         val value = call.receiveOrThrow<JsonElement>()
+        (value as? JsonObject)?.let { v -> validateSetting(key, v) }
         val before = service.settings(ctx.organizationId)[key]
         service.saveSetting(ctx.organizationId, ctx.userId, key, value)
         audit.log(call, "settings.update", "SETTING", key, before, value)
@@ -100,6 +101,22 @@ fun Route.orgRoutes(db: Db, service: OrgService, audit: AuditService, erpAuth: E
     }
 
     // ---- Roles y permisos ------------------------------------------------------
+    /** Permisos válidos y sin escalamiento: solo el super administrador otorga lo que no tiene. */
+    suspend fun checkRolePermissions(ctx: AuthContext, perms: Collection<String>) {
+        if (perms.isEmpty()) return
+        val known = db.selectAll("permissions", "code").mapNotNull { it.str("code") }.toSet()
+        val unknown = perms.filter { it !in known }
+        if (unknown.isNotEmpty()) throw ErpException.badRequest("Permisos desconocidos: ${unknown.take(3).joinToString(", ")}.", "PERMISO_INVALIDO")
+        if (!ctx.isSuperAdmin) {
+            val extra = perms.filter { it !in ctx.permissions }
+            if (extra.isNotEmpty()) throw ErpException.forbidden("No puedes otorgar permisos que tu usuario no tiene: ${extra.take(3).joinToString(", ")}.")
+        }
+    }
+    fun validateRole(fields: JsonObject, creating: Boolean) = validate {
+        if (creating) { notBlank(fields.str("code"), "code", "El código"); require(fields.str("code").isNullOrBlank() || Regex("^[A-Za-z][A-Za-z0-9_ ]{1,29}$").matches(fields.str("code")!!), "code", "El código debe empezar con letra y usar solo letras, números o guion bajo (ej. CAJERO).") }
+        if (creating || fields.containsKey("name")) notBlank(fields.str("name"), "name", "El nombre")
+        val d = fields.dbl("max_discount_pct"); require(d == null || (d in 0.0..100.0), "max_discount_pct", "El descuento máximo debe estar entre 0 y 100 %.")
+    }
     get("/permissions") { call.require(); call.respond(JsonArray(db.selectAll("permissions", order = "module"))) }
     get("/roles") {
         val ctx = call.require()
@@ -110,7 +127,8 @@ fun Route.orgRoutes(db: Db, service: OrgService, audit: AuditService, erpAuth: E
         val ctx = call.require("roles.manage")
         val body = call.receiveOrThrow<JsonObject>()
         val fields = pick(body, OrgService.ROLE_FIELDS)
-        validate { notBlank(fields.str("code"), "code", "El código"); notBlank(fields.str("name"), "name", "El nombre") }
+        validateRole(fields, creating = true)
+        checkRolePermissions(ctx, body.arr("permissions")?.map { it.jsonPrimitive.content } ?: emptyList())
         val role = db.insert("roles", fields.with("organization_id" to ctx.organizationId, "code" to fields.str("code")!!.uppercase().replace(Regex("[^A-Z0-9_]"), "_")))
         val perms = body.arr("permissions")?.map { it.jsonPrimitive.content } ?: emptyList()
         db.insertMany("role_permissions", perms.map { jsonOf("role_id" to role.str("id"), "permission_code" to it) })
@@ -125,6 +143,8 @@ fun Route.orgRoutes(db: Db, service: OrgService, audit: AuditService, erpAuth: E
         if (role.str("organization_id") != null && role.str("organization_id") != ctx.organizationId) throw ErpException.notFound()
         val body = call.receiveOrThrow<JsonObject>()
         val fields = pick(body, OrgService.ROLE_FIELDS - "code")
+        validateRole(fields, creating = false)
+        body.arr("permissions")?.let { arr -> checkRolePermissions(ctx, arr.map { it.jsonPrimitive.content }) }
         val after = if (fields.isNotEmpty()) db.update("roles", id, fields) else role
         body.arr("permissions")?.let { arr ->
             val perms = arr.map { it.jsonPrimitive.content }.toSet()
@@ -139,10 +159,36 @@ fun Route.orgRoutes(db: Db, service: OrgService, audit: AuditService, erpAuth: E
         val ctx = call.require("roles.manage")
         val id = call.requiredParam("id")
         val role = db.byId("roles", id)
+        if (role.str("organization_id") != ctx.organizationId) throw ErpException.notFound("Rol no encontrado.")
         if (role.bool("is_system") == true) throw ErpException.forbidden("Los roles del sistema no se eliminan.")
-        if (db.count("user_roles") { eq("role_id", id) } > 0) throw ErpException.conflict("Hay usuarios con este rol. Reasígnalos antes de eliminarlo.")
+        val users = db.count("user_roles") { eq("role_id", id) }
+        if (users > 0) throw ErpException.conflict("${users} usuario${if (users == 1L) "" else "s"} tiene${if (users == 1L) "" else "n"} el rol “${role.str("name")}”. Asígnales otro rol antes de eliminarlo.")
         db.delete("roles") { eq("id", id); eq("organization_id", ctx.organizationId) }
         audit.log(call, "roles.delete", "ROLE", id, role, null)
         call.respond(HttpStatusCode.NoContent)
+    }
+}
+
+
+/** Valida los valores de configuración antes de guardarlos (zona horaria real, números en rango, opciones válidas). */
+fun validateSetting(key: String, v: JsonObject) = validate {
+    fun num(k: String) = v[k]?.let { (it as? JsonPrimitive)?.doubleOrNull }
+    when (key) {
+        "locale" -> {
+            val tz = v.str("timezone"); require(tz.isNullOrBlank() || runCatching { java.time.ZoneId.of(tz) }.isSuccess, "timezone", "La zona horaria no es válida (ej. America/Hermosillo).")
+            val cur = v.str("currency"); require(cur.isNullOrBlank() || Regex("^[A-Z]{3}$").matches(cur), "currency", "La moneda debe ser un código de 3 letras (ej. MXN).")
+        }
+        "inventory" -> {
+            oneOf(v.str("cost_method"), listOf("LAST", "AVERAGE"), "cost_method", "El método de costo")
+            require((num("default_min_stock") ?: 0.0) >= 0, "default_min_stock", "El stock mínimo no puede ser negativo.")
+            require((num("dead_stock_days") ?: 1.0) >= 1, "dead_stock_days", "Los días sin venta deben ser al menos 1.")
+        }
+        "sales" -> {
+            val d = num("allow_cancel_days"); require(d == null || d in 0.0..365.0, "allow_cancel_days", "Los días para cancelar deben estar entre 0 y 365.")
+            val p = v.str("folio_prefix"); require(p.isNullOrBlank() || Regex("^[A-Z0-9]{2,6}$").matches(p), "folio_prefix", "El prefijo de folio debe tener de 2 a 6 letras o números en mayúscula (ej. SON).")
+        }
+        "ticket" -> { val w = num("width_mm"); require(w == null || w in 48.0..216.0, "width_mm", "El ancho del ticket debe estar entre 48 y 216 mm (58 u 80 mm es lo común).") }
+        "alerts" -> listOf("cash_difference_threshold", "cancellations_per_day", "discounts_pct_per_day", "returns_per_week").forEach { k -> require((num(k) ?: 0.0) >= 0, k, "Los umbrales de alertas no pueden ser negativos.") }
+        "security" -> { val hrs = num("session_hours"); require(hrs == null || hrs in 1.0..720.0, "session_hours", "Las horas de sesión deben estar entre 1 y 720.") }
     }
 }

@@ -184,3 +184,17 @@ class ReadableExportAndValidationTest {
         assertEquals("El nombre es obligatorio.", e2.message)
     }
 }
+
+class SettingsValidationTest {
+    @Test fun rejectsInvalidTimezoneAndCostMethod() {
+        val tz = assertFailsWith<ErpException> { com.sexyshop.erp.modules.org.validateSetting("locale", jsonOf("timezone" to "Marte/Base", "currency" to "MXN")) }
+        assertTrue(tz.message.contains("zona horaria"), tz.message)
+        assertFailsWith<ErpException> { com.sexyshop.erp.modules.org.validateSetting("inventory", jsonOf("cost_method" to "FIFO")) }
+        assertFailsWith<ErpException> { com.sexyshop.erp.modules.org.validateSetting("sales", jsonOf("allow_cancel_days" to -1)) }
+    }
+    @Test fun acceptsValidSettings() {
+        com.sexyshop.erp.modules.org.validateSetting("locale", jsonOf("timezone" to "America/Hermosillo", "currency" to "MXN"))
+        com.sexyshop.erp.modules.org.validateSetting("inventory", jsonOf("cost_method" to "AVERAGE", "default_min_stock" to 3, "dead_stock_days" to 90))
+        com.sexyshop.erp.modules.org.validateSetting("ticket", jsonOf("width_mm" to 80))
+    }
+}

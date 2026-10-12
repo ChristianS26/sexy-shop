@@ -89,7 +89,17 @@ class UsersService(private val db: Db, private val gotrue: GoTrueAdmin, private 
     fun guardRoleEscalation(ctx: AuthContext, roleCodes: List<String>) {
         if ("SUPER_ADMIN" in roleCodes && !ctx.isSuperAdmin) throw ErpException.forbidden("Solo un super administrador puede otorgar ese rol.")
     }
+
+    /** Nadie puede dar (vía roles) permisos que no tiene, salvo el super administrador. */
+    suspend fun guardPermissionEscalation(ctx: AuthContext, roleIds: List<String>) {
+        if (ctx.isSuperAdmin || roleIds.isEmpty()) return
+        val granted = db.selectAll("role_permissions", "permission_code, roles(name)") { isIn("role_id", roleIds) }
+        val extra = granted.filter { it.str("permission_code") !in ctx.permissions }
+        if (extra.isNotEmpty()) throw ErpException.forbidden("No puedes asignar el rol “${extra.first().obj("roles")?.str("name")}”: incluye permisos que tu usuario no tiene (${extra.mapNotNull { it.str("permission_code") }.distinct().take(3).joinToString(", ")}).")
+    }
 }
+
+private fun roleIdsOf(body: JsonObject): List<String> = body.arr("role_ids")?.map { it.jsonPrimitive.content } ?: emptyList()
 
 fun Route.usersRoutes(db: Db, service: UsersService, gotrue: GoTrueAdmin, audit: AuditService, erpAuth: ErpAuth) {
 
@@ -115,13 +125,16 @@ fun Route.usersRoutes(db: Db, service: UsersService, gotrue: GoTrueAdmin, audit:
             notBlank(fields.str("first_name"), "first_name", "El nombre")
             notBlank(fields.str("email"), "email", "El correo"); email(fields.str("email"))
             notBlank(fields.str("username"), "username", "El usuario")
+            require(fields.str("username").isNullOrBlank() || Regex("^[A-Za-z0-9._-]{3,30}$").matches(fields.str("username")!!), "username", "El usuario debe tener de 3 a 30 caracteres, sin espacios (letras, números, punto, guion).")
             require(password != null && password.length >= 8, "password", "La contraseña debe tener al menos 8 caracteres.")
+            require(roleIdsOf(body).isNotEmpty(), "role_ids", "Asigna al menos un rol.")
         }
         val roleIds = body.arr("role_ids")?.map { it.jsonPrimitive.content } ?: emptyList()
         val branchIds = body.arr("branch_ids")?.map { it.jsonPrimitive.content } ?: listOfNotNull(fields.str("default_branch_id"))
         val roles = if (roleIds.isEmpty()) emptyList() else db.selectAll("roles", "id, code") { isIn("id", roleIds) }
         service.guardRoleEscalation(ctx, roles.mapNotNull { it.str("code") })
-        if (db.count("users") { org(ctx); isNull("deleted_at"); ilike("username", fields.str("username")!!) } > 0) throw ErpException.conflict("Ese nombre de usuario ya está en uso.", "USERNAME_EXISTS")
+        service.guardPermissionEscalation(ctx, roleIds)
+        if (db.count("users") { org(ctx); isNull("deleted_at"); ilike("username", fields.str("username")!!) } > 0) throw ErpException(HttpStatusCode.Conflict, "USERNAME_EXISTS", "El usuario “${fields.str("username")}” ya está en uso; elige otro.", JsonObject(mapOf("username" to JsonPrimitive("Ese usuario ya está en uso."))))
 
         val authId = gotrue.createUser(fields.str("email")!!, password!!, listOfNotNull(fields.str("first_name"), fields.str("last_name")).joinToString(" "))
         val user = try {
@@ -142,13 +155,22 @@ fun Route.usersRoutes(db: Db, service: UsersService, gotrue: GoTrueAdmin, audit:
         val before = service.get(ctx, id)
         val body = call.receiveOrThrow<JsonObject>()
         val fields = pick(body, UsersService.FIELDS)
-        validate { email(fields.str("email")) }
+        validate {
+            email(fields.str("email"))
+            if (fields.containsKey("first_name")) notBlank(fields.str("first_name"), "first_name", "El nombre")
+            if (fields.containsKey("username")) require(Regex("^[A-Za-z0-9._-]{3,30}$").matches(fields.str("username") ?: ""), "username", "El usuario debe tener de 3 a 30 caracteres, sin espacios (letras, números, punto, guion).")
+            if (body.containsKey("role_ids")) require(roleIdsOf(body).isNotEmpty(), "role_ids", "Asigna al menos un rol.")
+        }
+        val newUsername = fields.str("username")
+        if (newUsername != null && !newUsername.equals(before.str("username"), true) && db.count("users") { org(ctx); isNull("deleted_at"); ilike("username", newUsername); neq("id", id) } > 0)
+            throw ErpException(HttpStatusCode.Conflict, "USERNAME_EXISTS", "El usuario “$newUsername” ya está en uso; elige otro.", JsonObject(mapOf("username" to JsonPrimitive("Ese usuario ya está en uso."))))
         if (fields.isNotEmpty()) db.update("users", id, fields)
         if (fields.str("email") != null && fields.str("email") != before.str("email")) gotrue.updateUser(id, jsonOf("email" to fields.str("email"), "email_confirm" to true))
         val roleIds = body.arr("role_ids")?.map { it.jsonPrimitive.content }
         if (roleIds != null) {
             val roles = if (roleIds.isEmpty()) emptyList() else db.selectAll("roles", "id, code") { isIn("id", roleIds) }
             service.guardRoleEscalation(ctx, roles.mapNotNull { it.str("code") })
+            service.guardPermissionEscalation(ctx, roleIds)
             if (id == ctx.userId && !ctx.isSuperAdmin && roles.none { it.str("code") in setOf("ADMIN", "SUPER_ADMIN") }) throw ErpException.forbidden("No puedes quitarte tu propio rol de administrador.")
         }
         service.assignRoles(id, roleIds, body.arr("branch_ids")?.map { it.jsonPrimitive.content })
