@@ -94,7 +94,8 @@ class Db(val supabase: SupabaseClient) {
     }
 
     suspend fun count(table: String, filters: PostgrestFilterBuilder.() -> Unit = {}): Long = guard {
-        supabase.from(table).select(columns = Columns.raw("id")) { count(Count.EXACT); filter(filters); limit(1) }.countOrNull() ?: 0L
+        // "*" y no "id": hay tablas de relación sin columna id (user_roles, user_branches, role_permissions…)
+        supabase.from(table).select(columns = Columns.raw("*")) { count(Count.EXACT); filter(filters); limit(1) }.countOrNull() ?: 0L
     }
 
     private suspend inline fun <T> guard(block: () -> T): T = try {
