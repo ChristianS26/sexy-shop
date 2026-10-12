@@ -26,7 +26,8 @@ export async function render(root, ctx) {
 
 async function startCount(onDone) {
   const refs = await loadCatalogRefs();
-  const wh = field({ label: 'Almacén', name: 'warehouse_id', type: 'select', options: me.warehouses, value: me.warehouses[0]?.id });
+  const myWh = me.warehouses.filter(w => me.branches.some(b => b.id === w.branch_id));
+  const wh = field({ label: 'Almacén', name: 'warehouse_id', type: 'select', options: myWh, value: myWh[0]?.id });
   const cat = field({ label: 'Limitar a una categoría (opcional)', name: 'category_id', type: 'select', options: refs.categories.map(c => ({ value: c.id, label: c.parent_id ? `— ${c.name}` : c.name })), placeholder: 'Todo el almacén' });
   const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
   openModal({ title: 'Iniciar conteo físico', body: h('div.form-grid', wh, cat, h('div.span-2', notes)), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => { setLoading(e.target.closest('button'), true); try { const c = await api.post('/inventory/counts', { warehouse_id: wh.input.value, category_id: cat.input.value || null, notes: notes.input.value || null }); toast(`Captura lo contado en ${wh.input.selectedOptions[0]?.textContent}; se guarda solo mientras escribes.`, { title: `Conteo ${c.reference} iniciado` }); m.close(); onDone?.(); openCount(c.id, onDone); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); } } }, 'Iniciar')] });

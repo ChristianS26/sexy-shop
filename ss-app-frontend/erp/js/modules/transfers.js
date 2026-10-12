@@ -49,9 +49,9 @@ async function openDetail(id, onDone) {
 }
 
 function openTransferForm(onDone) {
-  const whs = me.warehouses;
-  const from = field({ label: 'Almacén origen', name: 'from', type: 'select', options: whs, value: whs[0]?.id });
-  const to = field({ label: 'Almacén destino', name: 'to', type: 'select', options: whs, value: whs[1]?.id });
+  const whs = me.warehouses, mineWh = me.warehouses.filter(w => me.branches.some(b => b.id === w.branch_id));
+  const from = field({ label: 'Almacén origen', name: 'from', type: 'select', options: mineWh, value: mineWh[0]?.id });
+  const to = field({ label: 'Almacén destino', name: 'to', type: 'select', options: whs, value: (whs.find(w => w.id !== mineWh[0]?.id) || whs[0])?.id });
   const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
   const items = [];
   const search = h('input.input', { placeholder: 'Agregar producto…', autocomplete: 'off' });

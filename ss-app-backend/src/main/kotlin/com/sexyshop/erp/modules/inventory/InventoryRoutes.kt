@@ -12,10 +12,10 @@ import kotlinx.serialization.json.*
  */
 fun Route.inventoryRoutes(db: Db, audit: AuditService) {
     /** Documentos y almacenes solo de la organización del usuario (aislamiento entre organizaciones). */
-    suspend fun ownWarehouse(ctx: AuthContext, id: String?, label: String = "El almacén"): JsonObject {
+    suspend fun ownWarehouse(ctx: AuthContext, id: String?, label: String = "El almacén", checkAccess: Boolean = true): JsonObject {
         if (id.isNullOrBlank()) throw ErpException.badRequest("$label es obligatorio.", "DATOS_INCOMPLETOS")
         val wh = db.one("warehouses", "id, name, branch_id") { eq("id", id); org(ctx) } ?: throw ErpException.notFound("Almacén no encontrado.")
-        if (!ctx.canAccessBranch(wh.str("branch_id")!!)) throw ErpException.forbidden("No tienes acceso al almacén ${wh.str("name")}.")
+        if (checkAccess && !ctx.canAccessBranch(wh.str("branch_id")!!)) throw ErpException.forbidden("No tienes acceso al almacén ${wh.str("name")}; elige uno de tu sucursal.")
         return wh
     }
     suspend fun ownTransfer(ctx: AuthContext, id: String): JsonObject =
@@ -139,7 +139,7 @@ fun Route.inventoryRoutes(db: Db, audit: AuditService) {
             require(body.str("from_warehouse_id") != body.str("to_warehouse_id"), "to_warehouse_id", "Origen y destino deben ser distintos.")
             require(items.isNotEmpty(), "items", "Agrega al menos un producto."); require(items.all { (it.int("quantity") ?: 0) > 0 }, "items", "Las cantidades deben ser mayores a 0.")
         }
-        ownWarehouse(ctx, body.str("from_warehouse_id"), "El almacén origen"); ownWarehouse(ctx, body.str("to_warehouse_id"), "El almacén destino")
+        ownWarehouse(ctx, body.str("from_warehouse_id"), "El almacén origen"); ownWarehouse(ctx, body.str("to_warehouse_id"), "El almacén destino", checkAccess = false)
         val folio = db.rpc("next_folio", jsonOf("p_org" to ctx.organizationId, "p_doc_type" to "TRF", "p_prefix" to "TRF")).jsonPrimitive.content
         val t = db.insert("inventory_transfers", jsonOf("organization_id" to ctx.organizationId, "reference" to folio, "from_warehouse_id" to body.str("from_warehouse_id"), "to_warehouse_id" to body.str("to_warehouse_id"), "notes" to body.str("notes"), "created_by" to ctx.userId))
         db.insertMany("inventory_transfer_items", items.map { jsonOf("transfer_id" to t.str("id"), "product_id" to it.str("product_id"), "variant_id" to it.str("variant_id"), "quantity" to it.int("quantity")) })

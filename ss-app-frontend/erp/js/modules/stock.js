@@ -63,7 +63,7 @@ export async function openAdjustment({ product = null, variant = null, warehouse
     try { const full = await api.get(`/products/${product.id}`); (full.variants || []).filter(v => !v.deleted_at).forEach(v => items.push({ product, variant: v, quantity: 0 })); }
     catch (e) { toast.error(friendlyError(e)); return; }
   } else if (product) items.push({ product, variant, quantity: 1 });
-  const whSel = field({ label: 'Almacén', name: 'warehouse_id', type: 'select', required: true, options: me.warehouses, value: warehouse || me.warehousesOf(me.user?.default_branch_id)[0]?.id || me.warehouses[0]?.id });
+  const whSel = field({ label: 'Almacén', name: 'warehouse_id', type: 'select', required: true, options: me.warehouses.filter(w => me.branches.some(b => b.id === w.branch_id)), value: warehouse || me.warehousesOf(me.user?.default_branch_id)[0]?.id || me.warehouses[0]?.id });
   const type = field({ label: 'Tipo de ajuste', name: 'type', type: 'select', required: true, options: [['ADJUSTMENT_IN', 'Entrada por ajuste (+)'], ['ADJUSTMENT_OUT', 'Salida por ajuste (−)'], ['DAMAGE', 'Merma / producto dañado (−)'], ['LOSS', 'Pérdida / robo (−)'], ['INITIAL_STOCK', 'Inventario inicial (+)']].map(([value, label]) => ({ value, label })) });
   const reason = field({ label: 'Motivo (obligatorio, queda auditado)', name: 'reason', required: true, placeholder: 'Ej. conteo de estante, empaque roto…' });
   const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
