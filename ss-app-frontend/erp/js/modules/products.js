@@ -125,12 +125,12 @@ export async function openProductForm(id, onDone) {
   const d = openDrawer({ title: p ? 'Editar producto' : 'Nuevo producto', size: 'lg', body: [form, extra], footer: (ctx) => [h('button.btn.btn--secondary', { onclick: () => ctx.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
     const data = formData(form);
     ['length', 'width', 'height'].forEach(k => { const v = form.querySelector(`input[name="${k}"]`).value; data[k] = v === '' ? null : Number(v); });
-    setLoading(e.currentTarget, true);
+    setLoading(e.target.closest('button'), true);
     try {
       const saved = p ? await api.patch(`/products/${p.id}`, data) : await api.post('/products', data);
       toast(p ? 'Producto actualizado' : 'Producto creado'); onDone?.();
       if (!p) { ctx.close(); openProductForm(saved.id, onDone); } else ctx.close();
-    } catch (err) { if (!showErrors(form, err)) toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+    } catch (err) { if (!showErrors(form, err)) toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
   } }, icon('check'), p ? 'Guardar cambios' : 'Crear producto')] });
   setTimeout(() => f.name.input.focus(), 50);
 }
@@ -152,8 +152,8 @@ function variantsSection(p, onChange) {
     openModal({ title: v ? 'Editar variante' : 'Nueva variante', body: h('div.form-grid', h('div.span-2', name), attrK, attrV, sku, barcode, price, cost, active), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
       const data = { name: name.input.value, sku: sku.input.value || null, barcode: barcode.input.value || null, price: price.input.value === '' ? null : Number(price.input.value), is_active: active.querySelector('input').checked, attributes: attrV.input.value ? { [attrK.input.value]: attrV.input.value } : {} };
       if (cost) data.cost_price = cost.input.value === '' ? null : Number(cost.input.value);
-      setLoading(e.currentTarget, true);
-      try { if (v) await api.patch(`/variants/${v.id}`, data); else await api.post(`/products/${p.id}/variants`, data); m.close(); reload(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      setLoading(e.target.closest('button'), true);
+      try { if (v) await api.patch(`/variants/${v.id}`, data); else await api.post(`/products/${p.id}/variants`, data); m.close(); reload(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Guardar')] });
   }
   return sec;

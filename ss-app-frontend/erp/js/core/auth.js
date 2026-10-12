@@ -23,6 +23,17 @@ export const session = {
   },
 };
 
+/** Traduce los errores de Supabase Auth al cambiar contraseña. */
+function passwordError(d, status) {
+  const code = d.error_code || d.code || ''; const m = String(d.msg || d.error_description || d.message || '');
+  if (code === 'same_password' || /different from the old/i.test(m)) return 'La nueva contraseña debe ser distinta a la actual.';
+  if (code === 'weak_password' || /at least|weak|characters/i.test(m)) return 'La contraseña es muy débil. Usa al menos 8 caracteres combinando letras y números.';
+  if (code === 'reauthentication_needed') return 'Por seguridad, vuelve a iniciar sesión y repite el cambio.';
+  if (status === 401 || /expired|invalid jwt|not authenticated/i.test(m)) return 'El enlace o la sesión expiró. Solicita un nuevo correo de recuperación.';
+  if (status === 429) return 'Demasiados intentos. Espera un minuto.';
+  return 'No se pudo cambiar la contraseña. Intenta de nuevo.';
+}
+
 export const auth = {
   async login(email, password) {
     const res = await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -44,14 +55,15 @@ export const auth = {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CONFIG.SUPABASE_ANON_KEY },
       body: JSON.stringify({ email, redirect_to: location.origin + location.pathname.replace(/[^/]*$/, '') + 'reset.html' }),
     });
-    if (!res.ok) throw new Error('No se pudo enviar el correo. Verifica la dirección.');
+    if (res.status === 429) throw new Error('Ya pediste varios correos de recuperación. Espera unos minutos antes de intentar otra vez.');
+    if (!res.ok) throw new Error('No se pudo enviar el correo de recuperación. Revisa que el correo esté bien escrito e intenta de nuevo.');
   },
   async updatePassword(newPassword) {
     const s = session.get();
     const res = await fetch(`${CONFIG.SUPABASE_URL}/auth/v1/user`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${s?.access_token}` }, body: JSON.stringify({ password: newPassword }),
     });
-    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.msg || d.error_description || 'No se pudo cambiar la contraseña.'); }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(passwordError(d, res.status)); }
   },
   async logout() {
     const s = session.get();

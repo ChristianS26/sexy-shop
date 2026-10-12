@@ -36,6 +36,15 @@ class CatalogService(private val db: Db) {
         ).without("categories", "brands", "suppliers", "tax_rates", "product_images").stripCost(auth)
     }
 
+    /** Agrega warehouse_stock (existencia en un almacén, todas las variantes) a una lista de productos. */
+    suspend fun withWarehouseStock(list: List<JsonObject>, warehouseId: String?): List<JsonObject> {
+        if (warehouseId.isNullOrBlank() || list.isEmpty()) return list
+        val ids = list.mapNotNull { it.str("id") }
+        val byProduct = db.selectAll("inventory_levels", "product_id, quantity") { eq("warehouse_id", warehouseId); isIn("product_id", ids) }
+            .groupBy { it.str("product_id") }.mapValues { (_, v) -> v.sumOf { it.int("quantity") ?: 0 } }
+        return list.map { it.with("warehouse_stock" to (byProduct[it.str("id")] ?: 0)) }
+    }
+
     suspend fun product(auth: AuthContext, id: String): JsonObject {
         val p = db.one("products", PRODUCT_COLUMNS) { eq("id", id); org(auth); isNull("deleted_at") } ?: throw ErpException.notFound("Producto no encontrado.")
         val variants = db.selectAll("product_variants", order = "display_order") { eq("product_id", id); isNull("deleted_at") }
@@ -78,23 +87,24 @@ fun Route.catalogRoutes(db: Db, service: CatalogService, audit: AuditService) {
             // el filtro de semáforo exacto se aplica tras calcular con el mínimo por producto
             if (stockStatus in setOf("LOW", "CRITICAL", "EXCESS")) list.filter { it.str("stock_status") == stockStatus } else list
         }
-        call.respond(paged(shaped, q, total))
+        call.respond(paged(service.withWarehouseStock(shaped, p["warehouse"]), q, total))
     }
 
     /** Búsqueda rápida para POS: código de barras o SKU exacto, luego nombre. */
     get("/products/lookup") {
         val ctx = call.require("products.read")
         val code = call.request.queryParameters["code"]?.trim() ?: throw ErpException.badRequest("Falta el código.")
+        val wh = call.request.queryParameters["warehouse"]
         val byVariant = db.one("product_variants", "*, products(${CatalogService.PRODUCT_COLUMNS})") { isNull("deleted_at"); eq("is_active", true); or { eq("barcode", code); ilike("sku", code) } }
         if (byVariant != null && byVariant.obj("products")?.str("organization_id") == ctx.organizationId) {
-            val prod = service.shapeProduct(byVariant.obj("products")!!, ctx)
+            val prod = service.withWarehouseStock(listOf(service.shapeProduct(byVariant.obj("products")!!, ctx)), wh).first()
             call.respond(jsonOf("match" to "variant", "product" to prod, "variant" to byVariant.without("products").stripCost(ctx)))
             return@get
         }
         val product = db.one("products", CatalogService.PRODUCT_COLUMNS) { org(ctx); isNull("deleted_at"); or { eq("barcode", code); ilike("sku", code) } }
         if (product != null) {
             val variants = if (product.bool("has_variants") == true) db.selectAll("product_variants", order = "display_order") { eq("product_id", product.str("id")!!); isNull("deleted_at"); eq("is_active", true) } else emptyList()
-            call.respond(jsonOf("match" to "product", "product" to service.shapeProduct(product, ctx), "variants" to variants.map { it.stripCost(ctx) }))
+            call.respond(jsonOf("match" to "product", "product" to service.withWarehouseStock(listOf(service.shapeProduct(product, ctx)), wh).first(), "variants" to variants.map { it.stripCost(ctx) }))
             return@get
         }
         val res = db.rpcObject("global_search", jsonOf("p_org" to ctx.organizationId, "p_q" to code, "p_limit" to 8))

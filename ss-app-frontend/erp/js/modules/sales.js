@@ -111,12 +111,12 @@ export async function openReturn(saleId, onDone) {
       const sel = items.filter(i => Number(qtys[i.id].q.value) > 0).map(i => ({ sale_item_id: i.id, quantity: Number(qtys[i.id].q.value), restock: qtys[i.id].restock.checked }));
       if (!sel.length) { toast.warn('Indica las cantidades a devolver.'); return; }
       if (!reason.input.value) { toast.warn('Elige el motivo.'); return; }
-      setLoading(e.currentTarget, true);
+      setLoading(e.target.closest('button'), true);
       try {
         const cur = await api.get('/cash/shifts/current').catch(() => ({ shift: null }));
         await api.post(`/sales/${saleId}/returns`, { reason: reason.input.value, refund_method_code: method.input.value, cash_shift_id: cur.shift?.id || null, notes: notes.input.value || null, items: sel });
         toast('Devolución registrada'); m.close(); onDone?.();
-      } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, icon('undo'), 'Registrar devolución')] });
 }
 

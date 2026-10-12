@@ -56,8 +56,8 @@ export async function render(root) {
     const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
     openModal({ title: 'Abrir turno de caja', body: h('div.form-grid', me.branches.length > 1 ? branchSel : null, regSel, amount, notes), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
       if (!regSel.input.value) { toast.warn('Esta sucursal no tiene cajas. Crea una en Configuración → Sucursales.'); return; }
-      setLoading(e.currentTarget, true);
-      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value), notes: notes.input.value || null }); toast('Turno abierto'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      setLoading(e.target.closest('button'), true);
+      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value), notes: notes.input.value || null }); toast('Turno abierto'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Abrir turno')] });
   }
   function addMovement(s) {
@@ -65,8 +65,8 @@ export async function render(root) {
     const amount = field({ label: 'Monto', name: 'amount', type: 'number', min: 0.01, step: '0.01', prefix: '$', required: true });
     const desc = field({ label: 'Descripción', name: 'description', required: true, placeholder: 'Ej. retiro para depósito bancario' });
     openModal({ title: 'Movimiento de efectivo', body: h('div.form-grid', type, amount, h('div.span-2', desc)), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
-      setLoading(e.currentTarget, true);
-      try { await api.post(`/cash/shifts/${s.id}/movements`, { type: type.input.value, amount: Number(amount.input.value), description: desc.input.value }); toast('Movimiento registrado'); m.close(); renderCurrent(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      setLoading(e.target.closest('button'), true);
+      try { await api.post(`/cash/shifts/${s.id}/movements`, { type: type.input.value, amount: Number(amount.input.value), description: desc.input.value }); toast('Movimiento registrado'); m.close(); renderCurrent(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Registrar')] });
   }
   function closeShift(s) {
@@ -82,8 +82,8 @@ export async function render(root) {
         if (counted.value === '') { toast.warn('Indica el efectivo contado.'); counted.focus(); return; }
         const d = (Number(counted.value) || 0) - s.expected_cash_live;
         if (Math.abs(d) > 0.5 && !(await confirm({ title: 'Hay diferencia de caja', text: `La diferencia es ${fmt.money(d)}. Se generará una alerta para gerencia. ¿Cerrar de todos modos?`, confirmText: 'Cerrar turno', danger: true }))) return;
-        setLoading(e.currentTarget, true);
-        try { await api.post(`/cash/shifts/${s.id}/close`, { counted_cash: Number(counted.value), notes: notes.input.value || null }); toast('Turno cerrado'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+        setLoading(e.target.closest('button'), true);
+        try { await api.post(`/cash/shifts/${s.id}/close`, { counted_cash: Number(counted.value), notes: notes.input.value || null }); toast('Turno cerrado'); m.close(); renderCurrent(); renderShifts(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
       } }, icon('lock'), 'Cerrar turno')] });
     setTimeout(() => counted.focus(), 60);
   }
@@ -148,7 +148,7 @@ export async function render(root) {
     };
     openModal({ title: x ? 'Editar gasto' : 'Registrar gasto', size: 'md', body: h('div.form-grid', f.category, f.amount, f.desc, f.date, f.method, me.branches.length > 1 ? f.branch : null, f.fromShift, f.receipt, f.notes),
       footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
-        setLoading(e.currentTarget, true);
+        setLoading(e.target.closest('button'), true);
         try {
           let receiptUrl = x?.receipt_url || null;
           const file = f.receipt.input.files?.[0];
@@ -157,7 +157,7 @@ export async function render(root) {
           if (x) await api.patch(`/expenses/${x.id}`, payload);
           else { let shiftId = null; if (f.fromShift.querySelector('input').checked) { const cur = await api.get('/cash/shifts/current'); shiftId = cur.shift?.id; if (!shiftId) throw new Error('No tienes un turno abierto.'); payload.payment_method_code = 'CASH'; } await api.post('/expenses', { ...payload, cash_shift_id: shiftId }); }
           toast('Gasto guardado'); m.close(); onDone?.();
-        } catch (err) { toast.error(friendlyError(err) || err.message); setLoading(e.currentTarget, false); }
+        } catch (err) { toast.error(friendlyError(err) || err.message); setLoading(e.target.closest('button'), false); }
       } }, 'Guardar')] });
   }
 }

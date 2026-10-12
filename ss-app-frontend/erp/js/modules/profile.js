@@ -21,9 +21,9 @@ export async function render(root) {
       h('div.card', h('div.card__head', h('div.card__title', 'Cambiar contraseña')), h('div.card__body', h('div.stack', p1, p2, h('div.row.row--end', h('button.btn.btn--primary', { onclick: async (e) => {
         if (p1.input.value.length < 8) return toast.warn('Mínimo 8 caracteres.');
         if (p1.input.value !== p2.input.value) return toast.warn('Las contraseñas no coinciden.');
-        setLoading(e.currentTarget, true);
+        setLoading(e.target.closest('button'), true);
         try { await auth.updatePassword(p1.input.value); toast('Contraseña actualizada'); p1.input.value = p2.input.value = ''; } catch (err) { toast.error(err.message); }
-        setLoading(e.currentTarget, false);
+        setLoading(e.target.closest('button'), false);
       } }, icon('key'), 'Actualizar'))))),
       h('div.card', h('div.card__head', h('div.card__title', 'Preferencias')), h('div.card__body', h('div.stack', discreet,
         h('div', h('div.eyebrow.mb-2', 'Sucursales'), h('p.text-sm', me.branches.map(b => b.name).join(', ') || '—')),

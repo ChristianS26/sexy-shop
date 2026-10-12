@@ -86,10 +86,10 @@ export async function openAdjustment({ product = null, variant = null, warehouse
       const valid = items.filter(it => it.quantity > 0);
       if (!valid.length) { toast.warn('Agrega productos con cantidad mayor a 0.'); return; }
       if (!reason.input.value.trim()) { toast.warn('Indica el motivo.'); reason.input.focus(); return; }
-      setLoading(e.currentTarget, true);
+      setLoading(e.target.closest('button'), true);
       try {
         const res = await api.post('/inventory/adjustments', { warehouse_id: whSel.input.value, type: type.input.value, reason: reason.input.value, notes: notes.input.value || null, items: valid.map(it => ({ product_id: it.product.id, variant_id: it.variant?.id || null, quantity: it.quantity, unit_cost: it.unit_cost ?? null })) });
         toast(`Ajuste ${res.reference} aplicado`); m.close(); onDone?.();
-      } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, icon('check'), 'Aplicar ajuste')] });
 }

@@ -23,6 +23,10 @@ export async function render(root) {
   if (!branches.some(b => b.id === branchId)) branchId = branches[0]?.id;
   let shift = null, products = [], categories = [], cart = loadCart(), customer = null, discountPct = 0, discountReason = '', notes = '', quote = null, seller = me.user?.id;
   const clientRef = { v: uid() };
+  /** Almacén del que vende la sucursal (el predeterminado). */
+  const whOf = () => (me.warehousesOf(branchId).find(w => w.is_default) || me.warehousesOf(branchId)[0])?.id;
+  /** Existencia que puede venderse aquí: la del almacén de la sucursal. */
+  const stockHere = (p) => p.warehouse_stock ?? p.stock;
 
   // ── Layout ───────────────────────────────────────────────────────────────
   const scan = h('input.input', { type: 'search', placeholder: 'Escanea un código de barras o busca por nombre / SKU…', autocomplete: 'off', 'aria-label': 'Buscar producto', autofocus: true });
@@ -49,14 +53,14 @@ export async function render(root) {
     const regSel = field({ label: 'Caja', name: 'cash_register_id', type: 'select', options: regs, value: regs[0].id });
     const amount = field({ label: 'Fondo inicial en efectivo', name: 'opening_amount', type: 'number', value: 500, min: 0, step: '0.01', prefix: '$', required: true });
     openModal({ title: 'Abrir turno de caja', body: h('div.form-grid', regSel, amount), footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => {
-      setLoading(e.currentTarget, true);
-      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value) }); toast('Turno abierto'); m.close(); loadShift(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+      setLoading(e.target.closest('button'), true);
+      try { await api.post('/cash/shifts/open', { cash_register_id: regSel.input.value, opening_amount: Number(amount.input.value) }); toast('Turno abierto'); m.close(); loadShift(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
     } }, 'Abrir turno')] });
   }
   async function loadProducts(q = '', category = '') {
     replace(grid, spinner());
     try {
-      const r = await api.get('/products', { q: q || undefined, category: category || undefined, active: 'true', size: 60, sort: 'name' });
+      const r = await api.get('/products', { q: q || undefined, category: category || undefined, active: 'true', size: 60, sort: 'name', warehouse: whOf() });
       products = r.data;
       renderGrid();
     } catch (e) { replace(grid, emptyState({ icon: 'alertCircle', title: 'No se pudieron cargar los productos', text: friendlyError(e) })); }
@@ -71,32 +75,33 @@ export async function render(root) {
   }
   function renderGrid() {
     if (!products.length) { replace(grid, emptyState({ icon: 'search', title: 'Sin productos', text: 'Prueba con otro término o categoría.' })); return; }
-    replace(grid, products.map(p => h('button.pos__product', { type: 'button', disabled: p.stock <= 0 && !me.settings?.inventory?.allow_negative, onclick: () => add(p), title: p.stock <= 0 ? 'Sin existencia' : p.name },
+    replace(grid, products.map(p => h('button.pos__product', { type: 'button', disabled: stockHere(p) <= 0 && !me.settings?.inventory?.allow_negative, onclick: () => add(p), title: stockHere(p) <= 0 ? 'Sin existencia en esta sucursal' : p.name },
       h('div.pos__product-img', p.image_url ? h('img', { src: p.image_url, alt: '', loading: 'lazy' }) : icon('box')),
       h('div.pos__product-name', p.name),
-      h('div.pos__product-price', fmt.money(p.price), h('small', { class: p.stock <= (p.min_stock || 3) ? 'down' : '' }, `${p.stock} uds`)))));
+      h('div.pos__product-price', fmt.money(p.price), h('small', { class: stockHere(p) <= (p.min_stock || 3) ? 'down' : '' }, `${stockHere(p)} uds`)))));
   }
 
   // ── Carrito ──────────────────────────────────────────────────────────────
   function loadCart() { try { return JSON.parse(sessionStorage.getItem(CART_KEY) || '[]'); } catch { return []; } }
   function saveCart() { sessionStorage.setItem(CART_KEY, JSON.stringify(cart)); }
-  async function add(p, variant = null) {
+  async function add(p, variant = null, variantStock = null) {
     if (p.has_variants && !variant) {
       const full = await api.get(`/products/${p.id}`);
       const vs = (full.variants || []).filter(v => v.is_active !== false);
       if (!vs.length) { toast.warn('Este producto tiene variantes pero ninguna está activa.'); return; }
       const stockOf = (vid) => (full.stock_by_warehouse || []).filter(l => l.variant_id === vid && me.warehousesOf(branchId).some(w => w.id === l.warehouse_id)).reduce((a, l) => a + l.quantity, 0);
-      openModal({ title: p.name, sub: 'Elige la variante', body: h('div.grid.grid--2', { style: { gap: '10px' } }, vs.map(v => h('button.pay-btn', { type: 'button', disabled: stockOf(v.id) <= 0, onclick: (e) => { e.currentTarget.closest('.overlay').remove(); document.body.style.overflow = ''; add(p, v); } }, h('b', v.name), h('span.text-xs.text-3', `${fmt.money(v.price ?? p.price)} · ${stockOf(v.id)} uds`)))) });
+      const vm = openModal({ title: p.name, sub: 'Elige la variante', body: h('div.grid.grid--2', { style: { gap: '10px' } }, vs.map(v => h('button.pay-btn', { type: 'button', disabled: stockOf(v.id) <= 0, onclick: () => { vm.close(); add(p, v, stockOf(v.id)); } }, h('b', v.name), h('span.text-xs.text-3', `${fmt.money(v.price ?? p.price)} · ${stockOf(v.id)} uds`)))) });
       return;
     }
     const key = p.id + (variant ? ':' + variant.id : '');
     const ex = cart.find(l => l.key === key);
-    const max = variant ? null : p.stock;
-    if (ex) { if (max != null && ex.quantity + 1 > max) { toast.warn(`Solo hay ${max} en existencia.`); return; } ex.quantity++; }
+    const max = variant ? variantStock : stockHere(p);
+    if (max != null && max <= 0 && !me.settings?.inventory?.allow_negative) { toast.warn(`“${p.name}” no tiene existencia en esta sucursal.`); return; }
+    if (ex) { if (max != null && ex.quantity + 1 > max) { toast.warn(`Solo hay ${max} en existencia en esta sucursal.`); return; } ex.quantity++; ex.stock = max; }
     else cart.push({ key, product_id: p.id, variant_id: variant?.id || null, name: p.name + (variant ? ` · ${variant.name}` : ''), price: variant?.price ?? p.price, quantity: 1, image: p.image_url, stock: max });
     saveCart(); renderCart(); scan.value = ''; scan.focus();
   }
-  function setQty(line, q) { if (q <= 0) { cart = cart.filter(l => l !== line); } else { if (line.stock != null && q > line.stock) { toast.warn(`Solo hay ${line.stock} en existencia.`); q = line.stock; } line.quantity = q; } saveCart(); renderCart(); }
+  function setQty(line, q) { if (q <= 0) { cart = cart.filter(l => l !== line); } else { if (line.stock != null && q > line.stock) { toast.warn(`Solo hay ${line.stock} en existencia en esta sucursal.`); q = line.stock; } line.quantity = q; } saveCart(); renderCart(); }
   const requote = debounce(async () => {
     if (!cart.length) { quote = null; renderTotals(); return; }
     try { quote = await api.post('/pos/quote', { items: cart.map(l => ({ product_id: l.product_id, variant_id: l.variant_id, quantity: l.quantity })), discount_pct: discountPct || undefined }); }
@@ -104,6 +109,7 @@ export async function render(root) {
     renderTotals();
   }, 250);
   function renderCart() {
+    if (lines.contains(document.activeElement)) document.activeElement.blur();
     const custEl = $('#pos-cust'); if (custEl) replace(custEl, customer ? h('span', { 'data-private': '' }, `${fmt.name(customer)}${customer.phone ? ' · ' + customer.phone : ''}`) : 'Público en general');
     if (!cart.length) { replace(lines, emptyState({ icon: 'cart', title: 'Carrito vacío', text: 'Escanea un código o toca un producto para agregarlo.' })); }
     else replace(lines, cart.map(l => { const q = quote?.items?.find(i => i.product_id === l.product_id && (i.variant_id || null) === (l.variant_id || null)); return h('div.pos__line',
@@ -176,7 +182,7 @@ export async function render(root) {
       footer: (ctx) => [h('button.btn.btn--secondary', { onclick: () => ctx.close() }, 'Cancelar'), h('button.btn.btn--primary.btn--lg', { onclick: async (e) => {
         if (!method) return;
         if (method.is_cash && received < total - 0.001) { toast.warn('El efectivo recibido no cubre el total.'); recvInput.focus(); return; }
-        setLoading(e.currentTarget, true); ctx.setBusy(true);
+        setLoading(e.target.closest('button'), true); ctx.setBusy(true);
         try {
           const sale = await api.post('/sales', { branch_id: branchId, customer_id: customer?.id || null, cash_shift_id: shift?.id || null, seller_id: seller, notes: notes || null, client_ref: clientRef.v,
             discount_pct: discountPct || undefined, discount_reason: discountPct ? discountReason : undefined,
@@ -187,7 +193,7 @@ export async function render(root) {
           toast(`Venta ${sale.folio} registrada`, { title: sale.change_amount > 0 ? `Cambio: ${fmt.money(sale.change_amount)}` : null });
           printTicket(sale.id, { auto: true });
           loadProducts(scan.value.trim(), activeCat);
-        } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); ctx.setBusy(false); }
+        } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); ctx.setBusy(false); }
       } }, icon('check'), 'Confirmar cobro')] });
     if (method?.is_cash) setTimeout(() => recvInput.focus(), 60);
   }
@@ -199,7 +205,7 @@ export async function render(root) {
     if (e.key !== 'Enter') return;
     e.preventDefault(); const code = scan.value.trim(); if (!code) return;
     try {
-      const r = await api.get('/products/lookup', { code });
+      const r = await api.get('/products/lookup', { code, warehouse: whOf() });
       if (r.match === 'variant') add(r.product, r.variant);
       else if (r.match === 'product') { if (r.product.has_variants && r.variants?.length === 1) add(r.product, r.variants[0]); else add(r.product); }
       else if (products.length === 1) add(products[0]);

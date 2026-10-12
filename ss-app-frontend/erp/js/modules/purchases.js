@@ -68,7 +68,7 @@ async function openPo(id, suppliers, onDone) {
       const invoice = field({ label: 'Número de factura / remisión', name: 'invoice_number' });
       const notes = field({ label: 'Notas', name: 'notes', type: 'textarea', rows: 2 });
       openModal({ title: `Recibir ${po.folio}`, size: 'md', sub: 'Ajusta las cantidades si la entrega fue parcial. Lo pendiente queda en la orden.', body: h('div.stack', h('div.table-wrap', h('table.table.table--compact', h('thead', h('tr', h('th', 'Producto'), h('th.num', 'Pendiente'), h('th', 'Recibir'), canCost ? h('th', 'Costo real') : null)), h('tbody', pending.map(i => { inputs[i.id] = { q: h('input.input.input--sm', { type: 'number', min: 0, max: i.quantity - i.received_quantity, value: i.quantity - i.received_quantity, style: { width: '90px' } }), c: h('input.input.input--sm', { type: 'number', min: 0, step: '0.01', value: i.unit_cost, style: { width: '100px' } }) }; return h('tr', h('td', i.products?.name, i.product_variants?.name ? ` · ${i.product_variants.name}` : ''), h('td.num', i.quantity - i.received_quantity), h('td', inputs[i.id].q), canCost ? h('td', inputs[i.id].c) : null); })))), h('div.form-grid', invoice, notes)),
-        footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => { setLoading(e.currentTarget, true); try { await api.post(`/purchases/${id}/receive`, { invoice_number: invoice.input.value || null, notes: notes.input.value || null, items: pending.map(i => ({ po_item_id: i.id, quantity: Number(inputs[i.id].q.value) || 0, unit_cost: canCost ? Number(inputs[i.id].c.value) : undefined })) }); toast('Mercancía recibida: inventario actualizado'); m.close(); d.close(); onDone?.(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); } } }, icon('check'), 'Confirmar recepción')] });
+        footer: (m) => [h('button.btn.btn--secondary', { onclick: () => m.close() }, 'Cancelar'), h('button.btn.btn--primary', { onclick: async (e) => { setLoading(e.target.closest('button'), true); try { await api.post(`/purchases/${id}/receive`, { invoice_number: invoice.input.value || null, notes: notes.input.value || null, items: pending.map(i => ({ po_item_id: i.id, quantity: Number(inputs[i.id].q.value) || 0, unit_cost: canCost ? Number(inputs[i.id].c.value) : undefined })) }); toast('Mercancía recibida: inventario actualizado'); m.close(); d.close(); onDone?.(); } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); } } }, icon('check'), 'Confirmar recepción')] });
     }
   } catch (e) { replace(box, emptyState({ icon: 'alertCircle', title: 'No se pudo cargar', text: friendlyError(e) })); }
 }
@@ -97,13 +97,13 @@ export function openPoForm(po, suppliers, onDone, presetSupplier = null, presetI
   async function save(e, send, m) {
     const valid = items.filter(i => i.quantity > 0);
     if (!sup.input.value) { toast.warn('Elige el proveedor.'); return; } if (!valid.length) { toast.warn('Agrega productos.'); return; }
-    setLoading(e.currentTarget, true);
+    setLoading(e.target.closest('button'), true);
     const payload = { supplier_id: sup.input.value, warehouse_id: wh.input.value, expected_date: expected.input.value || null, notes: notes.input.value || null, items: valid.map(i => ({ product_id: i.product.id, variant_id: i.variant?.id || null, quantity: i.quantity, unit_cost: i.unit_cost || 0 })) };
     try {
       if (po) { await api.patch(`/purchases/${po.id}`, payload); if (send) await api.post(`/purchases/${po.id}/status`, { status: 'SENT' }); }
       else await api.post('/purchases', { ...payload, send });
       toast(send ? 'Orden enviada' : 'Orden guardada'); m.close(); onDone?.();
-    } catch (err) { toast.error(friendlyError(err)); setLoading(e.currentTarget, false); }
+    } catch (err) { toast.error(friendlyError(err)); setLoading(e.target.closest('button'), false); }
   }
 }
 

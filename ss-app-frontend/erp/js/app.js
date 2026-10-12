@@ -123,7 +123,8 @@ async function pollAlerts() {
 
 // ── Boot ────────────────────────────────────────────────────────────────────
 async function boot() {
-  if (!session.get() || (session.expired() && !(await session.refresh()))) { location.replace('login.html?expired=1'); return; }
+  if (!session.get()) { location.replace('login.html'); return; }
+  if (session.expired() && !(await session.refresh())) { location.replace('login.html?expired=1'); return; }
   applyTheme(store.pref('theme')); applyDiscreet(store.pref('discreet'));
   if (store.pref('collapsed')) app.setAttribute('data-collapsed', '1');
   $('#scrim').addEventListener('click', () => app.removeAttribute('data-drawer'));
